@@ -1,1 +1,1 @@
-# lending-protocol
+# Bonzo Protocol Smart Contracts
