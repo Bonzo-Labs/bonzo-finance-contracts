@@ -146,6 +146,7 @@ export const AaveConfig: IAaveConfiguration = {
       YFI: '0x0bc529c00C6401aEF6D220BE8C6Ea1667F6Ad93e',
       ZRX: '0xE41d2489571d322189246DaFA5ebDe1F4699F498',
     },
+    [eEthereumNetwork.hedera_testnet]: {},
   },
 };
 

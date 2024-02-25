@@ -92,6 +92,7 @@ const buidlerConfig: HardhatUserConfig = {
     username: process.env.TENDERLY_USERNAME || '',
     forkNetwork: '1', //Network id of the network we want to fork
   },
+  defaultNetwork: 'hedera_testnet',
   networks: {
     coverage: {
       url: 'http://localhost:8555',
@@ -133,6 +134,16 @@ const buidlerConfig: HardhatUserConfig = {
         initialIndex: 0,
         count: 20,
       },
+    },
+    hedera_testnet: {
+      url: 'https://testnet.hashio.io/api',
+      accounts: {
+        mnemonic: 'need a mnemonic here',
+        path: "m/44'/60'/0'/0",
+        initialIndex: 0,
+        count: 20,
+      },
+      timeout: 0,
     },
   },
 };

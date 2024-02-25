@@ -318,7 +318,7 @@ export const deployVariableDebtToken = async (
   );
 
 export const deployGenericAToken = async (
-  [poolAddress, underlyingAssetAddress, treasuryAddress, name, symbol,incentivesController]: [
+  [poolAddress, underlyingAssetAddress, treasuryAddress, name, symbol, incentivesController]: [
     tEthereumAddress,
     tEthereumAddress,
     tEthereumAddress,
@@ -335,7 +335,6 @@ export const deployGenericAToken = async (
     string,
     tEthereumAddress,
     tEthereumAddress
-
   ] = [poolAddress, underlyingAssetAddress, treasuryAddress, name, symbol, incentivesController];
   return withSaveAndVerify(
     await new ATokenFactory(await getFirstSigner()).deploy(...args),
@@ -387,6 +386,7 @@ export const deployAllMockTokens = async (verify?: boolean) => {
       [tokenSymbol, tokenSymbol, configData ? configData.reserveDecimals : decimals],
       verify
     );
+    await registerContractInJsonDb(tokenSymbol.toUpperCase(), tokens[tokenSymbol]);
   }
   return tokens;
 };

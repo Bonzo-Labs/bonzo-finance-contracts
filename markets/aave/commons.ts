@@ -118,12 +118,12 @@ export const CommonsConfig: ICommonConfiguration = {
   PoolAdmin: {
     [eEthereumNetwork.coverage]: undefined,
     [eEthereumNetwork.buidlerevm]: undefined,
-    [eEthereumNetwork.coverage]: undefined,
     [eEthereumNetwork.hardhat]: undefined,
     [eEthereumNetwork.kovan]: undefined,
     [eEthereumNetwork.ropsten]: undefined,
     [eEthereumNetwork.main]: undefined,
     [eEthereumNetwork.tenderlyMain]: undefined,
+    [eEthereumNetwork.hedera_testnet]: undefined,
   },
   PoolAdminIndex: 0,
   EmergencyAdmin: {
@@ -134,6 +134,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.ropsten]: undefined,
     [eEthereumNetwork.main]: undefined,
     [eEthereumNetwork.tenderlyMain]: undefined,
+    [eEthereumNetwork.hedera_testnet]: undefined,
   },
   EmergencyAdminIndex: 1,
   ProviderRegistry: {
@@ -144,6 +145,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.hardhat]: '',
     [eEthereumNetwork.buidlerevm]: '',
     [eEthereumNetwork.tenderlyMain]: '0x52D306e36E3B6B02c153d0266ff0f85d18BCD413',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   ProviderRegistryOwner: {
     [eEthereumNetwork.kovan]: '0x85e4A467343c0dc4aDAB74Af84448D9c45D8ae6F',
@@ -153,6 +155,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.hardhat]: '',
     [eEthereumNetwork.buidlerevm]: '',
     [eEthereumNetwork.tenderlyMain]: '0xbd723fc4f1d737dcfc48a07fe7336766d34cad5f',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   LendingRateOracle: {
     [eEthereumNetwork.coverage]: '',
@@ -162,6 +165,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.ropsten]: '0x05dcca805a6562c1bdd0423768754acb6993241b',
     [eEthereumNetwork.main]: '0x8A32f49FFbA88aba6EFF96F45D8BD1D4b3f35c7D',
     [eEthereumNetwork.tenderlyMain]: '0x8A32f49FFbA88aba6EFF96F45D8BD1D4b3f35c7D',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   TokenDistributor: {
     [eEthereumNetwork.coverage]: '',
@@ -171,6 +175,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [EthereumNetwork.ropsten]: '0xeba2ea67942b8250d870b12750b594696d02fc9c',
     [EthereumNetwork.main]: '0xe3d9988f676457123c5fd01297605efdd0cba1ae',
     [EthereumNetwork.tenderlyMain]: '0xe3d9988f676457123c5fd01297605efdd0cba1ae',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   AaveOracle: {
     [eEthereumNetwork.coverage]: '',
@@ -180,6 +185,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [EthereumNetwork.ropsten]: ZERO_ADDRESS,
     [EthereumNetwork.main]: '0xA50ba011c48153De246E5192C8f9258A2ba79Ca9',
     [EthereumNetwork.tenderlyMain]: '0xA50ba011c48153De246E5192C8f9258A2ba79Ca9',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   FallbackOracle: {
     [eEthereumNetwork.coverage]: '',
@@ -189,6 +195,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [EthereumNetwork.ropsten]: '0xAD1a978cdbb8175b2eaeC47B01404f8AEC5f4F0d',
     [EthereumNetwork.main]: ZERO_ADDRESS,
     [EthereumNetwork.tenderlyMain]: ZERO_ADDRESS,
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   ChainlinkAggregator: {
     [eEthereumNetwork.coverage]: {},
@@ -282,6 +289,7 @@ export const CommonsConfig: ICommonConfiguration = {
       ZRX: '0x2Da4983a622a8498bb1a21FaE9D8F6C664939962',
       USD: '0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419',
     },
+    [eEthereumNetwork.hedera_testnet]: {},
   },
   ReserveAssets: {
     [eEthereumNetwork.coverage]: {},
@@ -291,6 +299,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [EthereumNetwork.kovan]: {},
     [EthereumNetwork.ropsten]: {},
     [EthereumNetwork.tenderlyMain]: {},
+    [eEthereumNetwork.hedera_testnet]: {},
   },
   ReservesConfig: {},
   ATokenDomainSeparator: {
@@ -304,6 +313,8 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.ropsten]: '',
     [eEthereumNetwork.main]: '',
     [eEthereumNetwork.tenderlyMain]: '',
+    [eEthereumNetwork.hedera_testnet]:
+      '0xbae024d959c6a022dc5ed37294cd39c141034b2ae5f02a955cce75c930a81bf5',
   },
   WETH: {
     [eEthereumNetwork.coverage]: '', // deployed in local evm
@@ -313,6 +324,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.ropsten]: '0xc778417e063141139fce010982780140aa0cd5ab',
     [eEthereumNetwork.main]: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
     [eEthereumNetwork.tenderlyMain]: '0xc02aaa39b223fe8d0a0e5c4f27ead9083c756cc2',
+    [eEthereumNetwork.hedera_testnet]: '',
   },
   ReserveFactorTreasuryAddress: {
     [eEthereumNetwork.coverage]: '0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c',
@@ -322,5 +334,6 @@ export const CommonsConfig: ICommonConfiguration = {
     [eEthereumNetwork.ropsten]: '0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c',
     [eEthereumNetwork.main]: '0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c',
     [eEthereumNetwork.tenderlyMain]: '0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c',
+    [eEthereumNetwork.hedera_testnet]: '0x464c71f6c2f760dda6093dcb91c24c39e5d6e18c',
   },
 };

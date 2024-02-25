@@ -12,6 +12,7 @@ export enum eEthereumNetwork {
   coverage = 'coverage',
   hardhat = 'hardhat',
   tenderlyMain = 'tenderlyMain',
+  hedera_testnet = 'hedera_testnet',
 }
 
 export enum EthereumNetworkNames {
@@ -294,6 +295,7 @@ export interface iParamsPerNetwork<T> {
   [eEthereumNetwork.main]: T;
   [eEthereumNetwork.hardhat]: T;
   [eEthereumNetwork.tenderlyMain]: T;
+  [eEthereumNetwork.hedera_testnet]: T;
 }
 
 export interface iParamsPerPool<T> {
