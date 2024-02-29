@@ -155,6 +155,7 @@ const buidlerConfig: HardhatUserConfig = {
     },
     hedera_testnet: {
       url: 'https://testnet.hashio.io/api',
+      chainId: 296,
       accounts: {
         mnemonic: MNEMONIC,
         path: MNEMONIC_PATH,

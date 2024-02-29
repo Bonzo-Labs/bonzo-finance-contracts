@@ -270,7 +270,9 @@ export const configureReservesByHelper = async (
     await waitForTx(await addressProvider.setPoolAdmin(atokenAndRatesDeployer.address));
 
     // Deploy init per chunks
-    const enableChunks = 20;
+    // NOTE: TO GET THIS WORKING WITH HEDERA,
+    // SET CHUNK SIZE TO 1 PARAM SET PER CHUNK
+    const enableChunks = 1;
     const chunkedSymbols = chunk(symbols, enableChunks);
     const chunkedInputParams = chunk(inputParams, enableChunks);
 
