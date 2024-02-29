@@ -29,7 +29,10 @@ import { usingTenderly, verifyAtTenderly } from './tenderly-utils';
 import { usingPolygon, verifyAtPolygon } from './polygon-utils';
 import { ConfigNames, loadPoolConfig } from './configuration';
 import { ZERO_ADDRESS } from './constants';
-import { getDefenderRelaySigner, usingDefender } from './defender-utils';
+// There is a ts library compatibility issue going on here
+// simply loading the ./defender-utils module causes a low
+// level crash.
+//import { getDefenderRelaySigner, usingDefender } from './defender-utils';
 
 export type MockTokenMap = { [symbol: string]: MintableERC20 };
 
@@ -73,10 +76,13 @@ export const rawInsertContractAddressInDb = async (id: string, address: tEthereu
 export const getEthersSigners = async (): Promise<Signer[]> => {
   const ethersSigners = await Promise.all(await DRE.ethers.getSigners());
 
-  if (usingDefender()) {
-    const [, ...users] = ethersSigners;
-    return [await getDefenderRelaySigner(), ...users];
-  }
+  // There is a ts library compatibility issue going on here
+  // simply loading the ./defender-utils module causes a low
+  // level crash.
+  // if (usingDefender()) {
+  //   const [, ...users] = ethersSigners;
+  //   return [await getDefenderRelaySigner(), ...users];
+  // }
   return ethersSigners;
 };
 
@@ -145,7 +151,7 @@ export const linkBytecode = (artifact: BuidlerArtifact | Artifact, libraries: an
 };
 
 export const getParamPerNetwork = <T>(param: iParamsPerNetwork<T>, network: eNetwork) => {
-  const { main, ropsten, kovan, coverage, buidlerevm, tenderly, goerli } =
+  const { main, ropsten, kovan, coverage, buidlerevm, tenderly, goerli, hedera_testnet } =
     param as iEthereumParamsPerNetwork<T>;
   const { matic, mumbai } = param as iPolygonParamsPerNetwork<T>;
   const { xdai } = param as iXDaiParamsPerNetwork<T>;
@@ -181,6 +187,8 @@ export const getParamPerNetwork = <T>(param: iParamsPerNetwork<T>, network: eNet
       return fuji;
     case eEthereumNetwork.goerli:
       return goerli;
+    case eEthereumNetwork.hedera_testnet:
+      return hedera_testnet;
   }
 };
 

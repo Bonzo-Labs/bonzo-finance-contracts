@@ -152,6 +152,7 @@ export const AaveConfig: IAaveConfiguration = {
       ZRX: '0xE41d2489571d322189246DaFA5ebDe1F4699F498',
       xSUSHI: '0x8798249c2E607446EfB7Ad49eC89dD1865Ff4272',
     },
+    [eEthereumNetwork.hedera_testnet]: {},
   },
 };
 

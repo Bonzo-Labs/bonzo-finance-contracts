@@ -1,5 +1,9 @@
 import { task } from 'hardhat/config';
-import { deployAaveOracle, deployLendingRateOracle } from '../../helpers/contracts-deployments';
+import {
+  deployAaveOracle,
+  deployLendingRateOracle,
+  deployPriceOracle,
+} from '../../helpers/contracts-deployments';
 import {
   setInitialAssetPricesInOracle,
   deployAllMockAggregators,
@@ -45,7 +49,7 @@ task('dev:deploy-oracles', 'Deploy oracles for dev environment')
     const addressesProvider = await getLendingPoolAddressesProvider();
     const admin = await addressesProvider.getPoolAdmin();
 
-    const fallbackOracle = await getPriceOracle('0x0F9d5ED72f6691E47abe2f79B890C3C33e924092');
+    const fallbackOracle = await deployPriceOracle();
     await waitForTx(await fallbackOracle.setEthUsdPrice(MockUsdPriceInWei));
     await setInitialAssetPricesInOracle(AllAssetsInitialPrices, mockTokensAddress, fallbackOracle);
 
