@@ -19,6 +19,8 @@ import {
   iXDaiParamsPerNetwork,
   iAvalancheParamsPerNetwork,
   eAvalancheNetwork,
+  eHederaNetwork,
+  iHederaParamsPerNetwork,
 } from './types';
 import { MintableERC20 } from '../types/MintableERC20';
 import { Artifact } from 'hardhat/types';
@@ -29,10 +31,7 @@ import { usingTenderly, verifyAtTenderly } from './tenderly-utils';
 import { usingPolygon, verifyAtPolygon } from './polygon-utils';
 import { ConfigNames, loadPoolConfig } from './configuration';
 import { ZERO_ADDRESS } from './constants';
-// There is a ts library compatibility issue going on here
-// simply loading the ./defender-utils module causes a low
-// level crash.
-//import { getDefenderRelaySigner, usingDefender } from './defender-utils';
+import { getDefenderRelaySigner, usingDefender } from './defender-utils';
 
 export type MockTokenMap = { [symbol: string]: MintableERC20 };
 
@@ -76,13 +75,10 @@ export const rawInsertContractAddressInDb = async (id: string, address: tEthereu
 export const getEthersSigners = async (): Promise<Signer[]> => {
   const ethersSigners = await Promise.all(await DRE.ethers.getSigners());
 
-  // There is a ts library compatibility issue going on here
-  // simply loading the ./defender-utils module causes a low
-  // level crash.
-  // if (usingDefender()) {
-  //   const [, ...users] = ethersSigners;
-  //   return [await getDefenderRelaySigner(), ...users];
-  // }
+  if (usingDefender()) {
+    const [, ...users] = ethersSigners;
+    return [await getDefenderRelaySigner(), ...users];
+  }
   return ethersSigners;
 };
 
@@ -151,11 +147,12 @@ export const linkBytecode = (artifact: BuidlerArtifact | Artifact, libraries: an
 };
 
 export const getParamPerNetwork = <T>(param: iParamsPerNetwork<T>, network: eNetwork) => {
-  const { main, ropsten, kovan, coverage, buidlerevm, tenderly, goerli, hedera_testnet } =
+  const { main, ropsten, kovan, coverage, buidlerevm, tenderly, goerli } =
     param as iEthereumParamsPerNetwork<T>;
   const { matic, mumbai } = param as iPolygonParamsPerNetwork<T>;
   const { xdai } = param as iXDaiParamsPerNetwork<T>;
   const { avalanche, fuji } = param as iAvalancheParamsPerNetwork<T>;
+  const { testnet, mainnet } = param as iHederaParamsPerNetwork<T>;
   if (process.env.FORK) {
     return param[process.env.FORK as eNetwork] as T;
   }
@@ -187,8 +184,10 @@ export const getParamPerNetwork = <T>(param: iParamsPerNetwork<T>, network: eNet
       return fuji;
     case eEthereumNetwork.goerli:
       return goerli;
-    case eEthereumNetwork.hedera_testnet:
-      return hedera_testnet;
+    case eHederaNetwork.testnet:
+      return testnet;
+    case eHederaNetwork.mainnet:
+      return mainnet;
   }
 };
 
@@ -203,7 +202,7 @@ export const getOptionalParamAddressPerNetwork = (
 };
 
 export const getParamPerPool = <T>(
-  { proto, amm, matic, avalanche }: iParamsPerPool<T>,
+  { proto, amm, matic, avalanche, hedera }: iParamsPerPool<T>,
   pool: AavePools
 ) => {
   switch (pool) {
@@ -215,6 +214,8 @@ export const getParamPerPool = <T>(
       return matic;
     case AavePools.avalanche:
       return avalanche;
+    case AavePools.hedera:
+      return hedera;
     default:
       return proto;
   }

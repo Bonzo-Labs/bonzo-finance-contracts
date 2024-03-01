@@ -16,12 +16,16 @@ export enum eEthereumNetwork {
 
   tenderly = 'tenderly',
   goerli = 'goerli',
-  hedera_testnet = 'hedera_testnet',
 }
 
 export enum ePolygonNetwork {
   matic = 'matic',
   mumbai = 'mumbai',
+}
+
+export enum eHederaNetwork {
+  testnet = 'testnet',
+  mainnet = 'mainnet',
 }
 
 export enum eXDaiNetwork {
@@ -49,6 +53,7 @@ export enum AavePools {
   matic = 'matic',
   amm = 'amm',
   avalanche = 'avalanche',
+  hedera = 'hedera',
 }
 
 export enum eContractid {
@@ -219,10 +224,8 @@ export interface iAssetCommon<T> {
 export interface iAssetBase<T> {
   WETH: T;
   DAI: T;
-  TUSD: T;
+
   USDC: T;
-  USDT: T;
-  SUSD: T;
   AAVE: T;
   BAT: T;
   MKR: T;
@@ -238,6 +241,9 @@ export interface iAssetBase<T> {
   USD: T;
   REN: T;
   ENJ: T;
+  CLXY: T;
+  HBARX: T;
+  SAUCE: T;
   UniDAIWETH: T;
   UniWBTCWETH: T;
   UniAAVEWETH: T;
@@ -287,6 +293,9 @@ export type iAavePoolAssets<T> = Pick<
   | 'REN'
   | 'ENJ'
   | 'xSUSHI'
+  | 'CLXY'
+  | 'HBARX'
+  | 'SAUCE'
 >;
 
 export type iLpPoolAssets<T> = Pick<
@@ -317,6 +326,11 @@ export type iLpPoolAssets<T> = Pick<
 export type iMaticPoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
   'DAI' | 'USDC' | 'USDT' | 'WBTC' | 'WETH' | 'WMATIC' | 'AAVE'
+>;
+
+export type iHederaPoolAssets<T> = Pick<
+  iAssetsWithoutUSD<T>,
+  'DAI' | 'USDC' | 'CLXY' | 'HBARX' | 'SAUCE'
 >;
 
 export type iXDAIPoolAssets<T> = Pick<
@@ -357,6 +371,9 @@ export enum TokenContractId {
   YFI = 'YFI',
   UNI = 'UNI',
   ENJ = 'ENJ',
+  CLXY = 'CLXY',
+  HBARX = 'HBARX',
+  SAUCE = 'SAUCE',
   UniDAIWETH = 'UniDAIWETH',
   UniWBTCWETH = 'UniWBTCWETH',
   UniAAVEWETH = 'UniAAVEWETH',
@@ -420,6 +437,7 @@ export type iParamsPerNetwork<T> =
   | iEthereumParamsPerNetwork<T>
   | iPolygonParamsPerNetwork<T>
   | iXDaiParamsPerNetwork<T>
+  | iHederaParamsPerNetwork<T>
   | iAvalancheParamsPerNetwork<T>;
 
 export interface iParamsPerNetworkAll<T>
@@ -436,12 +454,16 @@ export interface iEthereumParamsPerNetwork<T> {
   [eEthereumNetwork.hardhat]: T;
   [eEthereumNetwork.tenderly]: T;
   [eEthereumNetwork.goerli]: T;
-  [eEthereumNetwork.hedera_testnet]: T;
 }
 
 export interface iPolygonParamsPerNetwork<T> {
   [ePolygonNetwork.matic]: T;
   [ePolygonNetwork.mumbai]: T;
+}
+
+export interface iHederaParamsPerNetwork<T> {
+  [eHederaNetwork.testnet]: T;
+  [eHederaNetwork.mainnet]: T;
 }
 
 export interface iXDaiParamsPerNetwork<T> {
@@ -458,6 +480,7 @@ export interface iParamsPerPool<T> {
   [AavePools.matic]: T;
   [AavePools.amm]: T;
   [AavePools.avalanche]: T;
+  [AavePools.hedera]: T;
 }
 
 export interface iBasicDistributionParams {
@@ -547,6 +570,10 @@ export interface IAmmConfiguration extends ICommonConfiguration {
 
 export interface IMaticConfiguration extends ICommonConfiguration {
   ReservesConfig: iMaticPoolAssets<IReserveParams>;
+}
+
+export interface IHederaConfiguration extends ICommonConfiguration {
+  ReservesConfig: iHederaPoolAssets<IReserveParams>;
 }
 
 export interface IXDAIConfiguration extends ICommonConfiguration {
