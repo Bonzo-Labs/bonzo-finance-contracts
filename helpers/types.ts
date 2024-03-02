@@ -4,7 +4,12 @@ export interface SymbolMap<T> {
   [symbol: string]: T;
 }
 
-export type eNetwork = eEthereumNetwork | ePolygonNetwork | eXDaiNetwork | eAvalancheNetwork;
+export type eNetwork =
+  | eEthereumNetwork
+  | ePolygonNetwork
+  | eXDaiNetwork
+  | eAvalancheNetwork
+  | eHederaNetwork;
 
 export enum eEthereumNetwork {
   buidlerevm = 'buidlerevm',
@@ -24,7 +29,7 @@ export enum ePolygonNetwork {
 }
 
 export enum eHederaNetwork {
-  testnet = 'testnet',
+  hedera_testnet = 'hedera_testnet',
   mainnet = 'mainnet',
 }
 
@@ -222,48 +227,11 @@ export interface iAssetCommon<T> {
   [key: string]: T;
 }
 export interface iAssetBase<T> {
-  WETH: T;
   DAI: T;
-
   USDC: T;
-  AAVE: T;
-  BAT: T;
-  MKR: T;
-  LINK: T;
-  KNC: T;
-  WBTC: T;
-  MANA: T;
-  ZRX: T;
-  SNX: T;
-  BUSD: T;
-  YFI: T;
-  UNI: T;
-  USD: T;
-  REN: T;
-  ENJ: T;
   CLXY: T;
   HBARX: T;
   SAUCE: T;
-  UniDAIWETH: T;
-  UniWBTCWETH: T;
-  UniAAVEWETH: T;
-  UniBATWETH: T;
-  UniDAIUSDC: T;
-  UniCRVWETH: T;
-  UniLINKWETH: T;
-  UniMKRWETH: T;
-  UniRENWETH: T;
-  UniSNXWETH: T;
-  UniUNIWETH: T;
-  UniUSDCWETH: T;
-  UniWBTCUSDC: T;
-  UniYFIWETH: T;
-  BptWBTCWETH: T;
-  BptBALWETH: T;
-  WMATIC: T;
-  STAKE: T;
-  xSUSHI: T;
-  WAVAX: T;
 }
 
 export type iAssetsWithoutETH<T> = Omit<iAssetBase<T>, 'ETH'>;
@@ -272,76 +240,21 @@ export type iAssetsWithoutUSD<T> = Omit<iAssetBase<T>, 'USD'>;
 
 export type iAavePoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  | 'DAI'
-  | 'TUSD'
-  | 'USDC'
-  | 'USDT'
-  | 'SUSD'
-  | 'AAVE'
-  | 'BAT'
-  | 'MKR'
-  | 'LINK'
-  | 'KNC'
-  | 'WBTC'
-  | 'MANA'
-  | 'ZRX'
-  | 'SNX'
-  | 'BUSD'
-  | 'WETH'
-  | 'YFI'
-  | 'UNI'
-  | 'REN'
-  | 'ENJ'
-  | 'xSUSHI'
-  | 'CLXY'
-  | 'HBARX'
-  | 'SAUCE'
+  'DAI' | 'USDC' | 'CLXY' | 'HBARX' | 'SAUCE'
 >;
 
-export type iLpPoolAssets<T> = Pick<
-  iAssetsWithoutUSD<T>,
-  | 'DAI'
-  | 'USDC'
-  | 'USDT'
-  | 'WBTC'
-  | 'WETH'
-  | 'UniDAIWETH'
-  | 'UniWBTCWETH'
-  | 'UniAAVEWETH'
-  | 'UniBATWETH'
-  | 'UniDAIUSDC'
-  | 'UniCRVWETH'
-  | 'UniLINKWETH'
-  | 'UniMKRWETH'
-  | 'UniRENWETH'
-  | 'UniSNXWETH'
-  | 'UniUNIWETH'
-  | 'UniUSDCWETH'
-  | 'UniWBTCUSDC'
-  | 'UniYFIWETH'
-  | 'BptWBTCWETH'
-  | 'BptBALWETH'
->;
+export type iLpPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
 
-export type iMaticPoolAssets<T> = Pick<
-  iAssetsWithoutUSD<T>,
-  'DAI' | 'USDC' | 'USDT' | 'WBTC' | 'WETH' | 'WMATIC' | 'AAVE'
->;
+export type iMaticPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
 
 export type iHederaPoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
   'DAI' | 'USDC' | 'CLXY' | 'HBARX' | 'SAUCE'
 >;
 
-export type iXDAIPoolAssets<T> = Pick<
-  iAssetsWithoutUSD<T>,
-  'DAI' | 'USDC' | 'USDT' | 'WBTC' | 'WETH' | 'STAKE'
->;
+export type iXDAIPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
 
-export type iAvalanchePoolAssets<T> = Pick<
-  iAssetsWithoutUSD<T>,
-  'WETH' | 'DAI' | 'USDT' | 'AAVE' | 'WBTC' | 'WAVAX' | 'USDC'
->;
+export type iAvalanchePoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
 
 export type iMultiPoolsAssets<T> = iAssetCommon<T> | iAavePoolAssets<T>;
 
@@ -351,49 +264,10 @@ export type iAssetAggregatorBase<T> = iAssetsWithoutETH<T>;
 
 export enum TokenContractId {
   DAI = 'DAI',
-  AAVE = 'AAVE',
-  TUSD = 'TUSD',
-  BAT = 'BAT',
-  WETH = 'WETH',
   USDC = 'USDC',
-  USDT = 'USDT',
-  SUSD = 'SUSD',
-  ZRX = 'ZRX',
-  MKR = 'MKR',
-  WBTC = 'WBTC',
-  LINK = 'LINK',
-  KNC = 'KNC',
-  MANA = 'MANA',
-  REN = 'REN',
-  SNX = 'SNX',
-  BUSD = 'BUSD',
-  USD = 'USD',
-  YFI = 'YFI',
-  UNI = 'UNI',
-  ENJ = 'ENJ',
   CLXY = 'CLXY',
   HBARX = 'HBARX',
   SAUCE = 'SAUCE',
-  UniDAIWETH = 'UniDAIWETH',
-  UniWBTCWETH = 'UniWBTCWETH',
-  UniAAVEWETH = 'UniAAVEWETH',
-  UniBATWETH = 'UniBATWETH',
-  UniDAIUSDC = 'UniDAIUSDC',
-  UniCRVWETH = 'UniCRVWETH',
-  UniLINKWETH = 'UniLINKWETH',
-  UniMKRWETH = 'UniMKRWETH',
-  UniRENWETH = 'UniRENWETH',
-  UniSNXWETH = 'UniSNXWETH',
-  UniUNIWETH = 'UniUNIWETH',
-  UniUSDCWETH = 'UniUSDCWETH',
-  UniWBTCUSDC = 'UniWBTCUSDC',
-  UniYFIWETH = 'UniYFIWETH',
-  BptWBTCWETH = 'BptWBTCWETH',
-  BptBALWETH = 'BptBALWETH',
-  WMATIC = 'WMATIC',
-  STAKE = 'STAKE',
-  xSUSHI = 'xSUSHI',
-  WAVAX = 'WAVAX',
 }
 
 export interface IReserveParams extends IReserveBorrowParams, IReserveCollateralParams {
@@ -462,7 +336,7 @@ export interface iPolygonParamsPerNetwork<T> {
 }
 
 export interface iHederaParamsPerNetwork<T> {
-  [eHederaNetwork.testnet]: T;
+  [eHederaNetwork.hedera_testnet]: T;
   [eHederaNetwork.mainnet]: T;
 }
 

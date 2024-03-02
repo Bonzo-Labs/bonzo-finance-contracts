@@ -25,7 +25,7 @@ export const MaticConfig: IHederaConfiguration = {
     SAUCE: strategySAUCE,
   },
   ReserveAssets: {
-    [eHederaNetwork.testnet]: {
+    [eHederaNetwork.hedera_testnet]: {
       DAI: '0x0000000000000000000000000000000000001599',
       USDC: '0x0000000000000000000000000000000000001549',
       CLXY: '0x00000000000000000000000000000000000014f5',
@@ -34,11 +34,11 @@ export const MaticConfig: IHederaConfiguration = {
     },
     [eHederaNetwork.mainnet]: {
       // Mock tokens with a simple "mint" external function, except wmatic
-      DAI: '0x0000000000000000000000000000000000001599',
-      USDC: '0x0000000000000000000000000000000000001549',
-      CLXY: '0x00000000000000000000000000000000000014f5',
-      HBARX: '0x0000000000000000000000000000000000220ced',
-      SAUCE: '0x0000000000000000000000000000000000120f46',
+      DAI: '',
+      USDC: '',
+      CLXY: '',
+      HBARX: '',
+      SAUCE: '',
     },
   },
 };
