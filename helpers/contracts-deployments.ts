@@ -55,6 +55,7 @@ import {
   UiPoolDataProviderV2V3Factory,
   UiIncentiveDataProviderV2V3,
   UiIncentiveDataProviderV2Factory,
+  SupraOracleFactory,
 } from '../types';
 import {
   withSaveAndVerify,
@@ -256,6 +257,14 @@ export const deployLendingPool = async (verify?: boolean) => {
 export const deployPriceOracle = async (verify?: boolean) =>
   withSaveAndVerify(
     await new PriceOracleFactory(await getFirstSigner()).deploy(),
+    eContractid.PriceOracle,
+    [],
+    verify
+  );
+
+export const deploySupraOracle = async (valueFeed: string, verify?: boolean) =>
+  withSaveAndVerify(
+    await new SupraOracleFactory(await getFirstSigner()).deploy(valueFeed),
     eContractid.PriceOracle,
     [],
     verify
