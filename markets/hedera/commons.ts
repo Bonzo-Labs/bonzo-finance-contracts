@@ -120,18 +120,17 @@ export const CommonsConfig: ICommonConfiguration = {
   },
   ChainlinkAggregator: {
     [eHederaNetwork.hedera_testnet]: {
-      DAI: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
-      USDC: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
-      CLXY: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
-      HBARX: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
-      SAUCE: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
+      DAI: ZERO_ADDRESS,
+      USDC: ZERO_ADDRESS,
+      USDT: ZERO_ADDRESS,
+      WBTC: ZERO_ADDRESS,
+      USD: ZERO_ADDRESS,
     },
     [eHederaNetwork.mainnet]: {
       DAI: ZERO_ADDRESS,
       USDC: ZERO_ADDRESS,
       USDT: ZERO_ADDRESS,
       WBTC: ZERO_ADDRESS,
-      Wmainnet: ZERO_ADDRESS,
       USD: ZERO_ADDRESS,
     },
   },
