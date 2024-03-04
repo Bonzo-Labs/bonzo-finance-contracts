@@ -100,13 +100,15 @@ task('full:initialize-lending-pool', 'Initialize lending pool configuration.')
 
       await deployWalletBalancerProvider(verify);
 
-      const lendingPoolAddress = await addressesProvider.getLendingPool();
+      // TODO - fix this portion - it's giving an error
+      // const lendingPoolAddress = await addressesProvider.getLendingPool();
 
-      let gateWay = getParamPerNetwork(WethGateway, network);
-      if (!notFalsyOrZeroAddress(gateWay)) {
-        gateWay = (await getWETHGateway()).address;
-      }
-      await authorizeWETHGateway(gateWay, lendingPoolAddress);
+      // let gateWay = getParamPerNetwork(WethGateway, network);
+      // if (!notFalsyOrZeroAddress(gateWay)) {
+      //   gateWay = (await getWETHGateway()).address;
+      // }
+      // console.log('GateWay', gateWay);
+      // await authorizeWETHGateway(gateWay, lendingPoolAddress);
     } catch (err) {
       console.error(err);
       exit(1);

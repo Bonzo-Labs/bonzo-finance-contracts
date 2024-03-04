@@ -18,7 +18,9 @@ contract SupraOracle {
     return sValueFeed;
   }
 
-  function getPrice(uint256 _priceIndex) external view returns (ISupraSValueFeed.priceFeed memory) {
+  function getAssetPrice(
+    uint256 _priceIndex
+  ) external view returns (ISupraSValueFeed.priceFeed memory) {
     return sValueFeed.getSvalue(_priceIndex);
   }
 
