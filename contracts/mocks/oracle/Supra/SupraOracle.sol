@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.8.19;
 
 import './ISupraSValueFeed.sol';
@@ -33,12 +34,4 @@ contract SupraOracle is Ownable {
     }
     return sValueFeed.getSvalue(priceIndex);
   }
-
-  // function getDerivedValueOfPair(uint256 pair_id_1, uint256 pair_id_2, uint256 operation)
-  //     external
-  //     view
-  //     returns (ISupraSValueFeed.derivedData memory)
-  // {
-  //     return sValueFeed.getDerivedSvalue(pair_id_1, pair_id_2, operation);
-  // }
 }

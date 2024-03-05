@@ -1,3 +1,4 @@
+// SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.8.19;
 
 // depending on the requirement, you may build one or more data structures given below.

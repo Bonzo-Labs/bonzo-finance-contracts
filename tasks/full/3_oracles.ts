@@ -51,6 +51,7 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
         ...reserveAssets,
         USD: UsdAddress,
       };
+      console.log('Pool config - ', poolConfig);
       const [tokens, aggregators] = getPairsTokenAggregator(
         tokensToWatch,
         chainlinkAggregators,
@@ -61,8 +62,7 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
       let lendingRateOracle: LendingRateOracle;
       let fallbackOracle;
 
-      if (notFalsyOrZeroAddress(fallbackOracleAddress)) {
-      } else {
+      if (!notFalsyOrZeroAddress(fallbackOracleAddress)) {
         fallbackOracle = await deploySupraOracle(chainlinkAggregators.DAI, verify);
       }
 
