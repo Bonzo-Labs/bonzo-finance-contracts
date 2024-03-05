@@ -92,6 +92,13 @@ const buidlerConfig: HardhatUserConfig = {
           evmVersion: 'istanbul',
         },
       },
+      'contracts/dependencies/openzeppelin/contracts/UpdatedOwnable.sol': {
+        version: '0.8.19',
+        settings: {
+          optimizer: { enabled: true, runs: 200 },
+          evmVersion: 'istanbul',
+        },
+      },
     },
   },
   typechain: {
