@@ -13,7 +13,7 @@ import {
 // POOL--SPECIFIC PARAMS
 // ----------------
 
-export const MaticConfig: IHederaConfiguration = {
+export const HederaConfig: IHederaConfiguration = {
   ...CommonsConfig,
   MarketId: 'Hedera Market',
   ProviderId: 5, //TODO - update this
@@ -43,4 +43,4 @@ export const MaticConfig: IHederaConfiguration = {
   },
 };
 
-export default MaticConfig;
+export default HederaConfig;

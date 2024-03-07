@@ -9,6 +9,8 @@ import {
   rateStrategyVolatileThree,
 } from './rateStrategies';
 
+// Reference - https://docs.aave.com/risk/liquidity-risk/borrow-interest-rate for the rate strategies
+
 export const strategyDAI: IReserveParams = {
   strategy: rateStrategyStableTwo,
   baseLTVAsCollateral: '7500',
@@ -34,7 +36,7 @@ export const strategyCLXY: IReserveParams = {
 };
 
 export const strategyHBARX: IReserveParams = {
-  strategy: rateStrategyVolatileTwo,
+  strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '7500',
   liquidationThreshold: '8000',
   liquidationBonus: '10500',
@@ -46,7 +48,7 @@ export const strategyHBARX: IReserveParams = {
 };
 
 export const strategySAUCE: IReserveParams = {
-  strategy: rateStrategyVolatileThree,
+  strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '7500',
   liquidationThreshold: '8000',
   liquidationBonus: '10500',
