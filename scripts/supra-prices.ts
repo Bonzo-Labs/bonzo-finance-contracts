@@ -1,7 +1,7 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
 
-const oracleAddress = '0x97D61d8e1E69bb414742857A65cAcEd6fadFe672';
+const oracleAddress = '0x4dFBBca56682dC1Dc7672D98F0dadf6f5818Fea8';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
@@ -12,9 +12,13 @@ async function supraPrices() {
   const abi = contractArtifacts.abi;
   const supra = new ethers.Contract(oracleAddress, abi, deployer);
 
-  const price1 = await supra.getAssetPrice('0x00000000000000000000000000000000000014F5');
-  const formattedPrice = ethers.utils.formatUnits(price1.price, price1.decimals);
+  const price = await supra.getAssetPrice('0x00000000000000000000000000000000000014F5');
+  const decimals = await supra.decimals();
+  console.log('Price of CLXY raw = ', price);
+  const formattedPrice = ethers.utils.formatUnits(price, decimals);
   console.log('Price of CLXY = ', formattedPrice);
+  const priceInUSD = await supra.getAssetPriceInUSD('0x00000000000000000000000000000000000014F5');
+  console.log('Price of CLXY in USD = ', priceInUSD);
 }
 
 async function main() {

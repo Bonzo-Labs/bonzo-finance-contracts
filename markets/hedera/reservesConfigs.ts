@@ -9,7 +9,7 @@ import {
   rateStrategyVolatileThree,
 } from './rateStrategies';
 
-// Reference - https://docs.aave.com/risk/liquidity-risk/borrow-interest-rate for the rate strategies
+// Reference - https://docs.aave.com/risk/v/aave-v2/liquidity-risk/borrow-interest-rate for the rate strategies
 
 export const strategyDAI: IReserveParams = {
   strategy: rateStrategyStableTwo,

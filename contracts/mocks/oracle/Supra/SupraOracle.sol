@@ -3,8 +3,9 @@ pragma solidity 0.8.19;
 
 import './ISupraSValueFeed.sol';
 import {Ownable} from '../../../dependencies/openzeppelin/contracts/UpdatedOwnable.sol';
+import './SelfFunding.sol';
 
-contract SupraOracle is Ownable {
+contract SupraOracle is Ownable, SelfFunding {
   ISupraSValueFeed internal sValueFeed;
 
   constructor(ISupraSValueFeed _sValueFeed) {
@@ -20,7 +21,7 @@ contract SupraOracle is Ownable {
   }
 
   // Check this page for the indices of the pairs: https://supra.com/docs/data-feeds/data-feeds-index
-  function getAssetPrice(address _asset) external view returns (ISupraSValueFeed.priceFeed memory) {
+  function getAssetPrice(address _asset) public view returns (uint256 price) {
     uint16 priceIndex;
 
     if (_asset == address(0x00000000000000000000000000000000000014F5)) {
@@ -32,6 +33,25 @@ contract SupraOracle is Ownable {
     } else {
       revert('SupraOracle: asset not supported');
     }
-    return sValueFeed.getSvalue(priceIndex);
+    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+    price = priceFeed.price;
+  }
+
+  function decimals() public pure returns (uint8) {
+    return 18;
+  }
+
+  function getAssetPriceInUSD(address _asset) external returns (uint256) {
+    uint256 price = getAssetPrice(_asset);
+
+    uint256 priceInTinyBars = (price * 100_000_000) / (10 ** decimals());
+    uint256 priceInTinycents = tinybarsToTinycents(priceInTinyBars);
+    uint256 priceInUSD = priceInTinycents / 100;
+
+    return priceInUSD;
+  }
+
+  function convertTinybarsToTinycents(uint256 tinybars) external returns (uint256 tinycents) {
+    tinycents = tinybarsToTinycents(tinybars);
   }
 }
