@@ -175,6 +175,7 @@
   ],
   "license": "AGPLv3",
   "dependencies": {
+    "@hashgraph/sdk": "^2.42.0",
     "axios-curlirize": "^1.3.7",
     "tmp-promise": "^3.0.2"
   },
