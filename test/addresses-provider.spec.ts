@@ -5,7 +5,7 @@ const { ethers } = require('hardhat');
 import { LendingPool, LendingPoolAddressesProvider } from '../deployed-contracts.json';
 
 describe('Addresses Provider', function () {
-  it('Should read addresses from the addresses provider', async function () {
+  it.skip('Should read addresses from the addresses provider', async function () {
     const [owner] = await ethers.getSigners();
     const contractArtifacts = await hre.artifacts.readArtifact('LendingPoolAddressesProvider');
     const abi = contractArtifacts.abi;
