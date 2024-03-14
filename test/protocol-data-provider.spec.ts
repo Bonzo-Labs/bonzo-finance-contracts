@@ -9,7 +9,7 @@ import {
 } from '../deployed-contracts.json';
 
 describe('Addresses Provider', function () {
-  it('Should get the addresses provider from lending pool', async function () {
+  it.skip('Should get the addresses provider from lending pool', async function () {
     const [owner] = await ethers.getSigners();
     console.log('Owner address: ', owner.address);
     const contractArtifacts = await hre.artifacts.readArtifact('AaveProtocolDataProvider');

@@ -1,0 +1,32 @@
+{
+  "aTokenSAUCE": {
+    "hedera_testnet": {
+      "address": "0x1e879F10B6f29D3278B966F9707242E31874df10",
+      "accountId": "0.0.3699869"
+    }
+  },
+  "aTokenCLXY": {
+    "hedera_testnet": {
+      "address": "0x5C4f839f4E4B88A0E9083Fe2023354767785a3B1",
+      "accountId": "0.0.3699863"
+    }
+  },
+  "aTokenHBARX": {
+    "hedera_testnet": {
+      "address": "0x1EFd63655E7aee39c51c6F678151C4C58d59B1F4",
+      "accountId": "0.0.3699866"
+    }
+  },
+  "aTokenDAI": {
+    "hedera_testnet": {
+      "address": "0xC3dde7e438992F8aec736667F3cf0629b4434ad6",
+      "accountId": "0.0.3699857"
+    }
+  },
+  "aTokenUSDC": {
+    "hedera_testnet": {
+      "address": "0xBbeaE0C59A92B7098eD7362C2aD046482667556b",
+      "accountId": "0.0.3699860"
+    }
+  }
+}
