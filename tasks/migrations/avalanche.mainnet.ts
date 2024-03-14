@@ -1,5 +1,4 @@
 import { task } from 'hardhat/config';
-import { checkVerification } from '../../helpers/etherscan-verification';
 import { ConfigNames } from '../../helpers/configuration';
 import { printContracts } from '../../helpers/misc-utils';
 import { usingTenderly } from '../../helpers/tenderly-utils';
@@ -11,11 +10,6 @@ task('avalanche:mainnet', 'Deploy market at avalanche')
   .setAction(async ({ verify, pool, skipRegistry }, DRE) => {
     const POOL_NAME = pool;
     await DRE.run('set-DRE');
-
-    // Prevent loss of gas verifying all the needed ENVs for Etherscan verification
-    if (verify) {
-      checkVerification();
-    }
 
     console.log('Migration started\n');
 

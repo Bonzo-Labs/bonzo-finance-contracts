@@ -1,5 +1,4 @@
 import { task } from 'hardhat/config';
-import { checkVerification } from '../../helpers/etherscan-verification';
 import { ConfigNames } from '../../helpers/configuration';
 import { printContracts } from '../../helpers/misc-utils';
 import { usingTenderly } from '../../helpers/tenderly-utils';
@@ -10,11 +9,6 @@ task('amm:mainnet', 'Deploy development enviroment')
   .setAction(async ({ verify, skipRegistry }, DRE) => {
     const POOL_NAME = ConfigNames.Amm;
     await DRE.run('set-DRE');
-
-    // Prevent loss of gas verifying all the needed ENVs for Etherscan verification
-    if (verify) {
-      checkVerification();
-    }
 
     console.log('Migration started\n');
 
