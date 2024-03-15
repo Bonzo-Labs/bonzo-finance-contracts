@@ -1,0 +1,92 @@
+{
+  "DAI": {
+    "token": {
+      "address": "0x0000000000000000000000000000000000001599",
+      "accountId": "0.0.5529"
+    },
+    "aToken": {
+      "address": "0xC3dde7e438992F8aec736667F3cf0629b4434ad6",
+      "accountId": "0.0.c3dde7e438992f8aec736667f3cf0629b4434ad6"
+    },
+    "stableDebt": {
+      "address": "0x9b04279733cdE6ae7047D1e125F5993D8a115c32",
+      "accountId": "0.0.9b04279733cde6ae7047d1e125f5993d8a115c32"
+    },
+    "variableDebt": {
+      "address": "0x354367A02cffA69E9eEb9F21C986842299EB476b",
+      "accountId": "0.0.354367a02cffa69e9eeb9f21c986842299eb476b"
+    }
+  },
+  "USDC": {
+    "token": {
+      "address": "0x0000000000000000000000000000000000001549",
+      "accountId": "0.0.5449"
+    },
+    "aToken": {
+      "address": "0xBbeaE0C59A92B7098eD7362C2aD046482667556b",
+      "accountId": "0.0.bbeae0c59a92b7098ed7362c2ad046482667556b"
+    },
+    "stableDebt": {
+      "address": "0x825bdd125A156157849a79990b5EAc36FeB7668c",
+      "accountId": "0.0.825bdd125a156157849a79990b5eac36feb7668c"
+    },
+    "variableDebt": {
+      "address": "0xA6862A0E6EFaDbEdd9ebF93Bdb0347041a89F0e1",
+      "accountId": "0.0.a6862a0e6efadbedd9ebf93bdb0347041a89f0e1"
+    }
+  },
+  "CLXY": {
+    "token": {
+      "address": "0x00000000000000000000000000000000000014f5",
+      "accountId": "0.0.5365"
+    },
+    "aToken": {
+      "address": "0x5C4f839f4E4B88A0E9083Fe2023354767785a3B1",
+      "accountId": "0.0.5c4f839f4e4b88a0e9083fe2023354767785a3b1"
+    },
+    "stableDebt": {
+      "address": "0xa824E4900549a379f048a3213bD44715F2e8b18A",
+      "accountId": "0.0.a824e4900549a379f048a3213bd44715f2e8b18a"
+    },
+    "variableDebt": {
+      "address": "0x6288f1b6B989516b816e0916E925F113C1Be32dD",
+      "accountId": "0.0.6288f1b6b989516b816e0916e925f113c1be32dd"
+    }
+  },
+  "HBARX": {
+    "token": {
+      "address": "0x0000000000000000000000000000000000220ced",
+      "accountId": "0.0.2231533"
+    },
+    "aToken": {
+      "address": "0x1EFd63655E7aee39c51c6F678151C4C58d59B1F4",
+      "accountId": "0.0.1efd63655e7aee39c51c6f678151c4c58d59b1f4"
+    },
+    "stableDebt": {
+      "address": "0x4fA287001d00fBA5E57633DA122ac21cBBAa65C3",
+      "accountId": "0.0.4fa287001d00fba5e57633da122ac21cbbaa65c3"
+    },
+    "variableDebt": {
+      "address": "0xAF555eB98c1F798f61CCEBd7e0CE08d18832c5b4",
+      "accountId": "0.0.af555eb98c1f798f61ccebd7e0ce08d18832c5b4"
+    }
+  },
+  "SAUCE": {
+    "token": {
+      "address": "0x0000000000000000000000000000000000120f46",
+      "accountId": "0.0.1183558"
+    },
+    "aToken": {
+      "address": "0x1e879F10B6f29D3278B966F9707242E31874df10",
+      "accountId": "0.0.1e879f10b6f29d3278b966f9707242e31874df10"
+    },
+    "stableDebt": {
+      "address": "0x3613bFF8D9c990566a47bfF1336DD09E3Eb6BF8d",
+      "accountId": "0.0.3613bff8d9c990566a47bff1336dd09e3eb6bf8d"
+    },
+    "variableDebt": {
+      "address": "0xF12F59Fd2F9b2Bc273ba4de0edF1bBad7f746252",
+      "accountId": "0.0.f12f59fd2f9b2bc273ba4de0edf1bbad7f746252"
+    }
+  }
+}

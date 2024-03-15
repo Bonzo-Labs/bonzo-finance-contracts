@@ -7,7 +7,7 @@ import {
   LendingPoolAddressesProvider,
   LendingPoolConfigurator,
 } from '../deployed-contracts.json';
-import { aTokenSAUCE } from '../contract-addresses.json';
+import { SAUCE, CLXY } from '../contract-addresses.json';
 import {
   AccountId,
   PrivateKey,
@@ -126,11 +126,7 @@ describe('Addresses Provider', function () {
 
     const aTokenArtifact = await hre.artifacts.readArtifact('AToken');
     const aTokenAbi = aTokenArtifact.abi;
-    const aTokenContract = new ethers.Contract(
-      aTokenSAUCE.hedera_testnet.address,
-      aTokenAbi,
-      wallet
-    );
+    const aTokenContract = new ethers.Contract(SAUCE.aToken.address, aTokenAbi, wallet);
     const balanceOf = await aTokenContract.balanceOf(wallet.address);
     console.log('Balance of aSAUCE: ', balanceOf.toString());
   });
@@ -147,11 +143,7 @@ describe('Addresses Provider', function () {
 
     const aTokenArtifact = await hre.artifacts.readArtifact('AToken');
     const aTokenAbi = aTokenArtifact.abi;
-    const aTokenContract = new ethers.Contract(
-      aTokenSAUCE.hedera_testnet.address,
-      aTokenAbi,
-      wallet
-    );
+    const aTokenContract = new ethers.Contract(SAUCE.aToken.address, aTokenAbi, wallet);
     const balanceOf = await aTokenContract.balanceOf(wallet.address);
     console.log('Balance of aSAUCE: ', balanceOf.toString());
     const allowance = await aTokenContract.allowance(wallet.address, contractAddress);
@@ -200,9 +192,21 @@ describe('Addresses Provider', function () {
 
     const lendingPoolContract = new ethers.Contract(contractAddress, abi, wallet);
     const reserveData = await lendingPoolContract.getReserveData(
-      '0x00000000000000000000000000000000000014f5'
+      '0x0000000000000000000000000000000000220ced'
     );
     console.log('Reserve Data: ', reserveData);
+
+    // const client = Client.forTestnet();
+    // const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
+    // const operatorAccountId = AccountId.fromString(process.env.ACCOUNT_ID!);
+    // client.setOperator(operatorAccountId, operatorPrKey);
+
+    // const tokenAssociateTxn = await new TokenAssociateTransaction()
+    //   .setAccountId(operatorAccountId)
+    //   .setTokenIds([aTokenId])
+    //   .execute(client);
+    // const tokenAssociateReceipt = await tokenAssociateTxn.getReceipt(client);
+    // console.log(`- tokenAssociateReceipt ${tokenAssociateReceipt.status.toString()}`);
 
     // TODO - Associate the borrow asset / token with the account
 
@@ -231,18 +235,6 @@ describe('Addresses Provider', function () {
     // }
 
     // // const aTokenId = aTokenSAUCE.hedera_testnet.accountId;
-
-    // // const client = Client.forTestnet();
-    // // const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
-    // // const operatorAccountId = AccountId.fromString(process.env.ACCOUNT_ID!);
-    // // client.setOperator(operatorAccountId, operatorPrKey);
-
-    // // const tokenAssociateTxn = await new TokenAssociateTransaction()
-    // //   .setAccountId(operatorAccountId)
-    // //   .setTokenIds([aTokenId])
-    // //   .execute(client);
-    // // const tokenAssociateReceipt = await tokenAssociateTxn.getReceipt(client);
-    // // console.log(`- tokenAssociateReceipt ${tokenAssociateReceipt.status.toString()}`);
 
     // // const configuratorArtifact = await hre.artifacts.readArtifact('LendingPoolConfigurator');
     // // const configuratorAbi = configuratorArtifact.abi;
