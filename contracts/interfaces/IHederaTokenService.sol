@@ -12,7 +12,7 @@ interface IHederaTokenService {
   /// transaction fee is still charged. This transaction must be signed by the keys for all the sending
   /// accounts, and for any receiving accounts that have receiverSigRequired == true. The signatures
   /// are in the same order as the accounts, skipping those accounts that don't need a signature.
-
+  /// @custom:version 0.3.0 previous version did not include isApproval
   struct AccountAmount {
     // The Account ID, as a solidity address, that sends/receives cryptocurrency or tokens
     address accountID;
@@ -27,7 +27,7 @@ interface IHederaTokenService {
   /// A sender account, a receiver account, and the serial number of an NFT of a Token with
   /// NON_FUNGIBLE_UNIQUE type. When minting NFTs the sender will be the default AccountID instance
   /// (0.0.0 aka 0x0) and when burning NFTs, the receiver will be the default AccountID instance.
-
+  /// @custom:version 0.3.0 previous version did not include isApproval
   struct NftTransfer {
     // The solidity address of the sender
     address senderAccountID;
@@ -245,7 +245,48 @@ interface IHederaTokenService {
     address feeCollector;
   }
 
-  //  Direct HTS Calls
+  /**
+   *
+   * Direct HTS Calls   *
+   *
+   */
+
+  function cryptoTransfer(
+    TransferList memory transferList,
+    TokenTransferList[] memory tokenTransfers
+  ) external returns (int64 responseCode);
+
+  /// Mints an amount of the token to the defined treasury account
+  /// @param token The token for which to mint tokens. If token does not exist, transaction results in
+  ///              INVALID_TOKEN_ID
+  /// @param amount Applicable to tokens of type FUNGIBLE_COMMON. The amount to mint to the Treasury Account.
+  ///               Amount must be a positive non-zero number represented in the lowest denomination of the
+  ///               token. The new supply must be lower than 2^63.
+  /// @param metadata Applicable to tokens of type NON_FUNGIBLE_UNIQUE. A list of metadata that are being created.
+  ///                 Maximum allowed size of each metadata is 100 bytes
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return newTotalSupply The new supply of tokens. For NFTs it is the total count of NFTs
+  /// @return serialNumbers If the token is an NFT the newly generate serial numbers, othersise empty.
+  function mintToken(
+    address token,
+    int64 amount,
+    bytes[] memory metadata
+  ) external returns (int64 responseCode, int64 newTotalSupply, int64[] memory serialNumbers);
+
+  /// Burns an amount of the token from the defined treasury account
+  /// @param token The token for which to burn tokens. If token does not exist, transaction results in
+  ///              INVALID_TOKEN_ID
+  /// @param amount  Applicable to tokens of type FUNGIBLE_COMMON. The amount to burn from the Treasury Account.
+  ///                Amount must be a positive non-zero number, not bigger than the token balance of the treasury
+  ///                account (0; balance], represented in the lowest denomination.
+  /// @param serialNumbers Applicable to tokens of type NON_FUNGIBLE_UNIQUE. The list of serial numbers to be burned.
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return newTotalSupply The new supply of tokens. For NFTs it is the total count of NFTs
+  function burnToken(
+    address token,
+    int64 amount,
+    int64[] memory serialNumbers
+  ) external returns (int64 responseCode, int64 newTotalSupply);
 
   ///  Associates the provided account with the provided tokens. Must be signed by the provided
   ///  Account's key or called from the accounts contract key
@@ -301,4 +342,420 @@ interface IHederaTokenService {
   /// @param account The account to be associated with the provided token
   /// @param token The token to be associated with the provided account
   function dissociateToken(address account, address token) external returns (int64 responseCode);
+
+  /// Creates a Fungible Token with the specified properties
+  /// @param token the basic properties of the token being created
+  /// @param initialTotalSupply Specifies the initial supply of tokens to be put in circulation. The
+  /// initial supply is sent to the Treasury Account. The supply is in the lowest denomination possible.
+  /// @param decimals the number of decimal places a token is divisible by
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenAddress the created token's address
+  function createFungibleToken(
+    HederaToken memory token,
+    int64 initialTotalSupply,
+    int32 decimals
+  ) external payable returns (int64 responseCode, address tokenAddress);
+
+  /// Creates a Fungible Token with the specified properties
+  /// @param token the basic properties of the token being created
+  /// @param initialTotalSupply Specifies the initial supply of tokens to be put in circulation. The
+  /// initial supply is sent to the Treasury Account. The supply is in the lowest denomination possible.
+  /// @param decimals the number of decimal places a token is divisible by.
+  /// @param fixedFees list of fixed fees to apply to the token
+  /// @param fractionalFees list of fractional fees to apply to the token
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenAddress the created token's address
+  function createFungibleTokenWithCustomFees(
+    HederaToken memory token,
+    int64 initialTotalSupply,
+    int32 decimals,
+    FixedFee[] memory fixedFees,
+    FractionalFee[] memory fractionalFees
+  ) external payable returns (int64 responseCode, address tokenAddress);
+
+  /// Creates an Non Fungible Unique Token with the specified properties
+  /// @param token the basic properties of the token being created
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenAddress the created token's address
+  function createNonFungibleToken(
+    HederaToken memory token
+  ) external payable returns (int64 responseCode, address tokenAddress);
+
+  /// Creates an Non Fungible Unique Token with the specified properties
+  /// @param token the basic properties of the token being created
+  /// @param fixedFees list of fixed fees to apply to the token
+  /// @param royaltyFees list of royalty fees to apply to the token
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenAddress the created token's address
+  function createNonFungibleTokenWithCustomFees(
+    HederaToken memory token,
+    FixedFee[] memory fixedFees,
+    RoyaltyFee[] memory royaltyFees
+  ) external payable returns (int64 responseCode, address tokenAddress);
+
+  /**
+   *
+   * ABIV1 calls        *
+   *
+   */
+
+  /// Initiates a Fungible Token Transfer
+  /// @param token The ID of the token as a solidity address
+  /// @param accountId account to do a transfer to/from
+  /// @param amount The amount from the accountId at the same index
+  function transferTokens(
+    address token,
+    address[] memory accountId,
+    int64[] memory amount
+  ) external returns (int64 responseCode);
+
+  /// Initiates a Non-Fungable Token Transfer
+  /// @param token The ID of the token as a solidity address
+  /// @param sender the sender of an nft
+  /// @param receiver the receiver of the nft sent by the same index at sender
+  /// @param serialNumber the serial number of the nft sent by the same index at sender
+  function transferNFTs(
+    address token,
+    address[] memory sender,
+    address[] memory receiver,
+    int64[] memory serialNumber
+  ) external returns (int64 responseCode);
+
+  /// Transfers tokens where the calling account/contract is implicitly the first entry in the token transfer list,
+  /// where the amount is the value needed to zero balance the transfers. Regular signing rules apply for sending
+  /// (positive amount) or receiving (negative amount)
+  /// @param token The token to transfer to/from
+  /// @param sender The sender for the transaction
+  /// @param recipient The receiver of the transaction
+  /// @param amount Non-negative value to send. a negative value will result in a failure.
+  function transferToken(
+    address token,
+    address sender,
+    address recipient,
+    int64 amount
+  ) external returns (int64 responseCode);
+
+  /// Transfers tokens where the calling account/contract is implicitly the first entry in the token transfer list,
+  /// where the amount is the value needed to zero balance the transfers. Regular signing rules apply for sending
+  /// (positive amount) or receiving (negative amount)
+  /// @param token The token to transfer to/from
+  /// @param sender The sender for the transaction
+  /// @param recipient The receiver of the transaction
+  /// @param serialNumber The serial number of the NFT to transfer.
+  function transferNFT(
+    address token,
+    address sender,
+    address recipient,
+    int64 serialNumber
+  ) external returns (int64 responseCode);
+
+  /// Allows spender to withdraw from your account multiple times, up to the value amount. If this function is called
+  /// again it overwrites the current allowance with value.
+  /// Only Applicable to Fungible Tokens
+  /// @param token The hedera token address to approve
+  /// @param spender the account address authorized to spend
+  /// @param amount the amount of tokens authorized to spend.
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function approve(
+    address token,
+    address spender,
+    uint256 amount
+  ) external returns (int64 responseCode);
+
+  /// Transfers `amount` tokens from `from` to `to` using the
+  //  allowance mechanism. `amount` is then deducted from the caller's allowance.
+  /// Only applicable to fungible tokens
+  /// @param token The address of the fungible Hedera token to transfer
+  /// @param from The account address of the owner of the token, on the behalf of which to transfer `amount` tokens
+  /// @param to The account address of the receiver of the `amount` tokens
+  /// @param amount The amount of tokens to transfer from `from` to `to`
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function transferFrom(
+    address token,
+    address from,
+    address to,
+    uint256 amount
+  ) external returns (int64 responseCode);
+
+  /// Returns the amount which spender is still allowed to withdraw from owner.
+  /// Only Applicable to Fungible Tokens
+  /// @param token The Hedera token address to check the allowance of
+  /// @param owner the owner of the tokens to be spent
+  /// @param spender the spender of the tokens
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return allowance The amount which spender is still allowed to withdraw from owner.
+  function allowance(
+    address token,
+    address owner,
+    address spender
+  ) external returns (int64 responseCode, uint256 allowance);
+
+  /// Allow or reaffirm the approved address to transfer an NFT the approved address does not own.
+  /// Only Applicable to NFT Tokens
+  /// @param token The Hedera NFT token address to approve
+  /// @param approved The new approved NFT controller.  To revoke approvals pass in the zero address.
+  /// @param serialNumber The NFT serial number  to approve
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function approveNFT(
+    address token,
+    address approved,
+    uint256 serialNumber
+  ) external returns (int64 responseCode);
+
+  /// Transfers `serialNumber` of `token` from `from` to `to` using the allowance mechanism.
+  /// Only applicable to NFT tokens
+  /// @param token The address of the non-fungible Hedera token to transfer
+  /// @param from The account address of the owner of `serialNumber` of `token`
+  /// @param to The account address of the receiver of `serialNumber`
+  /// @param serialNumber The NFT serial number to transfer
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function transferFromNFT(
+    address token,
+    address from,
+    address to,
+    uint256 serialNumber
+  ) external returns (int64 responseCode);
+
+  /// Get the approved address for a single NFT
+  /// Only Applicable to NFT Tokens
+  /// @param token The Hedera NFT token address to check approval
+  /// @param serialNumber The NFT to find the approved address for
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return approved The approved address for this NFT, or the zero address if there is none
+  function getApproved(
+    address token,
+    uint256 serialNumber
+  ) external returns (int64 responseCode, address approved);
+
+  /// Enable or disable approval for a third party ("operator") to manage
+  ///  all of `msg.sender`'s assets
+  /// @param token The Hedera NFT token address to approve
+  /// @param operator Address to add to the set of authorized operators
+  /// @param approved True if the operator is approved, false to revoke approval
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function setApprovalForAll(
+    address token,
+    address operator,
+    bool approved
+  ) external returns (int64 responseCode);
+
+  /// Query if an address is an authorized operator for another address
+  /// Only Applicable to NFT Tokens
+  /// @param token The Hedera NFT token address to approve
+  /// @param owner The address that owns the NFTs
+  /// @param operator The address that acts on behalf of the owner
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return approved True if `operator` is an approved operator for `owner`, false otherwise
+  function isApprovedForAll(
+    address token,
+    address owner,
+    address operator
+  ) external returns (int64 responseCode, bool approved);
+
+  /// Query if token account is frozen
+  /// @param token The token address to check
+  /// @param account The account address associated with the token
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return frozen True if `account` is frozen for `token`
+  function isFrozen(
+    address token,
+    address account
+  ) external returns (int64 responseCode, bool frozen);
+
+  /// Query if token account has kyc granted
+  /// @param token The token address to check
+  /// @param account The account address associated with the token
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return kycGranted True if `account` has kyc granted for `token`
+  function isKyc(
+    address token,
+    address account
+  ) external returns (int64 responseCode, bool kycGranted);
+
+  /// Operation to delete token
+  /// @param token The token address to be deleted
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function deleteToken(address token) external returns (int64 responseCode);
+
+  /// Query token custom fees
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return fixedFees Set of fixed fees for `token`
+  /// @return fractionalFees Set of fractional fees for `token`
+  /// @return royaltyFees Set of royalty fees for `token`
+  function getTokenCustomFees(
+    address token
+  )
+    external
+    returns (
+      int64 responseCode,
+      FixedFee[] memory fixedFees,
+      FractionalFee[] memory fractionalFees,
+      RoyaltyFee[] memory royaltyFees
+    );
+
+  /// Query token default freeze status
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return defaultFreezeStatus True if `token` default freeze status is frozen.
+  function getTokenDefaultFreezeStatus(
+    address token
+  ) external returns (int64 responseCode, bool defaultFreezeStatus);
+
+  /// Query token default kyc status
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return defaultKycStatus True if `token` default kyc status is KycNotApplicable and false if Revoked.
+  function getTokenDefaultKycStatus(
+    address token
+  ) external returns (int64 responseCode, bool defaultKycStatus);
+
+  /// Query token expiry info
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return expiry Expiry info for `token`
+  function getTokenExpiryInfo(
+    address token
+  ) external returns (int64 responseCode, Expiry memory expiry);
+
+  /// Query fungible token info
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return fungibleTokenInfo FungibleTokenInfo info for `token`
+  function getFungibleTokenInfo(
+    address token
+  ) external returns (int64 responseCode, FungibleTokenInfo memory fungibleTokenInfo);
+
+  /// Query token info
+  /// @param token The token address to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenInfo TokenInfo info for `token`
+  function getTokenInfo(
+    address token
+  ) external returns (int64 responseCode, TokenInfo memory tokenInfo);
+
+  /// Query token KeyValue
+  /// @param token The token address to check
+  /// @param keyType The keyType of the desired KeyValue
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return key KeyValue info for key of type `keyType`
+  function getTokenKey(
+    address token,
+    uint256 keyType
+  ) external returns (int64 responseCode, KeyValue memory key);
+
+  /// Query non fungible token info
+  /// @param token The token address to check
+  /// @param serialNumber The NFT serialNumber to check
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return nonFungibleTokenInfo NonFungibleTokenInfo info for `token` `serialNumber`
+  function getNonFungibleTokenInfo(
+    address token,
+    int64 serialNumber
+  ) external returns (int64 responseCode, NonFungibleTokenInfo memory nonFungibleTokenInfo);
+
+  /// Operation to freeze token account
+  /// @param token The token address
+  /// @param account The account address to be frozen
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function freezeToken(address token, address account) external returns (int64 responseCode);
+
+  /// Operation to unfreeze token account
+  /// @param token The token address
+  /// @param account The account address to be unfrozen
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function unfreezeToken(address token, address account) external returns (int64 responseCode);
+
+  /// Operation to grant kyc to token account
+  /// @param token The token address
+  /// @param account The account address to grant kyc
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function grantTokenKyc(address token, address account) external returns (int64 responseCode);
+
+  /// Operation to revoke kyc to token account
+  /// @param token The token address
+  /// @param account The account address to revoke kyc
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function revokeTokenKyc(address token, address account) external returns (int64 responseCode);
+
+  /// Operation to pause token
+  /// @param token The token address to be paused
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function pauseToken(address token) external returns (int64 responseCode);
+
+  /// Operation to unpause token
+  /// @param token The token address to be unpaused
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function unpauseToken(address token) external returns (int64 responseCode);
+
+  /// Operation to wipe fungible tokens from account
+  /// @param token The token address
+  /// @param account The account address to revoke kyc
+  /// @param amount The number of tokens to wipe
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function wipeTokenAccount(
+    address token,
+    address account,
+    int64 amount
+  ) external returns (int64 responseCode);
+
+  /// Operation to wipe non fungible tokens from account
+  /// @param token The token address
+  /// @param account The account address to revoke kyc
+  /// @param  serialNumbers The serial numbers of token to wipe
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function wipeTokenAccountNFT(
+    address token,
+    address account,
+    int64[] memory serialNumbers
+  ) external returns (int64 responseCode);
+
+  /// Operation to update token info
+  /// @param token The token address
+  /// @param tokenInfo The hedera token info to update token with
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function updateTokenInfo(
+    address token,
+    HederaToken memory tokenInfo
+  ) external returns (int64 responseCode);
+
+  /// Operation to update token expiry info
+  /// @param token The token address
+  /// @param expiryInfo The hedera token expiry info
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function updateTokenExpiryInfo(
+    address token,
+    Expiry memory expiryInfo
+  ) external returns (int64 responseCode);
+
+  /// Operation to update token expiry info
+  /// @param token The token address
+  /// @param keys The token keys
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  function updateTokenKeys(
+    address token,
+    TokenKey[] memory keys
+  ) external returns (int64 responseCode);
+
+  /// Query if valid token found for the given address
+  /// @param token The token address
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return isToken True if valid token found for the given address
+  function isToken(address token) external returns (int64 responseCode, bool isToken);
+
+  /// Query to return the token type for a given address
+  /// @param token The token address
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return tokenType the token type. 0 is FUNGIBLE_COMMON, 1 is NON_FUNGIBLE_UNIQUE, -1 is UNRECOGNIZED
+  function getTokenType(address token) external returns (int64 responseCode, int32 tokenType);
+
+  /// Initiates a Redirect For Token
+  /// @param token The token address
+  /// @param encodedFunctionSelector The function selector from the ERC20 interface + the bytes input for the function called
+  /// @return responseCode The response code for the status of the request. SUCCESS is 22.
+  /// @return response The result of the call that had been encoded and sent for execution.
+  function redirectForToken(
+    address token,
+    bytes memory encodedFunctionSelector
+  ) external returns (int64 responseCode, bytes memory response);
 }
