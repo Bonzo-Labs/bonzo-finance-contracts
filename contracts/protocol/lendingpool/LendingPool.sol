@@ -25,6 +25,7 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {UserConfiguration} from '../libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
+import {IHederaTokenService} from '../../interfaces/IHederaTokenService.sol';
 
 /**
  * @title LendingPool contract
@@ -42,12 +43,17 @@ import {LendingPoolStorage} from './LendingPoolStorage.sol';
  * - All admin functions are callable by the LendingPoolConfigurator contract defined also in the
  *   LendingPoolAddressesProvider
  * @author Aave
- **/
+ *
+ */
 contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage {
   using SafeMath for uint256;
   using WadRayMath for uint256;
   using PercentageMath for uint256;
   using SafeERC20 for IERC20;
+
+  address constant hts = address(0x167); // The well known address of the native HTS precompiled contract.
+  int64 constant HAPI_SUCCESS = 22; // HTS Response code indicating success.
+  int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
   uint256 public constant LENDINGPOOL_REVISION = 0x2;
 
@@ -82,7 +88,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * - Caching the address of the LendingPoolAddressesProvider in order to reduce gas consumption
    *   on subsequent operations
    * @param provider The address of the LendingPoolAddressesProvider
-   **/
+   *
+   */
   function initialize(ILendingPoolAddressesProvider provider) public initializer {
     _addressesProvider = provider;
     _maxStableRateBorrowSizePercent = 2500;
@@ -100,7 +107,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    *   is a different wallet
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
    *   0 if the action is executed directly by the user, without any middle-man
-   **/
+   *
+   */
   function deposit(
     address asset,
     uint256 amount,
@@ -116,7 +124,20 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 
-    IERC20(asset).safeTransferFrom(msg.sender, aToken, amount);
+    // Note - we are natively calling the HTS to transfer the tokens to the aToken contract because we had given the approval natively.
+    (bool success, bytes memory result) = hts.call(
+      abi.encodeWithSelector(
+        IHederaTokenService.transferFrom.selector,
+        asset,
+        msg.sender,
+        aToken,
+        amount
+      )
+    );
+    int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
+    if (responseCode != HAPI_SUCCESS) {
+      revert('Failed to send tokens to the aToken contract');
+    }
 
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
@@ -138,7 +159,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    *   wants to receive it on his own wallet, or a different address if the beneficiary is a
    *   different wallet
    * @return The final amount withdrawn
-   **/
+   *
+   */
   function withdraw(
     address asset,
     uint256 amount,
@@ -197,7 +219,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param onBehalfOf Address of the user who will receive the debt. Should be the address of the borrower itself
    * calling the function if he wants to borrow against his own collateral, or the address of the credit delegator
    * if he has been given credit delegation allowance
-   **/
+   *
+   */
   function borrow(
     address asset,
     uint256 amount,
@@ -232,7 +255,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * user calling the function if he wants to reduce/remove his own debt, or the address of any other
    * other borrower whose debt should be removed
    * @return The final amount repaid
-   **/
+   *
+   */
   function repay(
     address asset,
     uint256 amount,
@@ -254,8 +278,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       variableDebt
     );
 
-    uint256 paybackAmount =
-      interestRateMode == DataTypes.InterestRateMode.STABLE ? stableDebt : variableDebt;
+    uint256 paybackAmount = interestRateMode == DataTypes.InterestRateMode.STABLE
+      ? stableDebt
+      : variableDebt;
 
     if (amount < paybackAmount) {
       paybackAmount = amount;
@@ -293,7 +318,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
    * @param asset The address of the underlying asset borrowed
    * @param rateMode The rate mode that the user wants to swap to
-   **/
+   *
+   */
   function swapBorrowRateMode(address asset, uint256 rateMode) external override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
@@ -346,7 +372,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    *        borrowed at a stable rate and depositors are not earning enough
    * @param asset The address of the underlying asset borrowed
    * @param user The address of the user to be rebalanced
-   **/
+   *
+   */
   function rebalanceStableBorrowRate(address asset, address user) external override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
@@ -383,12 +410,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @dev Allows depositors to enable/disable a specific deposited asset as collateral
    * @param asset The address of the underlying asset deposited
    * @param useAsCollateral `true` if the user wants to use the deposit as collateral, `false` otherwise
-   **/
-  function setUserUseReserveAsCollateral(address asset, bool useAsCollateral)
-    external
-    override
-    whenNotPaused
-  {
+   *
+   */
+  function setUserUseReserveAsCollateral(
+    address asset,
+    bool useAsCollateral
+  ) external override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     ValidationLogic.validateSetUseReserveAsCollateral(
@@ -421,7 +448,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param debtToCover The debt amount of borrowed `asset` the liquidator wants to cover
    * @param receiveAToken `true` if the liquidators wants to receive the collateral aTokens, `false` if he wants
    * to receive the underlying collateral asset directly
-   **/
+   *
+   */
   function liquidationCall(
     address collateralAsset,
     address debtAsset,
@@ -432,17 +460,16 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address collateralManager = _addressesProvider.getLendingPoolCollateralManager();
 
     //solium-disable-next-line
-    (bool success, bytes memory result) =
-      collateralManager.delegatecall(
-        abi.encodeWithSignature(
-          'liquidationCall(address,address,address,uint256,bool)',
-          collateralAsset,
-          debtAsset,
-          user,
-          debtToCover,
-          receiveAToken
-        )
-      );
+    (bool success, bytes memory result) = collateralManager.delegatecall(
+      abi.encodeWithSignature(
+        'liquidationCall(address,address,address,uint256,bool)',
+        collateralAsset,
+        debtAsset,
+        user,
+        debtToCover,
+        receiveAToken
+      )
+    );
 
     require(success, Errors.LP_LIQUIDATION_CALL_FAILED);
 
@@ -479,7 +506,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param params Variadic packed params to pass to the receiver as extra information
    * @param referralCode Code used to register the integrator originating the operation, for potential rewards.
    *   0 if the action is executed directly by the user, without any middle-man
-   **/
+   *
+   */
   function flashLoan(
     address receiverAddress,
     address[] calldata assets,
@@ -567,13 +595,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @dev Returns the state and configuration of the reserve
    * @param asset The address of the underlying asset of the reserve
    * @return The state of the reserve
-   **/
-  function getReserveData(address asset)
-    external
-    view
-    override
-    returns (DataTypes.ReserveData memory)
-  {
+   *
+   */
+  function getReserveData(
+    address asset
+  ) external view override returns (DataTypes.ReserveData memory) {
     return _reserves[asset];
   }
 
@@ -586,8 +612,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @return currentLiquidationThreshold the liquidation threshold of the user
    * @return ltv the loan to value of the user
    * @return healthFactor the current health factor of the user
-   **/
-  function getUserAccountData(address user)
+   *
+   */
+  function getUserAccountData(
+    address user
+  )
     external
     view
     override
@@ -626,13 +655,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @dev Returns the configuration of the reserve
    * @param asset The address of the underlying asset of the reserve
    * @return The configuration of the reserve
-   **/
-  function getConfiguration(address asset)
-    external
-    view
-    override
-    returns (DataTypes.ReserveConfigurationMap memory)
-  {
+   *
+   */
+  function getConfiguration(
+    address asset
+  ) external view override returns (DataTypes.ReserveConfigurationMap memory) {
     return _reserves[asset].configuration;
   }
 
@@ -640,13 +667,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @dev Returns the configuration of the user across all the reserves
    * @param user The user address
    * @return The configuration of the user
-   **/
-  function getUserConfiguration(address user)
-    external
-    view
-    override
-    returns (DataTypes.UserConfigurationMap memory)
-  {
+   *
+   */
+  function getUserConfiguration(
+    address user
+  ) external view override returns (DataTypes.UserConfigurationMap memory) {
     return _usersConfig[user];
   }
 
@@ -655,13 +680,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param asset The address of the underlying asset of the reserve
    * @return The reserve's normalized income
    */
-  function getReserveNormalizedIncome(address asset)
-    external
-    view
-    virtual
-    override
-    returns (uint256)
-  {
+  function getReserveNormalizedIncome(
+    address asset
+  ) external view virtual override returns (uint256) {
     return _reserves[asset].getNormalizedIncome();
   }
 
@@ -670,12 +691,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param asset The address of the underlying asset of the reserve
    * @return The reserve normalized variable debt
    */
-  function getReserveNormalizedVariableDebt(address asset)
-    external
-    view
-    override
-    returns (uint256)
-  {
+  function getReserveNormalizedVariableDebt(
+    address asset
+  ) external view override returns (uint256) {
     return _reserves[asset].getNormalizedDebt();
   }
 
@@ -688,7 +706,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
   /**
    * @dev Returns the list of the initialized reserves
-   **/
+   *
+   */
   function getReservesList() external view override returns (address[] memory) {
     address[] memory _activeReserves = new address[](_reservesCount);
 
@@ -700,7 +719,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
   /**
    * @dev Returns the cached LendingPoolAddressesProvider connected to this contract
-   **/
+   *
+   */
   function getAddressesProvider() external view override returns (ILendingPoolAddressesProvider) {
     return _addressesProvider;
   }
@@ -713,7 +733,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   }
 
   /**
-   * @dev Returns the fee on flash loans 
+   * @dev Returns the fee on flash loans
    */
   function FLASHLOAN_PREMIUM_TOTAL() public view returns (uint256) {
     return _flashLoanPremiumTotal;
@@ -781,7 +801,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param stableDebtAddress The address of the StableDebtToken that will be assigned to the reserve
    * @param aTokenAddress The address of the VariableDebtToken that will be assigned to the reserve
    * @param interestRateStrategyAddress The address of the interest rate strategy contract
-   **/
+   *
+   */
   function initReserve(
     address asset,
     address aTokenAddress,
@@ -804,12 +825,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * - Only callable by the LendingPoolConfigurator contract
    * @param asset The address of the underlying asset of the reserve
    * @param rateStrategyAddress The address of the interest rate strategy contract
-   **/
-  function setReserveInterestRateStrategyAddress(address asset, address rateStrategyAddress)
-    external
-    override
-    onlyLendingPoolConfigurator
-  {
+   *
+   */
+  function setReserveInterestRateStrategyAddress(
+    address asset,
+    address rateStrategyAddress
+  ) external override onlyLendingPoolConfigurator {
     _reserves[asset].interestRateStrategyAddress = rateStrategyAddress;
   }
 
@@ -818,12 +839,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * - Only callable by the LendingPoolConfigurator contract
    * @param asset The address of the underlying asset of the reserve
    * @param configuration The new configuration bitmap
-   **/
-  function setConfiguration(address asset, uint256 configuration)
-    external
-    override
-    onlyLendingPoolConfigurator
-  {
+   *
+   */
+  function setConfiguration(
+    address asset,
+    uint256 configuration
+  ) external override onlyLendingPoolConfigurator {
     _reserves[asset].configuration.data = configuration;
   }
 
@@ -858,10 +879,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     address oracle = _addressesProvider.getPriceOracle();
 
-    uint256 amountInETH =
-      IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
-        10**reserve.configuration.getDecimals()
-      );
+    uint256 amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
+      10 ** reserve.configuration.getDecimals()
+    );
 
     ValidationLogic.validateBorrow(
       vars.asset,

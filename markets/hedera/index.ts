@@ -33,7 +33,6 @@ export const HederaConfig: IHederaConfiguration = {
       SAUCE: '0x0000000000000000000000000000000000120f46',
     },
     [eHederaNetwork.mainnet]: {
-      // Mock tokens with a simple "mint" external function, except wmatic
       DAI: '',
       USDC: '',
       CLXY: '',
