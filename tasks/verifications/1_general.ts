@@ -2,51 +2,46 @@ import { task } from 'hardhat/config';
 import {
   loadPoolConfig,
   ConfigNames,
-  getTreasuryAddress,
   getWrappedNativeTokenAddress,
 } from '../../helpers/configuration';
-import { ZERO_ADDRESS } from '../../helpers/constants';
 import {
-  getAaveOracle,
   getAaveProtocolDataProvider,
-  getAddressById,
-  getAToken,
-  getATokensAndRatesHelper,
-  getGenericLogic,
-  getLendingPool,
   getLendingPoolAddressesProvider,
   getLendingPoolAddressesProviderRegistry,
-  getLendingPoolCollateralManager,
   getLendingPoolCollateralManagerImpl,
   getLendingPoolConfiguratorImpl,
-  getLendingPoolConfiguratorProxy,
   getLendingPoolImpl,
   getLendingRateOracle,
-  getPriceOracle,
   getProxy,
-  getReserveLogic,
-  getStableAndVariableTokensHelper,
-  getStableDebtToken,
-  getValidationLogic,
-  getVariableDebtToken,
   getWalletProvider,
   getWETHGateway,
 } from '../../helpers/contracts-getters';
 import { verifyContract, getParamPerNetwork } from '../../helpers/contracts-helpers';
-import { notFalsyOrZeroAddress } from '../../helpers/misc-utils';
+import { DbEntry, getDb, notFalsyOrZeroAddress } from '../../helpers/misc-utils';
 import { eContractid, eNetwork, ICommonConfiguration } from '../../helpers/types';
-import { ValidationLogic } from '../../types';
 
 task('verify:general', 'Verify contracts at Etherscan')
   .addFlag('all', 'Verify all contracts at Etherscan')
   .addParam('pool', `Pool name to retrieve configuration, supported: ${Object.values(ConfigNames)}`)
   .setAction(async ({ all, pool }, localDRE) => {
     await localDRE.run('set-DRE');
+
     const network = localDRE.network.name as eNetwork;
+
+    const db = getDb();
+    const entries = Object.entries<DbEntry>(db.getState()).filter(
+      ([_k, value]) => !!value[network]
+    );
+    for (var entry of entries) {
+      const address = entry[1][network].address;
+      console.log(`\n- Verifying ${entry[0]} at ${address}...\n`);
+      if (address) {
+        await localDRE.run('verify', { address, relatedSources: true });
+      }
+    }
+
     const poolConfig = loadPoolConfig(pool);
     const {
-      ReserveAssets,
-      ReservesConfig,
       ProviderRegistry,
       MarketId,
       LendingPoolCollateralManager,
@@ -54,7 +49,6 @@ task('verify:general', 'Verify contracts at Etherscan')
       LendingPool,
       WethGateway,
     } = poolConfig as ICommonConfiguration;
-    const treasuryAddress = await getTreasuryAddress(poolConfig);
 
     const registryAddress = getParamPerNetwork(ProviderRegistry, network);
     const addressesProvider = await getLendingPoolAddressesProvider();
@@ -74,21 +68,6 @@ task('verify:general', 'Verify contracts at Etherscan')
     const lendingRateOracle = notFalsyOrZeroAddress(lendingRateOracleAddress)
       ? await getLendingRateOracle(lendingRateOracleAddress)
       : await getLendingRateOracle();
-
-    const aveOracleAddress = getParamPerNetwork(poolConfig.AaveOracle, network);
-    const aveOracle = notFalsyOrZeroAddress(aveOracleAddress)
-      ? await getAaveOracle(aveOracleAddress)
-      : await getAaveOracle();
-
-    const reserveLogic = await getReserveLogic();
-    const genericLogic = await getGenericLogic();
-    const validationLogic = await getValidationLogic();
-    const stableAndVariableTokensHelper = await getStableAndVariableTokensHelper();
-    const aTokensAndRatesHelper = await getATokensAndRatesHelper();
-    const aToken = await getAToken();
-    const stableDebtToken = await getStableDebtToken();
-    const variableDebtToken = await getVariableDebtToken();
-    const priceOracle = await getPriceOracle();
 
     if (all) {
       const lendingPoolImplAddress = getParamPerNetwork(LendingPool, network);
@@ -165,43 +144,6 @@ task('verify:general', 'Verify contracts at Etherscan')
       await verifyContract(eContractid.WETHGateway, wethGateway, [
         await getWrappedNativeTokenAddress(poolConfig),
       ]);
-
-      console.log('\n- Verifying  Reserve Logic...\n');
-      await verifyContract(eContractid.ReserveLogic, reserveLogic, []);
-
-      console.log('\n- Verifying  Generic Logic...\n');
-      await verifyContract(eContractid.GenericLogic, genericLogic, []);
-
-      console.log('\n- Verifying  Validation Logic...\n');
-      await verifyContract(eContractid.ValidationLogic, validationLogic, []);
-
-      console.log('\n- Verifying  Stable and Variable Tokens Helper...\n');
-      await verifyContract(
-        eContractid.StableAndVariableTokensHelper,
-        stableAndVariableTokensHelper,
-        []
-      );
-
-      console.log('\n- Verifying  A Token and Rates Helper...\n');
-      await verifyContract(eContractid.ATokensAndRatesHelper, aTokensAndRatesHelper, []);
-
-      console.log('\n- Verifying  A Token...\n');
-      await verifyContract(eContractid.AToken, aToken, []);
-
-      console.log('\n- Verifying  Stable Debt Token...\n');
-      await verifyContract(eContractid.StableDebtToken, stableDebtToken, []);
-
-      console.log('\n- Verifying  Variable Debt Token...\n');
-      await verifyContract(eContractid.VariableDebtToken, variableDebtToken, []);
-
-      console.log('\n- Verifying  Price Oracle...\n');
-      await verifyContract(eContractid.PriceOracle, priceOracle, []);
-
-      console.log('\n- Verifying  Ave Oracle...\n');
-      await verifyContract(eContractid.AaveOracle, aveOracle, []);
-
-      console.log('\n- Verifying  Lending Rate Oracle...\n');
-      await verifyContract(eContractid.LendingRateOracle, lendingRateOracle, []);
     }
     // Lending Pool proxy
     console.log('\n- Verifying  Lending Pool Proxy...\n');
