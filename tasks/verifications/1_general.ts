@@ -7,8 +7,12 @@ import {
 } from '../../helpers/configuration';
 import { ZERO_ADDRESS } from '../../helpers/constants';
 import {
+  getAaveOracle,
   getAaveProtocolDataProvider,
   getAddressById,
+  getAToken,
+  getATokensAndRatesHelper,
+  getGenericLogic,
   getLendingPool,
   getLendingPoolAddressesProvider,
   getLendingPoolAddressesProviderRegistry,
@@ -17,13 +21,21 @@ import {
   getLendingPoolConfiguratorImpl,
   getLendingPoolConfiguratorProxy,
   getLendingPoolImpl,
+  getLendingRateOracle,
+  getPriceOracle,
   getProxy,
+  getReserveLogic,
+  getStableAndVariableTokensHelper,
+  getStableDebtToken,
+  getValidationLogic,
+  getVariableDebtToken,
   getWalletProvider,
   getWETHGateway,
 } from '../../helpers/contracts-getters';
 import { verifyContract, getParamPerNetwork } from '../../helpers/contracts-helpers';
 import { notFalsyOrZeroAddress } from '../../helpers/misc-utils';
 import { eContractid, eNetwork, ICommonConfiguration } from '../../helpers/types';
+import { ValidationLogic } from '../../types';
 
 task('verify:general', 'Verify contracts at Etherscan')
   .addFlag('all', 'Verify all contracts at Etherscan')
@@ -57,6 +69,26 @@ task('verify:general', 'Verify contracts at Etherscan')
     const lendingPoolProxy = await getProxy(lendingPoolAddress);
     const lendingPoolConfiguratorProxy = await getProxy(lendingPoolConfiguratorAddress);
     const lendingPoolCollateralManagerProxy = await getProxy(lendingPoolCollateralManagerAddress);
+
+    const lendingRateOracleAddress = getParamPerNetwork(poolConfig.LendingRateOracle, network);
+    const lendingRateOracle = notFalsyOrZeroAddress(lendingRateOracleAddress)
+      ? await getLendingRateOracle(lendingRateOracleAddress)
+      : await getLendingRateOracle();
+
+    const aveOracleAddress = getParamPerNetwork(poolConfig.AaveOracle, network);
+    const aveOracle = notFalsyOrZeroAddress(aveOracleAddress)
+      ? await getAaveOracle(aveOracleAddress)
+      : await getAaveOracle();
+
+    const reserveLogic = await getReserveLogic();
+    const genericLogic = await getGenericLogic();
+    const validationLogic = await getValidationLogic();
+    const stableAndVariableTokensHelper = await getStableAndVariableTokensHelper();
+    const aTokensAndRatesHelper = await getATokensAndRatesHelper();
+    const aToken = await getAToken();
+    const stableDebtToken = await getStableDebtToken();
+    const variableDebtToken = await getVariableDebtToken();
+    const priceOracle = await getPriceOracle();
 
     if (all) {
       const lendingPoolImplAddress = getParamPerNetwork(LendingPool, network);
@@ -133,6 +165,43 @@ task('verify:general', 'Verify contracts at Etherscan')
       await verifyContract(eContractid.WETHGateway, wethGateway, [
         await getWrappedNativeTokenAddress(poolConfig),
       ]);
+
+      console.log('\n- Verifying  Reserve Logic...\n');
+      await verifyContract(eContractid.ReserveLogic, reserveLogic, []);
+
+      console.log('\n- Verifying  Generic Logic...\n');
+      await verifyContract(eContractid.GenericLogic, genericLogic, []);
+
+      console.log('\n- Verifying  Validation Logic...\n');
+      await verifyContract(eContractid.ValidationLogic, validationLogic, []);
+
+      console.log('\n- Verifying  Stable and Variable Tokens Helper...\n');
+      await verifyContract(
+        eContractid.StableAndVariableTokensHelper,
+        stableAndVariableTokensHelper,
+        []
+      );
+
+      console.log('\n- Verifying  A Token and Rates Helper...\n');
+      await verifyContract(eContractid.ATokensAndRatesHelper, aTokensAndRatesHelper, []);
+
+      console.log('\n- Verifying  A Token...\n');
+      await verifyContract(eContractid.AToken, aToken, []);
+
+      console.log('\n- Verifying  Stable Debt Token...\n');
+      await verifyContract(eContractid.StableDebtToken, stableDebtToken, []);
+
+      console.log('\n- Verifying  Variable Debt Token...\n');
+      await verifyContract(eContractid.VariableDebtToken, variableDebtToken, []);
+
+      console.log('\n- Verifying  Price Oracle...\n');
+      await verifyContract(eContractid.PriceOracle, priceOracle, []);
+
+      console.log('\n- Verifying  Ave Oracle...\n');
+      await verifyContract(eContractid.AaveOracle, aveOracle, []);
+
+      console.log('\n- Verifying  Lending Rate Oracle...\n');
+      await verifyContract(eContractid.LendingRateOracle, lendingRateOracle, []);
     }
     // Lending Pool proxy
     console.log('\n- Verifying  Lending Pool Proxy...\n');
