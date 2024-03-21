@@ -8,8 +8,17 @@ import './SelfFunding.sol';
 contract SupraOracle is Ownable, SelfFunding {
   ISupraSValueFeed internal sValueFeed;
 
+  mapping(address => uint16) private assetToPriceIndex;
+
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
+
+    // Initialize the mapping with asset addresses and their corresponding indices
+    assetToPriceIndex[0x00000000000000000000000000000000000014F5] = 424; // CLXY
+    assetToPriceIndex[0x0000000000000000000000000000000000220cED] = 427; // HBARX
+    assetToPriceIndex[0x0000000000000000000000000000000000120f46] = 425; // SAUCE
+    assetToPriceIndex[0x0000000000000000000000000000000000001599] = 75; // DAI
+    assetToPriceIndex[0x0000000000000000000000000000000000001549] = 75; // USDC
   }
 
   function updateSupraSvalueFeed(ISupraSValueFeed _newSValueFeed) external onlyOwner {
@@ -20,29 +29,18 @@ contract SupraOracle is Ownable, SelfFunding {
     return sValueFeed;
   }
 
-  // Check this page for the indices of the pairs: https://supra.com/docs/data-feeds/data-feeds-index
-  function getAssetPrice(address _asset) public view returns (uint256 price) {
-    uint16 priceIndex;
+  function updatePriceIndex(address _asset, uint16 _newIndex) external onlyOwner {
+    require(_asset != address(0), 'InvalidAsset');
+    require(_newIndex != 0, 'InvalidIndex');
+    assetToPriceIndex[_asset] = _newIndex;
+  }
 
-    if (_asset == address(0x00000000000000000000000000000000000014F5)) {
-      // CLXY
-      priceIndex = 424;
-    } else if (_asset == address(0x0000000000000000000000000000000000220cED)) {
-      //HBARX
-      priceIndex = 427;
-    } else if (_asset == address(0x0000000000000000000000000000000000120f46)) {
-      //SAUCE
-      priceIndex = 425;
-    } else if (
-      _asset == address(0x0000000000000000000000000000000000001599) || //DAI
-      _asset == address(0x0000000000000000000000000000000000001549) //USDC
-    ) {
-      priceIndex = 75;
-    } else {
-      revert('SupraOracle: asset not supported');
-    }
+  function getAssetPrice(address _asset) public view returns (uint256 price) {
+    uint16 priceIndex = assetToPriceIndex[_asset];
+    require(priceIndex != 0, 'UnsupportedAsset');
+
     ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
-    price = priceFeed.price;
+    return priceFeed.price;
   }
 
   function decimals() public pure returns (uint8) {
@@ -53,13 +51,6 @@ contract SupraOracle is Ownable, SelfFunding {
     uint256 price = getAssetPrice(_asset);
 
     uint256 priceInTinyBars = (price * 100_000_000) / (10 ** decimals());
-    uint256 priceInTinycents = tinybarsToTinycents(priceInTinyBars);
-    uint256 priceInUSD = priceInTinycents / 100;
-
-    return priceInUSD;
-  }
-
-  function convertTinybarsToTinycents(uint256 tinybars) external returns (uint256 tinycents) {
-    tinycents = tinybarsToTinycents(tinybars);
+    return tinybarsToTinycents(priceInTinyBars) / 100;
   }
 }
