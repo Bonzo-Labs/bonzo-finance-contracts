@@ -427,6 +427,7 @@ export interface IBaseConfiguration {
   ReserveAssets: iParamsPerNetwork<SymbolMap<tEthereumAddress>>;
   OracleQuoteCurrency: string;
   OracleQuoteUnit: string;
+  SupraPriceFeed: string;
 }
 
 export interface ICommonConfiguration extends IBaseConfiguration {

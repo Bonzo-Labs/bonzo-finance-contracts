@@ -25,11 +25,19 @@ contract SupraOracle is Ownable, SelfFunding {
     uint16 priceIndex;
 
     if (_asset == address(0x00000000000000000000000000000000000014F5)) {
+      // CLXY
       priceIndex = 424;
     } else if (_asset == address(0x0000000000000000000000000000000000220cED)) {
+      //HBARX
       priceIndex = 427;
     } else if (_asset == address(0x0000000000000000000000000000000000120f46)) {
+      //SAUCE
       priceIndex = 425;
+    } else if (
+      _asset == address(0x0000000000000000000000000000000000001599) || //DAI
+      _asset == address(0x0000000000000000000000000000000000001549) //USDC
+    ) {
+      priceIndex = 75;
     } else {
       revert('SupraOracle: asset not supported');
     }

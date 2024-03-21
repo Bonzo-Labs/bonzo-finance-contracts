@@ -63,23 +63,25 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
       let fallbackOracle;
 
       if (!notFalsyOrZeroAddress(fallbackOracleAddress)) {
-        fallbackOracle = await deploySupraOracle(chainlinkAggregators.DAI, verify);
+        fallbackOracle = await deploySupraOracle(poolConfig.SupraPriceFeed, verify);
+        console.log('===== Deployed Fallback Oracle: %s', fallbackOracle.address);
       }
 
       if (notFalsyOrZeroAddress(aaveOracleAddress)) {
-        aaveOracle = await await getAaveOracle(aaveOracleAddress);
+        aaveOracle = await getAaveOracle(aaveOracleAddress);
         await waitForTx(await aaveOracle.setAssetSources(tokens, aggregators));
       } else {
         aaveOracle = await deployAaveOracle(
           [
             tokens,
             aggregators,
-            fallbackOracleAddress ? fallbackOracleAddress : fallbackOracle.address,
+            fallbackOracle.address,
             await getQuoteCurrency(poolConfig),
             poolConfig.OracleQuoteUnit,
           ],
           verify
         );
+        console.log('===== Deployed Aave Oracle: %s', aaveOracle.address);
         await waitForTx(await aaveOracle.setAssetSources(tokens, aggregators));
       }
 
