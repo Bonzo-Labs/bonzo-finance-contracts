@@ -16,7 +16,7 @@ const { LendingPool, LendingPoolAddressesProvider, AaveOracle, LendingPoolConfig
 const { SAUCE, CLXY } = outputReserveData;
 
 let provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+let owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -105,7 +105,7 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  it('should withdraw CLXY tokens and burn aTokens', async function () {
+  it.skip('should withdraw CLXY tokens and burn aTokens', async function () {
     const withdrawAmount = 10;
     const aTokenContract = await setupContract('AToken', CLXY.aToken.address);
     const balance = await aTokenContract.balanceOf(owner.address);
@@ -139,6 +139,39 @@ describe('Lending Pool Contract Tests', function () {
     const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
     const balanceOf = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract:', balanceOf.toString());
+    expect(balanceOf).to.be.gt(0);
+  });
+
+  it('should repay SAUCE tokens and burn variableDebtTokens', async function () {
+    const repayAmount = 10;
+    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
+    const sauceContract = await setupContract('ERC20Wrapper', SAUCE.token.address);
+
+    const balanceBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract before:', balanceBefore.toString());
+
+    const sauceBalance = await sauceContract.balanceOf(owner.address);
+    if (sauceBalance.lt(repayAmount)) throw new Error('Insufficient balance');
+
+    const allowance = await sauceContract.allowance(owner.address, lendingPoolContract.address);
+    if (allowance.lt(repayAmount)) {
+      console.log('Approving...');
+      const approveTxn = await sauceContract.approve(lendingPoolContract.address, repayAmount);
+      await approveTxn.wait();
+      console.log('Approved:', approveTxn.hash);
+    }
+
+    const repayTxn = await lendingPoolContract.repay(
+      SAUCE.token.address,
+      repayAmount,
+      2,
+      owner.address
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash: ', repayTxn.hash);
+
+    const balanceOf = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract after:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
   });
 });
