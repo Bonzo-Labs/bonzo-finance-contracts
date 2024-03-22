@@ -63,27 +63,28 @@ task('verify:tokens', 'Deploy oracles for dev enviroment')
       console.log;
       // Proxy Stable Debt
       console.log(`\n- Verifying Stable Debt Token proxy...\n`);
+      const stableDebtTokenProxy = await getProxy(stableDebtTokenAddress);
       await verifyContract(
         eContractid.InitializableAdminUpgradeabilityProxy,
-        await getProxy(stableDebtTokenAddress),
+        stableDebtTokenProxy,
         [lendingPoolConfigurator.address]
       );
 
       // Proxy Variable Debt
       console.log(`\n- Verifying  Debt Token proxy...\n`);
+      const variableDebtTokenProxy = await getProxy(variableDebtTokenAddress);
       await verifyContract(
         eContractid.InitializableAdminUpgradeabilityProxy,
-        await getProxy(variableDebtTokenAddress),
+        variableDebtTokenProxy,
         [lendingPoolConfigurator.address]
       );
 
       // Proxy aToken
       console.log('\n- Verifying aToken proxy...\n');
-      await verifyContract(
-        eContractid.InitializableAdminUpgradeabilityProxy,
-        await getProxy(aTokenAddress),
-        [lendingPoolConfigurator.address]
-      );
+      const aTokenProxy = await getProxy(aTokenAddress);
+      await verifyContract(eContractid.InitializableAdminUpgradeabilityProxy, aTokenProxy, [
+        lendingPoolConfigurator.address,
+      ]);
 
       // Strategy Rate
       console.log(`\n- Verifying Strategy rate...\n`);
@@ -100,10 +101,30 @@ task('verify:tokens', 'Deploy oracles for dev enviroment')
           stableRateSlope2,
         ]
       );
-
-      const stableDebt = await getAddressById(`stableDebt${token}`);
-      const variableDebt = await getAddressById(`variableDebt${token}`);
-      const aToken = await getAddressById(`a${token}`);
+      const stableDebt =
+        '0x' +
+        (
+          await stableDebtTokenProxy.provider.getStorageAt(
+            stableDebtTokenProxy.address,
+            '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc'
+          )
+        ).slice(-40);
+      const variableDebt =
+        '0x' +
+        (
+          await variableDebtTokenProxy.provider.getStorageAt(
+            variableDebtTokenProxy.address,
+            '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc'
+          )
+        ).slice(-40);
+      const aToken =
+        '0x' +
+        (
+          await aTokenProxy.provider.getStorageAt(
+            aTokenProxy.address,
+            '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc'
+          )
+        ).slice(-40);
 
       if (aToken) {
         console.log('\n- Verifying aToken...\n');
