@@ -22,6 +22,7 @@ export const CommonsConfig: ICommonConfiguration = {
   OracleQuoteCurrency: 'HBAR',
   // OracleQuoteUnit: '1000000000000000000',  //JSON-RPC relay msg.value returns 18 decimals and also gasPrice returns 18 decimals
   OracleQuoteUnit: '100000000',
+  SupraPriceFeed: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
   ProtocolGlobalParams: {
     TokenDistributorPercentageBase: '10000',
     MockUsdPriceInWei: '5848466240000000',

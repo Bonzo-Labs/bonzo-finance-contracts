@@ -1,15 +1,32 @@
 // SPDX-License-Identifier: agpl-3.0
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 import './ISupraSValueFeed.sol';
 import {Ownable} from '../../../dependencies/openzeppelin/contracts/UpdatedOwnable.sol';
-import './SelfFunding.sol';
 
-contract SupraOracle is Ownable, SelfFunding {
-  ISupraSValueFeed internal sValueFeed;
+error InvalidAssetOrIndex();
+error UnsupportedAsset();
+error DivisionByZero();
+
+contract SupraOracle is Ownable {
+  ISupraSValueFeed private sValueFeed;
+
+  mapping(address => uint16) private assetToPriceIndex;
+
+  // Known asset addresses as constants for gas efficiency
+  address private constant CLXY = 0x00000000000000000000000000000000000014F5;
+  address private constant HBARX = 0x0000000000000000000000000000000000220cED;
+  address private constant SAUCE = 0x0000000000000000000000000000000000120f46;
+  address private constant DAI = 0x0000000000000000000000000000000000001599;
+  address private constant USDC = 0x0000000000000000000000000000000000001549;
 
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
+    assetToPriceIndex[CLXY] = 424;
+    assetToPriceIndex[HBARX] = 427;
+    assetToPriceIndex[SAUCE] = 425;
+    assetToPriceIndex[DAI] = 432;
+    assetToPriceIndex[USDC] = 432;
   }
 
   function updateSupraSvalueFeed(ISupraSValueFeed _newSValueFeed) external onlyOwner {
@@ -20,38 +37,48 @@ contract SupraOracle is Ownable, SelfFunding {
     return sValueFeed;
   }
 
-  // Check this page for the indices of the pairs: https://supra.com/docs/data-feeds/data-feeds-index
-  function getAssetPrice(address _asset) public view returns (uint256 price) {
-    uint16 priceIndex;
+  function updatePriceIndex(address _asset, uint16 _newIndex) external onlyOwner {
+    if (_asset == address(0) || _newIndex == 0) revert InvalidAssetOrIndex();
+    assetToPriceIndex[_asset] = _newIndex;
+  }
 
-    if (_asset == address(0x00000000000000000000000000000000000014F5)) {
-      priceIndex = 424;
-    } else if (_asset == address(0x0000000000000000000000000000000000220cED)) {
-      priceIndex = 427;
-    } else if (_asset == address(0x0000000000000000000000000000000000120f46)) {
-      priceIndex = 425;
-    } else {
-      revert('SupraOracle: asset not supported');
-    }
+  // Gets the price of an asset in HBAR (not USD)
+  function getAssetPrice(address _asset) public view returns (uint256) {
+    uint16 priceIndex = assetToPriceIndex[_asset];
+    if (priceIndex == 0) revert UnsupportedAsset();
+
     ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
-    price = priceFeed.price;
+
+    // Early return for non-DAI/USDC assets
+    if (_asset != DAI && _asset != USDC) {
+      return priceFeed.price;
+    }
+
+    if (priceFeed.price == 0) revert DivisionByZero();
+
+    // For DAI/USDC, calculate the reciprocal of the HBAR price in USDC
+    // Use a large factor to scale up the numerator before division to maintain precision
+    uint256 scaleFactor = 10 ** decimals(); // Assuming priceFeed.price and your desired result are both scaled to 18 decimal places
+    uint256 reciprocalPrice = (scaleFactor * scaleFactor) / priceFeed.price; // Calculate the reciprocal with scaled precision
+
+    return reciprocalPrice;
   }
 
-  function decimals() public pure returns (uint8) {
-    return 18;
-  }
+  // Gets the price of an asset in USD
+  function getAssetPriceInUSD(address _asset) public view returns (uint256) {
+    uint256 priceInHbar = getAssetPrice(_asset); // This will give us the asset's price in HBAR
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(432); // Index for HBAR to USD
 
-  function getAssetPriceInUSD(address _asset) external returns (uint256) {
-    uint256 price = getAssetPrice(_asset);
+    if (priceFeedUSD.price == 0) revert DivisionByZero();
 
-    uint256 priceInTinyBars = (price * 100_000_000) / (10 ** decimals());
-    uint256 priceInTinycents = tinybarsToTinycents(priceInTinyBars);
-    uint256 priceInUSD = priceInTinycents / 100;
+    // Since getAssetPrice already adjusts DAI and USDC prices to HBAR,
+    // we can use priceInHbar directly for conversion to USD.
+    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals()); // Adjust for decimal places
 
     return priceInUSD;
   }
 
-  function convertTinybarsToTinycents(uint256 tinybars) external returns (uint256 tinycents) {
-    tinycents = tinybarsToTinycents(tinybars);
+  function decimals() public pure returns (uint8) {
+    return 18;
   }
 }

@@ -228,6 +228,13 @@ export const configureReservesByHelper = async (
       borrowingEnabled,
     },
   ] of Object.entries(reservesParams) as [string, IReserveParams][]) {
+    console.log(`- Configuring reserve ${assetSymbol}`);
+    console.log(`  - baseLTVAsCollateral: ${baseLTVAsCollateral}`);
+    console.log(`  - liquidationThreshold: ${liquidationThreshold}`);
+    console.log(`  - liquidationBonus: ${liquidationBonus}`);
+    console.log(`  - reserveFactor: ${reserveFactor}`);
+    console.log(`  - stableBorrowRateEnabled: ${stableBorrowRateEnabled}`);
+    console.log(`  - borrowingEnabled: ${borrowingEnabled}`);
     if (!tokenAddresses[assetSymbol]) {
       console.log(
         `- Skipping init of ${assetSymbol} due token address is not set at markets config`
@@ -266,6 +273,7 @@ export const configureReservesByHelper = async (
     symbols.push(assetSymbol);
   }
   if (tokens.length) {
+    console.log('atokenAndRatesDeployer', atokenAndRatesDeployer.address);
     // Set aTokenAndRatesDeployer as temporal admin
     await waitForTx(await addressProvider.setPoolAdmin(atokenAndRatesDeployer.address));
 
@@ -278,6 +286,9 @@ export const configureReservesByHelper = async (
 
     console.log(`- Configure reserves in ${chunkedInputParams.length} txs`);
     for (let chunkIndex = 0; chunkIndex < chunkedInputParams.length; chunkIndex++) {
+      console.log(`- Configuring chunk ${chunkIndex + 1}/${chunkedInputParams.length}`);
+      console.log('chunkedInputParams[chunkIndex]', chunkedInputParams[chunkIndex]);
+
       await waitForTx(
         await atokenAndRatesDeployer.configureReserves(chunkedInputParams[chunkIndex])
       );

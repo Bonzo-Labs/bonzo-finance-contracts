@@ -1,24 +1,46 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
 
-const oracleAddress = '0x4dFBBca56682dC1Dc7672D98F0dadf6f5818Fea8';
+const oracleAddress = '0x52AbFb3ba878AD1C4Fe174e79506F333Ea4e9689';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
   // Load the contract artifacts
   const contractArtifacts = await hre.artifacts.readArtifact('SupraOracle');
-
   // The ABI is now available as a JavaScript object
   const abi = contractArtifacts.abi;
   const supra = new ethers.Contract(oracleAddress, abi, deployer);
 
-  const price = await supra.getAssetPrice('0x00000000000000000000000000000000000014F5');
-  const decimals = await supra.decimals();
-  console.log('Price of CLXY raw = ', price);
-  const formattedPrice = ethers.utils.formatUnits(price, decimals);
-  console.log('Price of CLXY = ', formattedPrice);
-  const priceInUSD = await supra.getAssetPriceInUSD('0x00000000000000000000000000000000000014F5');
-  console.log('Price of CLXY in USD = ', priceInUSD);
+  const DAI = '0x0000000000000000000000000000000000001599';
+  const USDC = '0x0000000000000000000000000000000000001549';
+  const CLXY = '0x00000000000000000000000000000000000014f5';
+  const HBARX = '0x0000000000000000000000000000000000220ced';
+  const SAUCE = '0x0000000000000000000000000000000000120f46';
+
+  const assetPriceDAI = await supra.getAssetPrice(DAI);
+  console.log('DAI price = ', ethers.utils.formatUnits(assetPriceDAI, 18));
+  const assetPriceDAIUSD = await supra.getAssetPriceInUSD(DAI);
+  console.log('DAI price in USD = ', ethers.utils.formatUnits(assetPriceDAIUSD, 18));
+
+  const assetPriceUSDC = await supra.getAssetPrice(USDC);
+  console.log('USDC price = ', ethers.utils.formatUnits(assetPriceUSDC, 18));
+  const assetPriceUSDCUSD = await supra.getAssetPriceInUSD(USDC);
+  console.log('USDC price in USD = ', ethers.utils.formatUnits(assetPriceUSDCUSD, 18));
+
+  const assetPriceCLXY = await supra.getAssetPrice(CLXY);
+  console.log('CLXY price = ', ethers.utils.formatUnits(assetPriceCLXY, 18));
+  const assetPriceCLXYUSD = await supra.getAssetPriceInUSD(CLXY);
+  console.log('CLXY price in USD = ', ethers.utils.formatUnits(assetPriceCLXYUSD, 18));
+
+  const assetPriceHBARX = await supra.getAssetPrice(HBARX);
+  console.log('HBARX price = ', ethers.utils.formatUnits(assetPriceHBARX, 18));
+  const assetPriceHBARXUSD = await supra.getAssetPriceInUSD(HBARX);
+  console.log('HBARX price in USD = ', ethers.utils.formatUnits(assetPriceHBARXUSD, 18));
+
+  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE);
+  console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
+  const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(SAUCE);
+  console.log('SAUCE price in USD = ', ethers.utils.formatUnits(assetPriceSAUCEUSD, 18));
 }
 
 async function main() {
