@@ -2,27 +2,22 @@ import { task } from 'hardhat/config';
 import {
   loadPoolConfig,
   ConfigNames,
-  getTreasuryAddress,
   getWrappedNativeTokenAddress,
 } from '../../helpers/configuration';
-import { ZERO_ADDRESS } from '../../helpers/constants';
 import {
   getAaveProtocolDataProvider,
-  getAddressById,
-  getLendingPool,
   getLendingPoolAddressesProvider,
   getLendingPoolAddressesProviderRegistry,
-  getLendingPoolCollateralManager,
   getLendingPoolCollateralManagerImpl,
   getLendingPoolConfiguratorImpl,
-  getLendingPoolConfiguratorProxy,
   getLendingPoolImpl,
+  getLendingRateOracle,
   getProxy,
   getWalletProvider,
   getWETHGateway,
 } from '../../helpers/contracts-getters';
 import { verifyContract, getParamPerNetwork } from '../../helpers/contracts-helpers';
-import { notFalsyOrZeroAddress } from '../../helpers/misc-utils';
+import { DbEntry, getDb, notFalsyOrZeroAddress } from '../../helpers/misc-utils';
 import { eContractid, eNetwork, ICommonConfiguration } from '../../helpers/types';
 
 task('verify:general', 'Verify contracts at Etherscan')
@@ -30,11 +25,23 @@ task('verify:general', 'Verify contracts at Etherscan')
   .addParam('pool', `Pool name to retrieve configuration, supported: ${Object.values(ConfigNames)}`)
   .setAction(async ({ all, pool }, localDRE) => {
     await localDRE.run('set-DRE');
+
     const network = localDRE.network.name as eNetwork;
+
+    const db = getDb();
+    const entries = Object.entries<DbEntry>(db.getState()).filter(
+      ([_k, value]) => !!value[network]
+    );
+    for (var entry of entries) {
+      const address = entry[1][network].address;
+      console.log(`\n- Verifying ${entry[0]} at ${address}...\n`);
+      if (address) {
+        await localDRE.run('verify', { address, relatedSources: true });
+      }
+    }
+
     const poolConfig = loadPoolConfig(pool);
     const {
-      ReserveAssets,
-      ReservesConfig,
       ProviderRegistry,
       MarketId,
       LendingPoolCollateralManager,
@@ -42,7 +49,6 @@ task('verify:general', 'Verify contracts at Etherscan')
       LendingPool,
       WethGateway,
     } = poolConfig as ICommonConfiguration;
-    const treasuryAddress = await getTreasuryAddress(poolConfig);
 
     const registryAddress = getParamPerNetwork(ProviderRegistry, network);
     const addressesProvider = await getLendingPoolAddressesProvider();
@@ -57,6 +63,11 @@ task('verify:general', 'Verify contracts at Etherscan')
     const lendingPoolProxy = await getProxy(lendingPoolAddress);
     const lendingPoolConfiguratorProxy = await getProxy(lendingPoolConfiguratorAddress);
     const lendingPoolCollateralManagerProxy = await getProxy(lendingPoolCollateralManagerAddress);
+
+    const lendingRateOracleAddress = getParamPerNetwork(poolConfig.LendingRateOracle, network);
+    const lendingRateOracle = notFalsyOrZeroAddress(lendingRateOracleAddress)
+      ? await getLendingRateOracle(lendingRateOracleAddress)
+      : await getLendingRateOracle();
 
     if (all) {
       const lendingPoolImplAddress = getParamPerNetwork(LendingPool, network);

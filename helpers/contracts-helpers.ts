@@ -25,10 +25,7 @@ import {
 import { MintableERC20 } from '../types/MintableERC20';
 import { Artifact } from 'hardhat/types';
 import { Artifact as BuidlerArtifact } from '@nomiclabs/buidler/types';
-import { verifyEtherscanContract } from './etherscan-verification';
 import { getFirstSigner, getIErc20Detailed } from './contracts-getters';
-import { usingTenderly, verifyAtTenderly } from './tenderly-utils';
-import { usingPolygon, verifyAtPolygon } from './polygon-utils';
 import { ConfigNames, loadPoolConfig } from './configuration';
 import { ZERO_ADDRESS } from './constants';
 import { getDefenderRelaySigner, usingDefender } from './defender-utils';
@@ -392,10 +389,11 @@ export const verifyContract = async (
   instance: Contract,
   args: (string | string[])[]
 ) => {
-  if (usingTenderly()) {
-    await verifyAtTenderly(id, instance);
-  }
-  await verifyEtherscanContract(instance.address, args);
+  await DRE.run('verify', {
+    address: instance.address,
+    relatedSources: true,
+    constructorArgsParams: args,
+  });
   return instance;
 };
 

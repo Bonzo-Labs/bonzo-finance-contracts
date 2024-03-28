@@ -33,6 +33,7 @@ import {
   WETH9MockedFactory,
   WETHGatewayFactory,
   FlashLiquidationAdapterFactory,
+  ValidationLogicFactory,
 } from '../types';
 import { IERC20DetailedFactory } from '../types/IERC20DetailedFactory';
 import { getEthersSigners, MockTokenMap } from './contracts-helpers';
@@ -258,6 +259,15 @@ export const getGenericLogic = async (address?: tEthereumAddress) =>
     address ||
       (
         await getDb().get(`${eContractid.GenericLogic}.${DRE.network.name}`).value()
+      ).address,
+    await getFirstSigner()
+  );
+
+export const getValidationLogic = async (address?: tEthereumAddress) =>
+  await ValidationLogicFactory.connect(
+    address ||
+      (
+        await getDb().get(`${eContractid.ValidationLogic}.${DRE.network.name}`).value()
       ).address,
     await getFirstSigner()
   );

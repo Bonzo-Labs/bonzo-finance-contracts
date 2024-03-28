@@ -1,5 +1,4 @@
 import { task } from 'hardhat/config';
-import { checkVerification } from '../../helpers/etherscan-verification';
 import { ConfigNames } from '../../helpers/configuration';
 import { printContracts } from '../../helpers/misc-utils';
 
@@ -9,11 +8,6 @@ task('aave:dev', 'Deploy development enviroment')
     const POOL_NAME = ConfigNames.Aave;
 
     await localBRE.run('set-DRE');
-
-    // Prevent loss of gas verifying all the needed ENVs for Etherscan verification
-    if (verify) {
-      checkVerification();
-    }
 
     console.log('Migration started\n');
 

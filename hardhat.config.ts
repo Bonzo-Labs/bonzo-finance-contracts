@@ -14,7 +14,6 @@ import { BUIDLEREVM_CHAINID, COVERAGE_CHAINID } from './helpers/buidler-constant
 import {
   NETWORKS_RPC_URL,
   NETWORKS_DEFAULT_GAS,
-  BLOCK_TO_FORK,
   buildForkConfig,
 } from './helper-hardhat-config';
 
@@ -22,23 +21,21 @@ require('dotenv').config();
 
 import '@nomiclabs/hardhat-ethers';
 import '@nomiclabs/hardhat-waffle';
-import '@nomiclabs/hardhat-etherscan';
+import '@nomicfoundation/hardhat-verify';
 
 import 'hardhat-gas-reporter';
 import 'hardhat-typechain';
 import '@tenderly/hardhat-tenderly';
 import 'solidity-coverage';
-import { fork } from 'child_process';
+
 
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true';
 const DEFAULT_BLOCK_GAS_LIMIT = 8000000;
 const DEFAULT_GAS_MUL = 5;
 const HARDFORK = 'istanbul';
-const ETHERSCAN_KEY = process.env.ETHERSCAN_KEY || '';
 const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
-const keys = process.env.PRIVATE_KEY!;
 
 // Prevent to load scripts before compilation and typechain
 if (!SKIP_LOAD) {
@@ -70,8 +67,6 @@ const getCommonNetworkConfig = (networkName: eNetwork, networkId: number) => ({
     count: 20,
   },
 });
-
-let forkMode;
 
 const buidlerConfig: HardhatUserConfig = {
   solidity: {
@@ -107,16 +102,13 @@ const buidlerConfig: HardhatUserConfig = {
     target: 'ethers-v5',
   },
   etherscan: {
-    apiKey: {
-      polygonMumbai: process.env.ETHERSCAN_POLYGON_KEY || '',
-      goerli: process.env.ETHERSCAN_KEY || '',
-      fuji: process.env.ETHERSCAN_SNOWTRACE_KEY || '',
-      mainnet: process.env.ETHERSCAN_KEY || '',
-      polygon: process.env.ETHERSCAN_POLYGON_KEY || '',
-      avalanche: process.env.ETHERSCAN_SNOWTRACE_KEY || '',
-    },
+    enabled: false,
   },
-
+  sourcify: {
+    enabled: true,
+    apiUrl: "https://server-verify.hashscan.io",
+    browserUrl: "https://repository-verify.hashscan.io",
+  },
   mocha: {
     timeout: 0,
   },
@@ -178,13 +170,12 @@ const buidlerConfig: HardhatUserConfig = {
     hedera_testnet: {
       url: 'https://testnet.hashio.io/api',
       chainId: 296,
-      // accounts: {
-      //   mnemonic: MNEMONIC,
-      //   path: MNEMONIC_PATH,
-      //   initialIndex: 0,
-      //   count: 20,
-      // },
-      accounts: [keys],
+      accounts: {
+        mnemonic: MNEMONIC,
+        path: MNEMONIC_PATH,
+        initialIndex: 0,
+        count: 20,
+      },
       timeout: 0,
     },
   },

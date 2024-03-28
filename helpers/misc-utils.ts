@@ -88,7 +88,7 @@ export const chunk = <T>(arr: Array<T>, chunkSize: number): Array<Array<T>> => {
   );
 };
 
-interface DbEntry {
+export interface DbEntry {
   [network: string]: {
     deployer: string;
     address: string;
