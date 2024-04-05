@@ -11,11 +11,7 @@ import {
   eXDaiNetwork,
 } from './helpers/types';
 import { BUIDLEREVM_CHAINID, COVERAGE_CHAINID } from './helpers/buidler-constants';
-import {
-  NETWORKS_RPC_URL,
-  NETWORKS_DEFAULT_GAS,
-  buildForkConfig,
-} from './helper-hardhat-config';
+import { NETWORKS_RPC_URL, NETWORKS_DEFAULT_GAS, buildForkConfig } from './helper-hardhat-config';
 
 require('dotenv').config();
 
@@ -28,7 +24,6 @@ import 'hardhat-typechain';
 import '@tenderly/hardhat-tenderly';
 import 'solidity-coverage';
 
-
 const SKIP_LOAD = process.env.SKIP_LOAD === 'true';
 const DEFAULT_BLOCK_GAS_LIMIT = 8000000;
 const DEFAULT_GAS_MUL = 5;
@@ -36,6 +31,7 @@ const HARDFORK = 'istanbul';
 const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
+const keys = process.env.PRIVATE_KEY!;
 
 // Prevent to load scripts before compilation and typechain
 if (!SKIP_LOAD) {
@@ -106,8 +102,8 @@ const buidlerConfig: HardhatUserConfig = {
   },
   sourcify: {
     enabled: true,
-    apiUrl: "https://server-verify.hashscan.io",
-    browserUrl: "https://repository-verify.hashscan.io",
+    apiUrl: 'https://server-verify.hashscan.io',
+    browserUrl: 'https://repository-verify.hashscan.io',
   },
   mocha: {
     timeout: 0,
@@ -170,12 +166,13 @@ const buidlerConfig: HardhatUserConfig = {
     hedera_testnet: {
       url: 'https://testnet.hashio.io/api',
       chainId: 296,
-      accounts: {
-        mnemonic: MNEMONIC,
-        path: MNEMONIC_PATH,
-        initialIndex: 0,
-        count: 20,
-      },
+      // accounts: {
+      //   mnemonic: MNEMONIC,
+      //   path: MNEMONIC_PATH,
+      //   initialIndex: 0,
+      //   count: 20,
+      // },
+      accounts: [keys],
       timeout: 0,
     },
   },

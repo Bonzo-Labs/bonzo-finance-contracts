@@ -12,6 +12,7 @@ contract SupraOracle is Ownable {
   ISupraSValueFeed private sValueFeed;
 
   mapping(address => uint16) private assetToPriceIndex;
+  mapping(address => uint16) private assetToDecimals;
 
   // Known asset addresses as constants for gas efficiency
   address private constant CLXY = 0x00000000000000000000000000000000000014F5;
@@ -27,6 +28,12 @@ contract SupraOracle is Ownable {
     assetToPriceIndex[SAUCE] = 425;
     assetToPriceIndex[DAI] = 432;
     assetToPriceIndex[USDC] = 432;
+
+    assetToDecimals[CLXY] = 6;
+    assetToDecimals[HBARX] = 8;
+    assetToDecimals[SAUCE] = 6;
+    assetToDecimals[DAI] = 8;
+    assetToDecimals[USDC] = 6;
   }
 
   function updateSupraSvalueFeed(ISupraSValueFeed _newSValueFeed) external onlyOwner {
@@ -40,6 +47,22 @@ contract SupraOracle is Ownable {
   function updatePriceIndex(address _asset, uint16 _newIndex) external onlyOwner {
     if (_asset == address(0) || _newIndex == 0) revert InvalidAssetOrIndex();
     assetToPriceIndex[_asset] = _newIndex;
+  }
+
+  // TODO - remove this function
+  function getPriceFeed(address _asset) external view returns (ISupraSValueFeed.priceFeed memory) {
+    uint16 priceIndex = assetToPriceIndex[_asset];
+    if (priceIndex == 0) revert UnsupportedAsset();
+    return sValueFeed.getSvalue(priceIndex);
+  }
+
+  // TODO - remove this function
+  function getAmountInEth(
+    uint256 amount,
+    address asset
+  ) external view returns (uint256 amountInEth) {
+    uint256 price = getAssetPrice(asset);
+    amountInEth = (price * amount) / (10 ** assetToDecimals[asset]);
   }
 
   // Gets the price of an asset in HBAR (not USD)
@@ -76,6 +99,11 @@ contract SupraOracle is Ownable {
     uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals()); // Adjust for decimal places
 
     return priceInUSD;
+  }
+
+  function getHbarUSD(uint256 _amount) public view returns (uint256 priceInUSD) {
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(432); // Index for HBAR to USD
+    priceInUSD = _amount * priceFeedUSD.price;
   }
 
   function decimals() public pure returns (uint8) {

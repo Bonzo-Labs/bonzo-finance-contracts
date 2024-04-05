@@ -8,7 +8,7 @@ import {
 import { SAUCE, CLXY } from './outputReserveData.json';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 
 async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -30,6 +30,10 @@ async function lendingPool() {
     'VariableDebtToken',
     CLXY.variableDebt.address
   );
+  const lendingPoolAddressesProviderContract = await setupContract(
+    'LendingPoolAddressesProvider',
+    LendingPoolAddressesProvider.hedera_testnet.address
+  );
 
   console.log('Owner:', owner.address);
 
@@ -38,6 +42,13 @@ async function lendingPool() {
   // const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
   // await txn.wait();
   // console.log('Paused after:', await lendingPoolContract.paused());
+
+  // Enable or disable an asset as a collateral
+  const enableTXN = await lendingPoolContract.setUserUseReserveAsCollateral(
+    CLXY.token.address,
+    owner.address
+  );
+  await enableTXN.wait();
 
   // const [isActive, isFrozen, borrowingEnabled, stableRateBorrowingEnabled] =
   //   await lendingPoolContract.getReserveFlags(CLXY.token.address);
@@ -52,18 +63,18 @@ async function lendingPool() {
   // );
   // console.log('Borrow allowance:', borrowAllowance.toString());
 
-  const [
-    userCollateralBalanceETH,
-    userBorrowBalanceETH,
-    currentLtv,
-    currentLiquidationThreshold,
-    healthFactor,
-  ] = await lendingPoolContract.getReserveGenericLogic(SAUCE.token.address);
-  console.log('userCollateralBalanceETH:', userCollateralBalanceETH.toString());
-  console.log('userBorrowBalanceETH:', userBorrowBalanceETH.toString());
-  console.log('currentLtv:', currentLtv.toString());
-  console.log('currentLiquidationThreshold:', currentLiquidationThreshold.toString());
-  console.log('healthFactor:', healthFactor.toString());
+  // const [
+  //   userCollateralBalanceETH,
+  //   userBorrowBalanceETH,
+  //   currentLtv,
+  //   currentLiquidationThreshold,
+  //   healthFactor,
+  // ] = await lendingPoolContract.getReserveGenericLogic(SAUCE.token.address);
+  // console.log('userCollateralBalanceETH:', userCollateralBalanceETH.toString());
+  // console.log('userBorrowBalanceETH:', userBorrowBalanceETH.toString());
+  // console.log('currentLtv:', currentLtv.toString());
+  // console.log('currentLiquidationThreshold:', currentLiquidationThreshold.toString());
+  // console.log('healthFactor:', healthFactor.toString());
 
   // // Step 2 - Need to activate the reserve
   // const txnResponse = await lendingPoolConfiguratorContract.activateReserve(SAUCE.token.address);

@@ -1,7 +1,7 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
 
-const oracleAddress = '0x52AbFb3ba878AD1C4Fe174e79506F333Ea4e9689';
+const oracleAddress = '0x3a2cb5C3B8cdeF583BAa6009587008bc8875585e';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
@@ -41,6 +41,10 @@ async function supraPrices() {
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
   const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(SAUCE);
   console.log('SAUCE price in USD = ', ethers.utils.formatUnits(assetPriceSAUCEUSD, 18));
+
+  const HbarUSD = await supra.getHbarUSD(10);
+  console.log('HBAR price raw =', HbarUSD.toString());
+  console.log('HBAR USD formatted = ', ethers.utils.formatUnits(HbarUSD, 18));
 }
 
 async function main() {
