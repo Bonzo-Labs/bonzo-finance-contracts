@@ -21,7 +21,7 @@ export const strategyDAI: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
-  reserveFactor: '1000',
+  reserveFactor: '2000',
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -34,7 +34,7 @@ export const strategyCLXY: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
-  reserveFactor: '1000',
+  reserveFactor: '2000',
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -47,7 +47,7 @@ export const strategyHBARX: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
-  reserveFactor: '1000',
+  reserveFactor: '2000',
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -60,7 +60,7 @@ export const strategySAUCE: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
-  reserveFactor: '1000',
+  reserveFactor: '2000',
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -73,5 +73,5 @@ export const strategyUSDC: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
-  reserveFactor: '1000',
+  reserveFactor: '2000',
 };

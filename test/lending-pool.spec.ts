@@ -11,12 +11,17 @@ import {
   Client,
 } from '@hashgraph/sdk';
 
-const { LendingPool, LendingPoolAddressesProvider, AaveOracle, LendingPoolConfigurator } =
-  deployedContracts;
-const { SAUCE, CLXY } = outputReserveData;
+const {
+  LendingPool,
+  LendingPoolAddressesProvider,
+  AaveOracle,
+  LendingPoolConfigurator,
+  AaveProtocolDataProvider,
+} = deployedContracts;
+const { SAUCE, CLXY, USDC } = outputReserveData;
 
 let provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-let owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 
 async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -50,11 +55,33 @@ async function approveAndDeposit(
 }
 
 describe('Lending Pool Contract Tests', function () {
-  let lendingPoolContract, aTokenContract, erc20Contract;
+  let lendingPoolContract, aTokenContract, erc20Contract, dataProviderContract;
 
   before(async function () {
     console.log('Owner:', owner.address);
     lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+    dataProviderContract = await setupContract(
+      'AaveProtocolDataProvider',
+      AaveProtocolDataProvider.hedera_testnet.address
+    );
+  });
+
+  it.skip('should toggle an asset as collateral for the user', async function () {
+    // IMP - The reserve should have aToken balance, otherwise the TXN fails
+    const reserve = CLXY.token.address;
+    const userReserveData = await dataProviderContract.getUserReserveData(reserve, owner.address);
+    console.log('User Reserve Data:', userReserveData);
+    if (userReserveData.usageAsCollateralEnabled) {
+      const tx = await lendingPoolContract.setUserUseReserveAsCollateral(reserve, false);
+      await tx.wait();
+      console.log('Transaction hash:', tx.hash);
+    } else {
+      const tx = await lendingPoolContract.setUserUseReserveAsCollateral(reserve, true);
+      await tx.wait();
+      console.log('Transaction hash:', tx.hash);
+    }
+
+    expect(userReserveData.usageAsCollateralEnabled).to.exist;
   });
 
   it.skip('should return reserves list and data for each reserve', async function () {
@@ -70,7 +97,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should deposit SAUCE tokens and get back aTokens', async function () {
-    const depositAmount = 108;
+    const depositAmount = 1;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
     await approveAndDeposit(
       erc20Contract,
@@ -88,7 +115,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should deposit CLXY tokens and get back aTokens', async function () {
-    const depositAmount = 107;
+    const depositAmount = 200;
     const erc20Contract = await setupContract('ERC20Wrapper', CLXY.token.address);
     await approveAndDeposit(
       erc20Contract,
@@ -106,10 +133,11 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should withdraw CLXY tokens and burn aTokens', async function () {
-    const withdrawAmount = 10;
+    let withdrawAmount = 100;
     const aTokenContract = await setupContract('AToken', CLXY.aToken.address);
     const balance = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens before:', balance.toString());
+    withdrawAmount = balance;
 
     const withdrawTxn = await lendingPoolContract.withdraw(
       CLXY.token.address,
@@ -125,7 +153,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should borrow SAUCE tokens and get back variableDebtTokens', async function () {
-    const borrowAmount = 10;
+    const borrowAmount = 1800000;
     const borrowTxn = await lendingPoolContract.borrow(
       SAUCE.token.address,
       borrowAmount,
@@ -142,13 +170,32 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  it('should repay SAUCE tokens and burn variableDebtTokens', async function () {
-    const repayAmount = 10;
-    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
-    const sauceContract = await setupContract('ERC20Wrapper', SAUCE.token.address);
+  it.skip('should borrow SAUCE with a stable rate get back stableDebtTokens', async function () {
+    const borrowAmount = 10;
+    const borrowTxn = await lendingPoolContract.borrow(
+      CLXY.token.address,
+      borrowAmount,
+      1,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const debtTokenContract = await setupContract('StableDebtToken', CLXY.stableDebt.address);
+    const balanceOf = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOf.toString());
+    expect(balanceOf).to.be.gt(0);
+  });
+
+  it.skip('should repay SAUCE tokens and burn variableDebtTokens', async function () {
+    let repayAmount = 10;
+    const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
+    const sauceContract = await setupContract('ERC20Wrapper', USDC.token.address);
 
     const balanceBefore = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract before:', balanceBefore.toString());
+    repayAmount = balanceBefore;
 
     const sauceBalance = await sauceContract.balanceOf(owner.address);
     if (sauceBalance.lt(repayAmount)) throw new Error('Insufficient balance');
@@ -162,7 +209,7 @@ describe('Lending Pool Contract Tests', function () {
     }
 
     const repayTxn = await lendingPoolContract.repay(
-      SAUCE.token.address,
+      USDC.token.address,
       repayAmount,
       2,
       owner.address
