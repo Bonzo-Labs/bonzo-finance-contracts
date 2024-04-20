@@ -1,8 +1,6 @@
 import { expect } from 'chai';
 import hre from "hardhat";
-import outputReserveData from '../../scripts/outputReserveData.json';
-import { getHtsBalance, getTestableTokens, htsApprove, htsTransfer, lendingPoolConfiguratorContract, lendingPoolContract } from './util';
-const { SAUCE, CLXY } = outputReserveData;
+import { getHtsBalance, getTestableTokens, hbarTransfer, htsApprove, htsAssociate, htsTransfer, lendingPoolConfiguratorContract, lendingPoolContract } from './util';
 
 describe('Lending Pool Contract Tests', function () {
 
@@ -38,18 +36,20 @@ describe('Lending Pool Contract Tests', function () {
     const finalBalance = await getHtsBalance(currency, account.address);
     expect(finalBalance).to.eq(originalBalance);
   });
-  it.only('Accepts Deposit and Honors immediate Witdraw from Non Privileged Account', async function () {
+  it('Accepts Deposit and Honors immediate Witdraw from Non Privileged Account', async function () {
     const currency = (await getTestableTokens())[0].tokenAddress;
     const wallet = hre.ethers.Wallet.createRandom().connect(hre.ethers.provider);
     const source = (await hre.ethers.getSigners())[0];
-    await htsTransfer(currency,source,wallet.address,1);
-    // expect(await getHtsBalance(currency, wallet.address)).eq(1);
-    // await htsApprove(currency, 1, lendingPoolContract.address, wallet);
-    // await (await lendingPoolContract.connect(wallet).deposit(currency, 1, wallet.address, 0)).wait();
-    // expect(await getHtsBalance(currency, wallet.address)).eq(0);
-    // await (await lendingPoolContract.connect(wallet).withdraw(currency, 1, wallet.address)).wait();
-    // expect(await getHtsBalance(currency, wallet.address)).eq(1);
-    // await htsTransfer(currency.address,wallet,source.address,1);
-    // expect(await getHtsBalance(currency, wallet.address)).eq(0);    
+    await htsTransfer(currency, source, wallet.address, 1);
+    await hbarTransfer(source, wallet.address, 5_00_000_000);
+    expect(await getHtsBalance(currency, wallet.address)).eq(1);
+    await htsApprove(currency, 1, lendingPoolContract.address, wallet);
+    await (await lendingPoolContract.connect(wallet).deposit(currency, 1, wallet.address, 0)).wait();
+    expect(await getHtsBalance(currency, wallet.address)).eq(0);
+    await (await lendingPoolContract.connect(wallet).withdraw(currency, 1, wallet.address)).wait();
+    expect(await getHtsBalance(currency, wallet.address)).eq(1);
+    await htsTransfer(currency, wallet, source.address, 1);
+    expect(await getHtsBalance(currency, wallet.address)).eq(0);
   });
 });
+
