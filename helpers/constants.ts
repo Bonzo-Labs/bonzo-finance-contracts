@@ -33,9 +33,9 @@ export const AAVE_REFERRAL = '0';
 export const MOCK_CHAINLINK_AGGREGATORS_PRICES = {
   // Update to USD-based price feeds
 
-  DAI: oneEther.multipliedBy('0.00369068412860').toFixed(),
+  KARATE: oneEther.multipliedBy('0.00369068412860').toFixed(),
   USDC: oneEther.multipliedBy('0.00367714136416').toFixed(),
-  CLXY: oneEther.multipliedBy('0.001151').toFixed(),
+  XSAUCE: oneEther.multipliedBy('0.001151').toFixed(),
   HBARX: oneEther.multipliedBy('0.001151').toFixed(),
   SAUCE: oneEther.multipliedBy('0.001151').toFixed(),
 

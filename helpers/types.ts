@@ -227,11 +227,11 @@ export interface iAssetCommon<T> {
   [key: string]: T;
 }
 export interface iAssetBase<T> {
-  DAI: T;
   USDC: T;
-  CLXY: T;
   HBARX: T;
   SAUCE: T;
+  XSAUCE: T;
+  KARATE: T;
 }
 
 export type iAssetsWithoutETH<T> = Omit<iAssetBase<T>, 'ETH'>;
@@ -240,21 +240,21 @@ export type iAssetsWithoutUSD<T> = Omit<iAssetBase<T>, 'USD'>;
 
 export type iAavePoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'DAI' | 'USDC' | 'CLXY' | 'HBARX' | 'SAUCE'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE'
 >;
 
-export type iLpPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
+export type iLpPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
-export type iMaticPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
+export type iMaticPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
 export type iHederaPoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'DAI' | 'USDC' | 'CLXY' | 'HBARX' | 'SAUCE'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE'
 >;
 
-export type iXDAIPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
+export type iXDAIPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
-export type iAvalanchePoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'DAI' | 'USDC'>;
+export type iAvalanchePoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
 export type iMultiPoolsAssets<T> = iAssetCommon<T> | iAavePoolAssets<T>;
 
@@ -263,11 +263,11 @@ export type iAavePoolTokens<T> = Omit<iAavePoolAssets<T>, 'ETH'>;
 export type iAssetAggregatorBase<T> = iAssetsWithoutETH<T>;
 
 export enum TokenContractId {
-  DAI = 'DAI',
   USDC = 'USDC',
-  CLXY = 'CLXY',
   HBARX = 'HBARX',
   SAUCE = 'SAUCE',
+  XSAUCE = 'XSAUCE',
+  KARATE = 'KARATE',
 }
 
 export interface IReserveParams extends IReserveBorrowParams, IReserveCollateralParams {

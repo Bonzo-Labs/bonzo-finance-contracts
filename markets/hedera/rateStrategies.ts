@@ -57,7 +57,7 @@ export const rateStrategyAAVE: IInterestRateStrategyParams = {
   stableRateSlope2: '0',
 };
 
-// CLXY - TODO - Update this
+// KARATE - TODO - Update this
 export const rateStrategyVolatileOne: IInterestRateStrategyParams = {
   name: 'rateStrategyVolatileOne',
   optimalUtilizationRate: new BigNumber(0.45).multipliedBy(oneRay).toFixed(),
@@ -79,7 +79,7 @@ export const rateStrategyVolatileTwo: IInterestRateStrategyParams = {
   stableRateSlope2: new BigNumber(3).multipliedBy(oneRay).toFixed(),
 };
 
-// SAUCE - TODO - Update this
+// XSAUCE, SAUCE - TODO - Update this
 export const rateStrategyVolatileThree: IInterestRateStrategyParams = {
   name: 'rateStrategyVolatileThree',
   optimalUtilizationRate: new BigNumber(0.45).multipliedBy(oneRay).toFixed(),

@@ -12,20 +12,20 @@ import {
 // Reference - https://docs.aave.com/risk/v/aave-v2/liquidity-risk/borrow-interest-rate for the rate strategies
 
 // TODO - Reverse the LTVA and liquidationThreshold values
-export const strategyDAI: IReserveParams = {
-  strategy: rateStrategyStableTwo,
-  baseLTVAsCollateral: '8000',
-  liquidationThreshold: '8001',
+export const strategyXSAUCE: IReserveParams = {
+  strategy: rateStrategyVolatileOne,
+  baseLTVAsCollateral: '5000',
+  liquidationThreshold: '5001',
   liquidationBonus: '10500',
   borrowingEnabled: true,
   stableBorrowRateEnabled: true,
-  reserveDecimals: '8',
+  reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
-export const strategyCLXY: IReserveParams = {
+export const strategyKARATE: IReserveParams = {
   strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '5000',
   liquidationThreshold: '5001',
