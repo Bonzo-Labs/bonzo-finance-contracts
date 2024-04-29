@@ -15,24 +15,24 @@ contract SupraOracle is Ownable {
   mapping(address => uint16) private assetToDecimals;
 
   // Known asset addresses as constants for gas efficiency
-  address private constant CLXY = 0x00000000000000000000000000000000000014F5;
+  address private constant KARATE = 0x00000000000000000000000000000000003991eD;
   address private constant HBARX = 0x0000000000000000000000000000000000220cED;
   address private constant SAUCE = 0x0000000000000000000000000000000000120f46;
-  address private constant DAI = 0x0000000000000000000000000000000000001599;
+  address private constant XSAUCE = 0x000000000000000000000000000000000015a59b;
   address private constant USDC = 0x0000000000000000000000000000000000001549;
 
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
-    assetToPriceIndex[CLXY] = 424;
+    assetToPriceIndex[KARATE] = 331;
     assetToPriceIndex[HBARX] = 427;
     assetToPriceIndex[SAUCE] = 425;
-    assetToPriceIndex[DAI] = 432;
+    assetToPriceIndex[XSAUCE] = 426;
     assetToPriceIndex[USDC] = 432;
 
-    assetToDecimals[CLXY] = 6;
+    assetToDecimals[KARATE] = 8;
     assetToDecimals[HBARX] = 8;
     assetToDecimals[SAUCE] = 6;
-    assetToDecimals[DAI] = 8;
+    assetToDecimals[XSAUCE] = 6;
     assetToDecimals[USDC] = 6;
   }
 
@@ -72,14 +72,14 @@ contract SupraOracle is Ownable {
 
     ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
 
-    // Early return for non-DAI/USDC assets
-    if (_asset != DAI && _asset != USDC) {
+    // Early return for non-USDC assets
+    if (_asset != USDC) {
       return priceFeed.price;
     }
 
     if (priceFeed.price == 0) revert DivisionByZero();
 
-    // For DAI/USDC, calculate the reciprocal of the HBAR price in USDC
+    // For USDC, calculate the reciprocal of the HBAR price in USDC
     // Use a large factor to scale up the numerator before division to maintain precision
     uint256 scaleFactor = 10 ** decimals(); // Assuming priceFeed.price and your desired result are both scaled to 18 decimal places
     uint256 reciprocalPrice = (scaleFactor * scaleFactor) / priceFeed.price; // Calculate the reciprocal with scaled precision
@@ -94,7 +94,7 @@ contract SupraOracle is Ownable {
 
     if (priceFeedUSD.price == 0) revert DivisionByZero();
 
-    // Since getAssetPrice already adjusts DAI and USDC prices to HBAR,
+    // Since getAssetPrice already adjusts USDC prices to HBAR,
     // we can use priceInHbar directly for conversion to USD.
     uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals()); // Adjust for decimal places
 
