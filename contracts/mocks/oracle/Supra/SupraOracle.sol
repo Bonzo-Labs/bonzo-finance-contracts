@@ -23,7 +23,7 @@ contract SupraOracle is Ownable {
 
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
-    assetToPriceIndex[KARATE] = 331;
+    assetToPriceIndex[KARATE] = 472;
     assetToPriceIndex[HBARX] = 427;
     assetToPriceIndex[SAUCE] = 425;
     assetToPriceIndex[XSAUCE] = 426;
