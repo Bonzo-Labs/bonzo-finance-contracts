@@ -34,6 +34,19 @@ export const strategyKARATE: IReserveParams = {
   stableBorrowRateEnabled: true,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
+  reserveFactor: '2001',
+};
+
+// TODO - Reverse the LTVA and liquidationThreshold values
+export const strategyCLXY: IReserveParams = {
+  strategy: rateStrategyVolatileOne,
+  baseLTVAsCollateral: '5000',
+  liquidationThreshold: '5001',
+  liquidationBonus: '10500',
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: true,
+  reserveDecimals: '8',
+  aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
 };
 

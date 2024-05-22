@@ -1,25 +1,18 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
+import { LendingPool, LendingPoolConfigurator } from '../outputReserveData.json';
 import {
-  USDC,
-  SAUCE,
-  KARATE,
-  HBARX,
-  XSAUCE,
-  LendingPool,
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-  rateStrategyVolatileOne,
-  rateStrategyStableThree,
-} from '../outputReserveData.json';
-import HederaConfig from '../../markets/hedera/index';
+  strategyKARATE,
+  strategyCLXY,
+  strategyHBARX,
+  strategySAUCE,
+  strategyUSDC,
+  strategyXSAUCE,
+} from '../../markets/hedera/reservesConfigs';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
 const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
-
-export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -27,79 +20,27 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 const assetConfigurations = {
-  '0x0000000000000000000000000000000000001549': {
-    aTokenImpl: USDC.aToken.address,
-    stableDebtTokenImpl: USDC.stableDebt.address,
-    variableDebtTokenImpl: USDC.variableDebt.address,
-    underlyingAssetDecimals: 6,
-    interestRateStrategyAddress: rateStrategyStableThree.hedera_testnet.address,
-    underlyingAssetName: 'USDC',
-    underlyingAssetAddress: USDC.token.address,
-  },
-  '0x0000000000000000000000000000000000120f46': {
-    aTokenImpl: SAUCE.aToken.address,
-    stableDebtTokenImpl: SAUCE.stableDebt.address,
-    variableDebtTokenImpl: SAUCE.variableDebt.address,
-    underlyingAssetDecimals: 6,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'SAUCE',
-    underlyingAssetAddress: SAUCE.token.address,
+  '0x00000000000000000000000000000000003991ed': {
+    strategy: strategyKARATE,
   },
   '0x0000000000000000000000000000000000220ced': {
-    aTokenImpl: HBARX.aToken.address,
-    stableDebtTokenImpl: HBARX.stableDebt.address,
-    variableDebtTokenImpl: HBARX.variableDebt.address,
-    underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'HBARX',
-    underlyingAssetAddress: HBARX.token.address,
+    strategy: strategyHBARX,
   },
-  '0x00000000000000000000000000000000003991eD': {
-    aTokenImpl: KARATE.aToken.address,
-    stableDebtTokenImpl: KARATE.stableDebt.address,
-    variableDebtTokenImpl: KARATE.variableDebt.address,
-    underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'KARATE',
-    underlyingAssetAddress: KARATE.token.address,
+  '0x0000000000000000000000000000000000120f46': {
+    strategy: strategySAUCE,
   },
   '0x000000000000000000000000000000000015a59b': {
-    aTokenImpl: XSAUCE.aToken.address,
-    stableDebtTokenImpl: XSAUCE.stableDebt.address,
-    variableDebtTokenImpl: XSAUCE.variableDebt.address,
-    underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'XSAUCE',
-    underlyingAssetAddress: XSAUCE.token.address,
+    strategy: strategyXSAUCE,
+  },
+  '0x0000000000000000000000000000000000001549': {
+    strategy: strategyUSDC,
+  },
+  '0x00000000000000000000000000000000000014f5': {
+    strategy: strategyCLXY,
   },
 };
 
-// Define the type for reserve parameters
-type ReserveParams = {
-  aTokenImpl: string;
-  stableDebtTokenImpl: string;
-  variableDebtTokenImpl: string;
-  underlyingAssetDecimals: number;
-  interestRateStrategyAddress: string;
-  underlyingAsset: string;
-  treasury: string;
-  incentivesController: any;
-  underlyingAssetName: string;
-  aTokenName: string;
-  aTokenSymbol: string;
-  variableDebtTokenName: string;
-  variableDebtTokenSymbol: string;
-  stableDebtTokenName: string;
-  stableDebtTokenSymbol: string;
-  params: string;
-};
-
-// Array to hold reserve parameters
-const reserveParamsArray: ReserveParams[] = [];
-
-async function updateReserve(tokenAddress: string) {
-  const [deployer] = await ethers.getSigners();
-
+async function updateReserveFactor(tokenAddress: string) {
   const lendingPoolContract = await setupContract(
     'LendingPool',
     LendingPool.hedera_testnet.address
@@ -108,69 +49,77 @@ async function updateReserve(tokenAddress: string) {
     'LendingPoolConfigurator',
     LendingPoolConfigurator.hedera_testnet.address
   );
-  const lendingPoolAddressesProviderContract = await setupContract(
-    'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
+
+  console.log('Owner:', owner.address);
+
+  const strategy = assetConfigurations[tokenAddress].strategy;
+  const updateTxn = await lendingPoolConfiguratorContract.setReserveFactor(
+    tokenAddress,
+    strategy.reserveFactor
   );
-  const dataProviderContract = await setupContract(
-    'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_testnet.address
+  await updateTxn.wait();
+  console.log('Reserve factor updated');
+
+  const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
+  console.log('Reserve data:', reserveData);
+}
+
+async function updateLTVs(tokenAddress: string) {
+  const lendingPoolContract = await setupContract(
+    'LendingPool',
+    LendingPool.hedera_testnet.address
+  );
+  const lendingPoolConfiguratorContract = await setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_testnet.address
   );
 
   console.log('Owner:', owner.address);
 
-  const initReserveInput = assetConfigurations[tokenAddress];
-  if (!initReserveInput) {
-    throw new Error(`Configuration for token address ${tokenAddress} not found`);
-  }
+  const strategy = assetConfigurations[tokenAddress].strategy;
+  const updateTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
+    tokenAddress,
+    strategy.baseLTVAsCollateral,
+    strategy.liquidationThreshold,
+    strategy.liquidationBonus
+  );
+  await updateTxn.wait();
+  console.log('Reserve factor updated');
 
-  const {
-    aTokenImpl,
-    stableDebtTokenImpl,
-    variableDebtTokenImpl,
-    underlyingAssetDecimals,
-    interestRateStrategyAddress,
-    underlyingAssetName,
-    underlyingAssetAddress,
-  } = initReserveInput;
+  const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
+  console.log('Reserve data:', reserveData);
+}
 
-  const reserveParams: ReserveParams = {
-    aTokenImpl,
-    stableDebtTokenImpl,
-    variableDebtTokenImpl,
-    underlyingAssetDecimals,
-    interestRateStrategyAddress,
-    underlyingAsset: underlyingAssetAddress,
-    treasury: deployer.address,
-    incentivesController: HederaConfig.IncentivesController.hedera_testnet,
-    underlyingAssetName,
-    aTokenName: `${HederaConfig.ATokenNamePrefix}${underlyingAssetName}`,
-    aTokenSymbol: `a${underlyingAssetName}`,
-    variableDebtTokenName: `${HederaConfig.VariableDebtTokenNamePrefix}${underlyingAssetName}`,
-    variableDebtTokenSymbol: `variableDebt${underlyingAssetName}`,
-    stableDebtTokenName: `${HederaConfig.StableDebtTokenNamePrefix}${underlyingAssetName}`,
-    stableDebtTokenSymbol: `stableDebt${underlyingAssetName}`,
-    params: '0x10',
-  };
+async function updateRateStrategy(tokenAddress: string, rateStrategyAddress: any) {
+  const lendingPoolContract = await setupContract(
+    'LendingPool',
+    LendingPool.hedera_testnet.address
+  );
+  const lendingPoolConfiguratorContract = await setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_testnet.address
+  );
 
-  // const poolReserve = await lendingPoolContract.getReserveData(tokenAddress);
+  console.log('Owner:', owner.address);
 
-  reserveParamsArray.push(reserveParams);
+  const updateTxn = await lendingPoolConfiguratorContract.setReserveInterestRateStrategyAddress(
+    tokenAddress,
+    rateStrategyAddress
+  );
+  await updateTxn.wait();
+  console.log('Rate strategy updated');
 
-  console.log('Reserve params array:', reserveParamsArray);
-  // console.log('Lending pool configurator contract', lendingPoolConfiguratorContract);
-  await lendingPoolConfiguratorContract.batchInitReserve(reserveParamsArray);
-  console.log('Reserve initialized for token address:', tokenAddress);
-
-  // if (poolReserve.aTokenAddress !== ZERO_ADDRESS) {
-  //   console.log(`- Skipping init of ${tokenAddress} because is already initialized`);
-  // } else {
-  // }
+  const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
+  console.log('Reserve data:', reserveData);
 }
 
 async function main() {
-  await updateReserve('0x0000000000000000000000000000000000120f46');
-  console.log(reserveParamsArray);
+  // await updateReserveFactor('0x00000000000000000000000000000000003991ed');
+  // await updateLTVs('0x00000000000000000000000000000000003991ed');
+  await updateRateStrategy(
+    '0x00000000000000000000000000000000003991ed',
+    '0x2809440753c754a55C0E64F3b2bdBA32A3916408'
+  );
 }
 
 main()

@@ -2,7 +2,7 @@ import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
 import { LendingPool } from './outputReserveData.json';
 
-const oracleAddress = '0xB09f2276b26E890b363355a07Fe5c29D30C1e832';
+const oracleAddress = '0x9fc8AF2c8365e96079A1358690C4039ec28d23e4';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
@@ -22,10 +22,9 @@ async function supraPrices() {
 
   // const DAI = '0x0000000000000000000000000000000000001599';
   const USDC = '0x0000000000000000000000000000000000001549';
-  // const CLXY = '0x00000000000000000000000000000000000014f5';
   const HBARX = '0x0000000000000000000000000000000000220ced';
   const SAUCE = '0x0000000000000000000000000000000000120f46';
-  const KARATE = '0x00000000000000000000000000000000003991ed';
+  const KARATE = '0x00000000000000000000000000000000003991eD';
 
   // const assetPriceDAI = await supra.getAssetPrice(DAI);
   // console.log('DAI price = ', ethers.utils.formatUnits(assetPriceDAI, 18));
@@ -36,11 +35,6 @@ async function supraPrices() {
   // console.log('USDC price = ', ethers.utils.formatUnits(assetPriceUSDC, 18));
   // const assetPriceUSDCUSD = await supra.getAssetPriceInUSD(USDC);
   // console.log('USDC price in USD = ', ethers.utils.formatUnits(assetPriceUSDCUSD, 18));
-
-  // const assetPriceCLXY = await supra.getAssetPrice(CLXY);
-  // console.log('CLXY price = ', ethers.utils.formatUnits(assetPriceCLXY, 18));
-  // const assetPriceCLXYUSD = await supra.getAssetPriceInUSD(CLXY);
-  // console.log('CLXY price in USD = ', ethers.utils.formatUnits(assetPriceCLXYUSD, 18));
 
   // const assetPriceHBARX = await supra.getAssetPrice(HBARX);
   // console.log('HBARX price = ', ethers.utils.formatUnits(assetPriceHBARX, 18));

@@ -15,8 +15,8 @@ import { ICommonConfiguration, eHederaNetwork } from '../../helpers/types';
 export const CommonsConfig: ICommonConfiguration = {
   MarketId: 'Commons',
   ATokenNamePrefix: 'Bonzo aToken',
-  StableDebtTokenNamePrefix: 'Bonzo stable debt ',
-  VariableDebtTokenNamePrefix: 'Bonzo variable debt ',
+  StableDebtTokenNamePrefix: 'Bonzo Stable Debt ',
+  VariableDebtTokenNamePrefix: 'Bonzo Variable Debt ',
   SymbolPrefix: 'm',
   ProviderId: 0, // Overriden in index.ts
   OracleQuoteCurrency: 'HBAR',

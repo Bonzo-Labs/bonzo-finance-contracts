@@ -7,6 +7,7 @@ import {
   strategyUSDC,
   strategyHBARX,
   strategySAUCE,
+  strategyCLXY,
 } from './reservesConfigs';
 
 // ----------------
@@ -23,6 +24,7 @@ export const HederaConfig: IHederaConfiguration = {
     KARATE: strategyKARATE,
     HBARX: strategyHBARX,
     SAUCE: strategySAUCE,
+    CLXY: strategyCLXY,
   },
   ReserveAssets: {
     [eHederaNetwork.hedera_testnet]: {
@@ -31,6 +33,7 @@ export const HederaConfig: IHederaConfiguration = {
       SAUCE: '0x0000000000000000000000000000000000120f46',
       XSAUCE: '0x000000000000000000000000000000000015a59b',
       KARATE: '0x00000000000000000000000000000000003991ed',
+      CLXY: '0x00000000000000000000000000000000000014f5',
     },
     [eHederaNetwork.mainnet]: {
       USDC: '',
@@ -38,6 +41,7 @@ export const HederaConfig: IHederaConfiguration = {
       SAUCE: '',
       XSAUCE: '',
       KARATE: '',
+      CLXY: '',
     },
   },
 };
