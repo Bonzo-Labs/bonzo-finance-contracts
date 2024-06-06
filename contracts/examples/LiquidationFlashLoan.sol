@@ -36,7 +36,11 @@ contract LiquidationFlashLoan is FlashLoanReceiverBase {
     // This contract now has the funds requested.
     // Your logic goes here.
     //
-    IERC20(assets[0]).transfer(0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103, 1);
+    (address _collateral, address _reserve, address _user, uint256 _amount) = abi.decode(
+      params,
+      (address, address, address, uint256)
+    );
+    _liquidate(_collateral, _reserve, _user, _amount);
 
     // At the end of your logic above, this contract owes
     // the flashloaned amounts + premiums.
@@ -50,6 +54,23 @@ contract LiquidationFlashLoan is FlashLoanReceiverBase {
     }
 
     return true;
+  }
+
+  function _liquidate(
+    address _collateral,
+    address _reserve,
+    address _user,
+    uint256 _amount
+  ) private {
+    // Approve the asset to the Lending Pool
+    IERC20(_collateral).approve(address(LENDING_POOL), _amount);
+    // Call the liquidate function
+    LENDING_POOL.liquidationCall(_collateral, _reserve, _user, _amount, false);
+
+    // // Get the balance of the collateral in this contract
+    // uint256 balanceAfter = IERC20(_collateral).balanceOf(address(this));
+    // // Transfer the collateral to the liquidator
+    // IERC20(_collateral).transfer(_liquidator, balanceAfter);
   }
 
   /**
@@ -66,24 +87,26 @@ contract LiquidationFlashLoan is FlashLoanReceiverBase {
     }
   }
 
-  function myFlashLoanCall() public {
+  function myFlashLoanCall(
+    address _collateral,
+    address _reserve,
+    address _user,
+    uint256 _amount
+  ) public {
     address receiverAddress = address(this);
 
-    address[] memory assets = new address[](2);
-    assets[0] = address(0x0000000000000000000000000000000000120f46); // SAUCE
-    assets[1] = address(0x00000000000000000000000000000000000014F5); // CLXY
+    address[] memory assets = new address[](1);
+    assets[0] = address(_reserve);
 
-    uint256[] memory amounts = new uint256[](2);
-    amounts[0] = 10;
-    amounts[1] = 10;
+    uint256[] memory amounts = new uint256[](1);
+    amounts[0] = _amount;
 
     // 0 = no debt, 1 = stable, 2 = variable
-    uint256[] memory modes = new uint256[](2);
+    uint256[] memory modes = new uint256[](1);
     modes[0] = 0;
-    modes[1] = 0;
 
     address onBehalfOf = address(this);
-    bytes memory params = '';
+    bytes memory params = abi.encode(_collateral, _reserve, _user, _amount);
     uint16 referralCode = 0;
 
     LENDING_POOL.flashLoan(

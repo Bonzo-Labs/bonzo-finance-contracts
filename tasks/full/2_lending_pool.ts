@@ -89,6 +89,9 @@ task('full:deploy-lending-pool', 'Deploy lending pool for dev enviroment')
         verify
       );
       await deployATokenImplementations(pool, poolConfig.ReservesConfig, verify);
+
+      // TODO - make sure that this works properly as intended
+      await waitForTx(await lendingPoolConfiguratorProxy.connect(admin).setPoolPause(false));
     } catch (error) {
       if (DRE.network.name.includes('tenderly')) {
         const transactionLink = `https://dashboard.tenderly.co/${DRE.config.tenderly.username}/${
