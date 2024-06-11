@@ -1,30 +1,38 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
-import { LendingPool } from './outputReserveData.json';
+import {
+  LendingPool,
+  AaveProtocolDataProvider,
+} from './outputReserveData.json';
+import { KARATE } from './outputReserveData.json';
+const { BigNumber } = require('ethers');
 
-const oracleAddress = '0x9fc8AF2c8365e96079A1358690C4039ec28d23e4';
+const oracleAddress = '0x4A2e698D8b06EA05fCc3Ff7B9ea23296b3156a9e';
+
+const provider = new ethers.providers.JsonRpcProvider(
+  'https://testnet.hashio.io/api'
+);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+
+async function setupContract(artifactName: string, contractAddress: string) {
+  const artifact = await hre.artifacts.readArtifact(artifactName);
+  return new ethers.Contract(contractAddress, artifact.abi, owner);
+}
+
+// const DAI = '0x0000000000000000000000000000000000001599';
+const USDC = '0x0000000000000000000000000000000000001549';
+const HBARX = '0x0000000000000000000000000000000000220ced';
+const SAUCE = '0x0000000000000000000000000000000000120f46';
+const WHBAR = '0x0000000000000000000000000000000000003ad2';
+// const KARATE = '0x00000000000000000000000000000000003991eD';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
-  // Load the contract artifacts
-  const contractArtifacts = await hre.artifacts.readArtifact('SupraOracle');
-  // The ABI is now available as a JavaScript object
-  const abi = contractArtifacts.abi;
-  const supra = new ethers.Contract(oracleAddress, abi, deployer);
-
-  const lendingPoolArtifact = await hre.artifacts.readArtifact('LendingPool');
-  const lendingPoolABI = lendingPoolArtifact.abi;
-  const lendingPoolContract = new ethers.Contract(
-    LendingPool.hedera_testnet.address,
-    lendingPoolABI,
-    deployer
+  const supra = await setupContract('SupraOracle', oracleAddress);
+  const lendingPoolContract = await setupContract(
+    'LendingPool',
+    LendingPool.hedera_testnet.address
   );
-
-  // const DAI = '0x0000000000000000000000000000000000001599';
-  const USDC = '0x0000000000000000000000000000000000001549';
-  const HBARX = '0x0000000000000000000000000000000000220ced';
-  const SAUCE = '0x0000000000000000000000000000000000120f46';
-  const KARATE = '0x00000000000000000000000000000000003991eD';
 
   // const assetPriceDAI = await supra.getAssetPrice(DAI);
   // console.log('DAI price = ', ethers.utils.formatUnits(assetPriceDAI, 18));
@@ -44,23 +52,72 @@ async function supraPrices() {
   const assetPriceSAUCE = await supra.getAssetPrice(SAUCE);
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
   const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(SAUCE);
-  console.log('SAUCE price in USD = ', ethers.utils.formatUnits(assetPriceSAUCEUSD, 18));
+  console.log(
+    'SAUCE price in USD = ',
+    ethers.utils.formatUnits(assetPriceSAUCEUSD, 18)
+  );
 
-  const assetPriceKARATE = await supra.getAssetPrice(KARATE);
-  console.log('KARATE price = ', ethers.utils.formatUnits(assetPriceKARATE, 18));
-  const assetPriceKARATEUSD = await supra.getAssetPriceInUSD(KARATE);
-  console.log('KARATE price in USD = ', ethers.utils.formatUnits(assetPriceKARATEUSD, 18));
-
-  // const karatePriceFromLP = await lendingPoolContract.getAmountInEth(KARATE, 1);
-  // console.log('KARATE price from LP = ', ethers.utils.formatUnits(karatePriceFromLP, 18));
+  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR);
+  console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
+  const assetPriceWHBARUSD = await supra.getAssetPriceInUSD(WHBAR);
+  console.log(
+    'WHBAR price in USD = ',
+    ethers.utils.formatUnits(assetPriceWHBARUSD, 18)
+  );
 
   // const HbarUSD = await supra.getHbarUSD(10);
   // console.log('HBAR price raw =', HbarUSD.toString());
   // console.log('HBAR USD formatted = ', ethers.utils.formatUnits(HbarUSD, 18));
 }
 
+async function getCollateralTokens() {
+  const oracleContract = await setupContract('SupraOracle', oracleAddress);
+  const aTokenContract = await setupContract('AToken', KARATE.aToken.address);
+  const lendingPoolContract = await setupContract(
+    'LendingPool',
+    LendingPool.hedera_testnet.address
+  );
+  const dataProviderContract = await setupContract(
+    'AaveProtocolDataProvider',
+    AaveProtocolDataProvider.hedera_testnet.address
+  );
+
+  // Example configuration value from your data
+  const configurationValue = BigNumber.from('36912873374162650469256');
+
+  // Extract bits 48-55 (8 bits) for decimals
+  const decimalBits = configurationValue.shr(48).and(0xff).toNumber();
+
+  console.log(`Decimals: ${decimalBits}`);
+
+  // const numTokens = await aTokenContract.balanceOf(owner.address);
+  // console.log('Number of tokens = ', ethers.utils.formatUnits(numTokens, 8));
+  // const tokenValueETH = await oracleContract.getAmountInEth(numTokens, KARATE.token.address);
+  // console.log('Token value in ETH from Oracle = ', ethers.utils.formatUnits(tokenValueETH, 18));
+
+  // const tokenValueETHLP = await lendingPoolContract.getAmountInEth(numTokens, KARATE.token.address);
+  // console.log('Token value in ETH from LP = ', ethers.utils.formatUnits(tokenValueETHLP, 18));
+
+  // const karatePrice = await oracleContract.getAssetPrice(KARATE.token.address);
+  // console.log('KARATE price = ', ethers.utils.formatUnits(karatePrice, 18));
+  // const realValue = Number(ethers.utils.formatUnits(numTokens, 8)) * karatePrice;
+  // console.log('Real value = ', ethers.utils.formatUnits(realValue, 18));
+
+  // const userAccountData = await lendingPoolContract.getUserAccountData(owner.address);
+  // console.log(
+  //   'User total collateral ETH = ',
+  //   ethers.utils.formatUnits(userAccountData.totalCollateralETH, 18)
+  // );
+
+  // const userReserveData = await lendingPoolContract.getReserveData(
+  //   '0x00000000000000000000000000000000003991ed'
+  // );
+  // console.log('Karate reserve data = ', userReserveData);
+}
+
 async function main() {
   await supraPrices();
+  // await getCollateralTokens();
 }
 
 main()

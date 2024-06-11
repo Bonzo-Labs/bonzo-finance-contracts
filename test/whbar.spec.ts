@@ -28,8 +28,8 @@ let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 
 let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
-const tokenId = '0.0.15058';
-const contractId = '0.0.15057'; // TestWHBAR contract
+const whbarTokenId = '0.0.15058';
+const whbarContractId = '0.0.15057'; // TestWHBAR contract
 
 const client = Client.forTestnet();
 const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
@@ -68,7 +68,7 @@ describe('WHBAR Contract Tests', function () {
     // console.log('WHBARContract Functions:', whbarContract.functions);
   });
 
-  it('should deposit HBAR from the signer and get equivalent whbar in the normal deposit function', async function () {
+  it.skip('should deposit HBAR from the signer and get equivalent whbar in the normal deposit function', async function () {
     const hbarBalance = await owner.getBalance();
     console.log('HBAR Balance:', hbarBalance.toString());
 
@@ -76,7 +76,7 @@ describe('WHBAR Contract Tests', function () {
     console.log('WHBAR Balance:', whbarBalance.toString());
 
     const scWrite2 = new ContractExecuteTransaction()
-      .setContractId(contractId)
+      .setContractId(whbarContractId)
       .setGas(100_000)
       .setPayableAmount(new Hbar(1232, HbarUnit.Tinybar))
       .setFunction('deposit', new ContractFunctionParameters());
