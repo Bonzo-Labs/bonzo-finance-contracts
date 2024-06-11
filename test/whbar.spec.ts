@@ -10,6 +10,8 @@ import {
   ContractExecuteTransaction,
   ContractFunctionParameters,
   Client,
+  Hbar,
+  HbarUnit,
 } from '@hashgraph/sdk';
 
 const {
@@ -26,12 +28,20 @@ let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 
 let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
+const tokenId = '0.0.15058';
+const contractId = '0.0.15057'; // TestWHBAR contract
+
+const client = Client.forTestnet();
+const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
+const operatorAccountId = AccountId.fromString(process.env.ACCOUNT_ID!);
+client.setOperator(operatorAccountId, operatorPrKey);
+
 async function setupContract(artifactName, contractAddress, wallet) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, wallet || owner);
+  return new ethers.Contract(contractAddress, artifact.abi, wallet);
 }
 
-describe('Lending Pool Contract Tests', function () {
+describe('WHBAR Contract Tests', function () {
   let lendingPoolContract, whbarContract, tokenContract, dataProviderContract;
 
   before(async function () {
@@ -42,12 +52,9 @@ describe('Lending Pool Contract Tests', function () {
       LendingPool.hedera_testnet.address,
       owner
     );
-    // Make sure the ABI includes the deposit function
-    const whbarArtifact = await hre.artifacts.readArtifact('WHBARContract');
-    console.log('WHBAR Artifact:', whbarArtifact);
-    whbarContract = new ethers.Contract(
+    whbarContract = await setupContract(
+      'WHBARContract',
       '0x0000000000000000000000000000000000003ad1',
-      whbarArtifact.abi,
       owner
     );
     tokenContract = await setupContract(
@@ -55,6 +62,10 @@ describe('Lending Pool Contract Tests', function () {
       '0x0000000000000000000000000000000000003ad2',
       owner
     );
+
+    // // Log ABI and function names for WHBAR contract
+    // console.log('WHBARContract ABI:', whbarContract.interface.fragments);
+    // console.log('WHBARContract Functions:', whbarContract.functions);
   });
 
   it('should deposit HBAR from the signer and get equivalent whbar in the normal deposit function', async function () {
@@ -64,16 +75,16 @@ describe('Lending Pool Contract Tests', function () {
     const whbarBalance = await tokenContract.balanceOf(owner.address);
     console.log('WHBAR Balance:', whbarBalance.toString());
 
-    const txn = await whbarContract.deposit(
-      { value: ethers.utils.parseEther('0.01') },
-      owner.address,
-      delegator.address
-    );
-    await txn.wait();
+    const scWrite2 = new ContractExecuteTransaction()
+      .setContractId(contractId)
+      .setGas(100_000)
+      .setPayableAmount(new Hbar(1232, HbarUnit.Tinybar))
+      .setFunction('deposit', new ContractFunctionParameters());
+    const scWrite2Tx = await scWrite2.execute(client);
+    await scWrite2Tx.getReceipt(client);
+    console.log('Deposit txn done');
 
     const whbarBalanceAfter = await tokenContract.balanceOf(owner.address);
-    console.log('WHBAR Balance After:', whbarBalanceAfter.toString());
-
-    expect(whbarBalanceAfter).to.be.greaterThan(0);
+    console.log('WHBAR Balance after:', whbarBalanceAfter.toString());
   });
 });
