@@ -279,7 +279,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
-  ) external override whenNotPaused returns (uint256) {
+  ) external payable override whenNotPaused returns (uint256) {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(onBehalfOf, reserve);
@@ -322,7 +322,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _usersConfig[onBehalfOf].setBorrowing(reserve.id, false);
     }
 
-    IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
+    if (asset == address(_whbarToken)) {
+      require(msg.value == paybackAmount, 'Invalid amount of HBAR sent');
+      // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
+      IWHBAR(_whbarContract).deposit{value: paybackAmount}(msg.sender, aToken);
+    } else {
+      IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
+    }
 
     IAToken(aToken).handleRepayment(msg.sender, paybackAmount);
 
@@ -1015,6 +1021,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
     if (vars.asset == address(_whbarToken)) {
+      //   IWHBAR(_whbarContract).withdraw(msg.sender, vars.onBehalfOf, vars.amount);
       IWHBAR(_whbarContract).withdraw(msg.sender, vars.onBehalfOf, vars.amount);
     }
 

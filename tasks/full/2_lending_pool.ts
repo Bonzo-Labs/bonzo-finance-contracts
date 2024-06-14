@@ -39,6 +39,8 @@ task('full:deploy-lending-pool', 'Deploy lending pool for dev enviroment')
       if (!notFalsyOrZeroAddress(lendingPoolImplAddress)) {
         console.log('\tDeploying new lending pool implementation & libraries...');
         const lendingPoolImpl = await deployLendingPool(verify);
+        // Sleep for 5 seconds to wait for the tx to be mined
+        await new Promise((resolve) => setTimeout(resolve, 10000));
         lendingPoolImplAddress = lendingPoolImpl.address;
         await lendingPoolImpl.initialize(addressesProvider.address);
       }

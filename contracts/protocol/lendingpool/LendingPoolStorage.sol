@@ -6,6 +6,8 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {ReserveLogic} from '../libraries/logic/ReserveLogic.sol';
 import {ILendingPoolAddressesProvider} from '../../interfaces/ILendingPoolAddressesProvider.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
+import {IWHBAR} from '../../interfaces/IWHBAR.sol';
+import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
 contract LendingPoolStorage {
   using ReserveLogic for DataTypes.ReserveData;
@@ -29,4 +31,7 @@ contract LendingPoolStorage {
   uint256 internal _flashLoanPremiumTotal;
 
   uint256 internal _maxNumberOfReserves;
+
+  IWHBAR internal _whbarContract;
+  IERC20 internal _whbarToken;
 }

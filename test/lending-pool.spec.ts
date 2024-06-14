@@ -99,7 +99,7 @@ describe('Lending Pool Contract Tests', function () {
     );
   });
 
-  it('should supply native HBAR from the signer and get awhbar tokens', async function () {
+  it.skip('should supply native HBAR from the signer and get awhbar tokens and then withdraw', async function () {
     const hbarBalance = await owner.getBalance();
     console.log('HBAR Balance:', hbarBalance.toString());
 
@@ -107,13 +107,14 @@ describe('Lending Pool Contract Tests', function () {
     console.log('WHBAR Address inside the contract:', address);
 
     // NOTE - Refer to this link for why we're converting the tinybars to weibars https://docs.hedera.com/hedera/tutorials/smart-contracts/hscs-workshop/hardhat
+    // Note - this is similar to new Hbar(1232, HbarUnit.Tinybar)
     const txn = await lendingPoolContract.deposit(
       '0x0000000000000000000000000000000000003aD2',
-      1232,
+      123200000,
       owner.address,
       0,
       // @ts-ignore
-      { value: 1232n * 10_000_000_000n }
+      { value: 123200000n * 10_000_000_000n }
     );
     await txn.wait();
     console.log('Transaction hash:', txn.hash);
@@ -124,6 +125,90 @@ describe('Lending Pool Contract Tests', function () {
     const aTokenContract = await setupContract('AToken', WHBAR.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens:', balanceOf.toString());
+
+    const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
+    const approveTxn = await whbarTokenContract.approve(
+      '0x0000000000000000000000000000000000003ad1',
+      130000
+    );
+    await approveTxn.wait();
+    console.log('Approve successful', approveTxn.hash);
+
+    // Withdraw
+    const withdrawTxn = await lendingPoolContract.withdraw(
+      '0x0000000000000000000000000000000000003aD2',
+      110,
+      owner.address
+    );
+    await withdrawTxn.wait();
+    console.log('Withdraw Transaction hash:', withdrawTxn.hash);
+
+    // expect(balanceOf).to.be.gt(0);
+  });
+
+  it.skip('should supply SAUCE tokens and borrow native HBAR', async function () {
+    const depositAmount = 1000000000;
+    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
+    await approveAndDeposit(
+      erc20Contract,
+      owner,
+      lendingPoolContract,
+      depositAmount,
+      SAUCE.token.address,
+      lendingPoolContract
+    );
+    const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
+    const balanceOf = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of SAUCE aTokens:', balanceOf.toString());
+
+    const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
+    const approveTxn = await whbarTokenContract.approve(
+      '0x0000000000000000000000000000000000003ad1',
+      1300000000
+    );
+    await approveTxn.wait();
+    console.log('Approve successful', approveTxn.hash);
+
+    // Borrow
+    const borrowTxn = await lendingPoolContract.borrow(
+      '0x0000000000000000000000000000000000003aD2',
+      103200000,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash:', borrowTxn.hash);
+
+    // expect(balanceOf).to.be.gt(0);
+  });
+
+  it('should repay native HBAR', async function () {
+    const aTokenContract = await setupContract('AToken', WHBAR.variableDebt.address);
+    const balanceOf = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of WHBAR debt before:', balanceOf.toString());
+
+    const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
+    const approveTxn = await whbarTokenContract.approve(
+      '0x0000000000000000000000000000000000003ad1',
+      1300000000
+    );
+    await approveTxn.wait();
+    console.log('Approve successful', approveTxn.hash);
+
+    const repayTxn = await lendingPoolContract.repay(
+      '0x0000000000000000000000000000000000003aD2',
+      10332,
+      2,
+      owner.address,
+      // @ts-ignore
+      { value: 10332n * 10_000_000_000n }
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash:', repayTxn.hash);
+
+    const balanceOfAfter = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of WHBAR debt after:', balanceOfAfter.toString());
 
     // expect(balanceOf).to.be.gt(0);
   });

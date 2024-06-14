@@ -253,7 +253,7 @@ interface ILendingPool {
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
-  ) external returns (uint256);
+  ) external payable returns (uint256);
 
   /**
    * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa

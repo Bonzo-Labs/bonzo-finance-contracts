@@ -31,7 +31,7 @@ const HARDFORK = 'istanbul';
 const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
-const keys = process.env.PRIVATE_KEY!;
+const keys = process.env.PRIVATE_KEY2!;
 
 // Prevent to load scripts before compilation and typechain
 if (!SKIP_LOAD) {
@@ -69,11 +69,17 @@ const buidlerConfig: HardhatUserConfig = {
     compilers: [
       {
         version: '0.6.12',
-        settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'istanbul' },
+        settings: {
+          optimizer: { enabled: true, runs: 200 },
+          evmVersion: 'istanbul',
+        },
       },
       {
         version: '0.8.19',
-        settings: { optimizer: { enabled: true, runs: 200 }, evmVersion: 'istanbul' },
+        settings: {
+          optimizer: { enabled: true, runs: 200 },
+          evmVersion: 'istanbul',
+        },
       },
     ],
     overrides: {
