@@ -11,11 +11,12 @@ import {
   AaveProtocolDataProvider,
   rateStrategyVolatileOne,
   rateStrategyStableThree,
+  PriceOracle,
 } from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -25,10 +26,10 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 const assetConfigurations = {
-  '0x00000000000000000000000000000000000014f5': {
+  '0x0000000000000000000000000000000000001599': {
     underlyingAssetDecimals: 8,
     interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'CLXY',
+    underlyingAssetName: 'DUMMY',
   },
 };
 
@@ -69,27 +70,6 @@ async function updateReserve(tokenAddress: string) {
   );
 
   console.log('Owner:', owner.address);
-
-  // Define the type for reserve parameters
-  type ReserveParams = {
-    aTokenImpl: string;
-    stableDebtTokenImpl: string;
-    variableDebtTokenImpl: string;
-    underlyingAssetDecimals: number;
-    interestRateStrategyAddress: string;
-    underlyingAsset: string;
-    treasury: string;
-    incentivesController: any;
-    underlyingAssetName: string;
-    aTokenName: string;
-    aTokenSymbol: string;
-    variableDebtTokenName: string;
-    variableDebtTokenSymbol: string;
-    stableDebtTokenName: string;
-    stableDebtTokenSymbol: string;
-    params: string;
-  };
-
   // Array to hold reserve parameters
   const reserveParamsArray: ReserveParams[] = [];
 
@@ -125,9 +105,49 @@ async function updateReserve(tokenAddress: string) {
   console.log(reserve);
 }
 
+async function addNewAssetToOracle(tokenAddress: string) {
+  const oracleContract = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
+  const txn = await oracleContract.addNewAsset('DUMMY', tokenAddress, 427, 8);
+  await txn.wait();
+  console.log('Asset added to oracle');
+}
+
+async function enableBorrowing(tokenAddress: string) {
+  const lendingPoolConfiguratorContract = await setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_testnet.address
+  );
+
+  const txn = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(tokenAddress, true);
+  await txn.wait();
+  console.log('Borrowing enabled');
+}
+
+async function configureReserveAsCollateral(tokenAddress: string) {
+  const lendingPoolConfiguratorContract = await setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_testnet.address
+  );
+
+  const txn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
+    tokenAddress,
+    '5000',
+    '5001',
+    '10500'
+  );
+  await txn.wait();
+  console.log('Reserve configured as collateral');
+}
+
 async function main() {
-  await updateReserve('0x00000000000000000000000000000000000014f5');
-  console.log(reserveParamsArray);
+  // Step 1: Update the reserve
+  await updateReserve('0x0000000000000000000000000000000000001599');
+  // Step 2: Add the asset to the oracle
+  await addNewAssetToOracle('0x0000000000000000000000000000000000001599');
+  // Step 3: Enable borrowing
+  await enableBorrowing('0x0000000000000000000000000000000000001599');
+  // Step 4: configureReserveAsCollateral
+  await configureReserveAsCollateral('0x0000000000000000000000000000000000001599');
 }
 
 main()
