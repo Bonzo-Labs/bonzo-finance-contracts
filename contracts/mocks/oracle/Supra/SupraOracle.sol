@@ -39,6 +39,7 @@ contract SupraOracle is Ownable {
     assetToPriceIndex[assetToAddress['SAUCE']] = 425;
     assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
     assetToPriceIndex[assetToAddress['USDC']] = 432;
+    // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
     assetToPriceIndex[assetToAddress['WHBAR']] = 428;
 
     assetToDecimals[assetToAddress['KARATE']] = 8;
@@ -51,9 +52,7 @@ contract SupraOracle is Ownable {
 
   /// @notice Updates the SupraSValueFeed contract address.
   /// @param _newSValueFeed The new address of the SupraSValueFeed contract.
-  function updateSupraSvalueFeed(
-    ISupraSValueFeed _newSValueFeed
-  ) external onlyOwner {
+  function updateSupraSvalueFeed(ISupraSValueFeed _newSValueFeed) external onlyOwner {
     sValueFeed = _newSValueFeed;
   }
 
@@ -110,16 +109,20 @@ contract SupraOracle is Ownable {
     assetToDecimals[_asset] = _newDecimals;
   }
 
-  // TODO - remove this function
-  function getPriceFeed(
-    address _asset
-  ) external view returns (ISupraSValueFeed.priceFeed memory) {
+  /// @notice Helper function for tests to get the address of an asset.
+  /// @param _asset The address of the asset.
+  /// @return The price feed of an asset
+  /// @dev Reverts if the asset is unsupported.
+  function getPriceFeed(address _asset) external view returns (ISupraSValueFeed.priceFeed memory) {
     uint16 priceIndex = assetToPriceIndex[_asset];
     if (priceIndex == 0) revert UnsupportedAsset();
     return sValueFeed.getSvalue(priceIndex);
   }
 
-  // TODO - remove this function
+  /// @notice Helper function to test the price of an asset in HBAR.
+  /// @param _asset The address of the asset.
+  /// @return The price of the asset in HBAR.
+  /// @dev Reverts if the asset is unsupported or if there's a division by zero.
   function getAmountInEth(
     uint256 amount,
     address asset
@@ -136,10 +139,9 @@ contract SupraOracle is Ownable {
     uint16 priceIndex = assetToPriceIndex[_asset];
     if (priceIndex == 0) revert UnsupportedAsset();
 
-    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(
-      priceIndex
-    );
+    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
 
+    // Early return for non-USDC assets
     if (_asset != USDC) {
       if (_asset == WHBAR) {
         return (10 ** decimals());
@@ -162,14 +164,11 @@ contract SupraOracle is Ownable {
   /// @dev Reverts if there's a division by zero.
   function getAssetPriceInUSD(address _asset) public view returns (uint256) {
     uint256 priceInHbar = getAssetPrice(_asset);
-    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(
-      assetToPriceIndex[USDC]
-    );
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
 
     if (priceFeedUSD.price == 0) revert DivisionByZero();
 
-    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) /
-      (10 ** decimals());
+    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals());
 
     return priceInUSD;
   }
@@ -178,12 +177,8 @@ contract SupraOracle is Ownable {
   /// @param _amount The amount of HBAR.
   /// @return priceInUSD The equivalent price in USD.
   /// @dev Reverts if there's a division by zero.
-  function getHbarUSD(
-    uint256 _amount
-  ) public view returns (uint256 priceInUSD) {
-    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(
-      assetToPriceIndex[USDC]
-    );
+  function getHbarUSD(uint256 _amount) public view returns (uint256 priceInUSD) {
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
     if (priceFeedUSD.price == 0) revert DivisionByZero();
 
     priceInUSD = (_amount * priceFeedUSD.price) / (10 ** decimals());

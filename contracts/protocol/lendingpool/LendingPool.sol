@@ -900,7 +900,10 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     bool releaseUnderlying;
   }
 
-  // TODO - Remove this function
+  /**
+   * @dev Helper function to check whether the oracle is returning the correct values
+   * @param val `true` to pause the reserve, `false` to un-pause it
+   */
   function getAmountInEth(
     uint256 amount,
     address asset
@@ -908,45 +911,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address oracle = _addressesProvider.getPriceOracle();
     amountInEth = IPriceOracleGetter(oracle).getAssetPrice(asset).mul(amount).div(
       10 ** _reserves[asset].configuration.getDecimals()
-    );
-  }
-
-  // TODO - Remove this function
-  function getReserveFlags(address asset) external view returns (bool, bool, bool, bool) {
-    DataTypes.ReserveData storage reserve = _reserves[asset];
-
-    (bool isActive, bool isFrozen, bool borrowingEnabled, bool stableRateBorrowingEnabled) = reserve
-      .configuration
-      .getFlags();
-    return (isActive, isFrozen, borrowingEnabled, stableRateBorrowingEnabled);
-  }
-
-  // TODO - Remove this function
-  function getReserveGenericLogic(
-    address asset
-  ) external view returns (uint256, uint256, uint256, uint256, uint256) {
-    DataTypes.UserConfigurationMap storage userConfig = _usersConfig[msg.sender];
-    address oracle = _addressesProvider.getPriceOracle();
-    (
-      uint256 userCollateralBalanceETH,
-      uint256 userBorrowBalanceETH,
-      uint256 currentLtv,
-      uint256 currentLiquidationThreshold,
-      uint256 healthFactor
-    ) = GenericLogic.calculateUserAccountData(
-        msg.sender,
-        _reserves,
-        userConfig,
-        _reservesList,
-        _reservesCount,
-        oracle
-      );
-    return (
-      userCollateralBalanceETH,
-      userBorrowBalanceETH,
-      currentLtv,
-      currentLiquidationThreshold,
-      healthFactor
     );
   }
 
