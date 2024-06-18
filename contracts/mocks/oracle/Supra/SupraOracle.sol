@@ -120,8 +120,9 @@ contract SupraOracle is Ownable {
   }
 
   /// @notice Helper function to test the price of an asset in HBAR.
-  /// @param _asset The address of the asset.
-  /// @return The price of the asset in HBAR.
+  /// @param asset The address of the asset.
+  /// @param amount The amount of the asset.
+  /// @return amountInEth The equivalent price in HBAR.
   /// @dev Reverts if the asset is unsupported or if there's a division by zero.
   function getAmountInEth(
     uint256 amount,

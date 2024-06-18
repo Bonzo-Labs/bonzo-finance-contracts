@@ -902,7 +902,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
   /**
    * @dev Helper function to check whether the oracle is returning the correct values
-   * @param val `true` to pause the reserve, `false` to un-pause it
+   * @param amount amount of the asset
+   * @param asset The address of the underlying asset of the reserve
    */
   function getAmountInEth(
     uint256 amount,
