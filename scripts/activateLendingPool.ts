@@ -60,52 +60,6 @@ async function lendingPool() {
   //   owner.address
   // );
   // console.log('Collateral after:', userReserveData1.usageAsCollateralEnabled);
-
-  // const [isActive, isFrozen, borrowingEnabled, stableRateBorrowingEnabled] =
-  //   await lendingPoolContract.getReserveFlags(CLXY.token.address);
-  // console.log('isactive:', isActive);
-  // console.log('isFrozen:', isFrozen);
-  // console.log('borrowingEnabled:', borrowingEnabled);
-  // console.log('stableRateBorrowingEnabled:', stableRateBorrowingEnabled);
-
-  // const borrowAllowance = await variableDebtTokenContract.borrowAllowance(
-  //   owner.address,
-  //   owner.address
-  // );
-  // console.log('Borrow allowance:', borrowAllowance.toString());
-
-  // const [
-  //   userCollateralBalanceETH,
-  //   userBorrowBalanceETH,
-  //   currentLtv,
-  //   currentLiquidationThreshold,
-  //   healthFactor,
-  // ] = await lendingPoolContract.getReserveGenericLogic(SAUCE.token.address);
-  // console.log('userCollateralBalanceETH:', userCollateralBalanceETH.toString());
-  // console.log('userBorrowBalanceETH:', userBorrowBalanceETH.toString());
-  // console.log('currentLtv:', currentLtv.toString());
-  // console.log('currentLiquidationThreshold:', currentLiquidationThreshold.toString());
-  // console.log('healthFactor:', healthFactor.toString());
-
-  // // Step 2 - Need to activate the reserve
-  // const txnResponse = await lendingPoolConfiguratorContract.activateReserve(SAUCE.token.address);
-  // await txnResponse.wait();
-  // console.log('Reserve activated', txnResponse.hash);
-
-  // // Step 3 - Need to enable borrowing on the reserve
-  // const txn2 = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(
-  //   SAUCE.token.address,
-  //   true
-  // );
-  // await txn2.wait();
-  // console.log('Borrowing enabled', txn2.hash);
-
-  // const [isActiveAfter, , borrowingEnabledAfter, stableRateBorrowingEnabledAfter] =
-  //   await lendingPoolContract.getReserveFlags(SAUCE.token.address);
-  // console.log('isactive:', isActiveAfter);
-  // console.log('isFrozen:', isFrozen);
-  // console.log('borrowingEnabled:', borrowingEnabledAfter);
-  // console.log('stableRateBorrowingEnabled:', stableRateBorrowingEnabledAfter);
 }
 
 async function main() {
