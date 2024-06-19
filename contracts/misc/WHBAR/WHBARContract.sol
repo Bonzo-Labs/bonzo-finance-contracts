@@ -5,6 +5,8 @@ pragma experimental ABIEncoderV2;
 import './SafeHederaTokenService.sol';
 import './Bits.sol';
 
+/// @dev - this contract and it's dependencies are the same as those on Saucerswap - https://github.com/saucerswaplabs/saucerswaplabs-core/blob/master/contracts/WHBAR.sol
+///   We are using the Saucerswap codebase to interact with their existing WHBAR token.
 contract WHBARContract is SafeHederaTokenService {
   using Bits for uint256;
 
