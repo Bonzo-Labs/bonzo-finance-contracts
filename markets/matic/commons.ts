@@ -39,7 +39,7 @@ export const CommonsConfig: ICommonConfiguration = {
       ...MOCK_CHAINLINK_AGGREGATORS_PRICES,
     },
   },
-  // TODO: reorg alphabetically, checking the reason of tests failing
+
   LendingRateOracleRatesCommon: {
     WETH: {
       borrowRate: oneRay.multipliedBy(0.03).toFixed(),
