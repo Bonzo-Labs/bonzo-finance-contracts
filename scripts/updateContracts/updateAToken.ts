@@ -17,10 +17,10 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 async function updateAToken(tokenAddress: string) {
-  const lendingPoolAddressesProviderContract = await setupContract(
-    'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
-  );
+  // const lendingPoolAddressesProviderContract = await setupContract(
+  //   'LendingPoolAddressesProvider',
+  //   LendingPoolAddressesProvider.hedera_testnet.address
+  // );
 
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
@@ -29,13 +29,13 @@ async function updateAToken(tokenAddress: string) {
 
   console.log('Owner:', owner.address);
 
-  //   //   Implement new aToken contract
-  //   const aTokenFactory = await ethers.getContractFactory('AToken');
-  //   const aTokenImpl = await aTokenFactory.deploy();
-  //   await aTokenImpl.deployed();
-  //   console.log('AToken implementation deployed to:', aTokenImpl.address);
+  //   Implement new aToken contract
+  const aTokenFactory = await ethers.getContractFactory('AToken');
+  const aTokenImpl = await aTokenFactory.deploy();
+  await aTokenImpl.deployed();
+  console.log('AToken implementation deployed to:', aTokenImpl.address);
 
-  //   const aTokenImplAddress = '0xCfBc025d9ffCb049C091d823eaFB10c8638DDF77';
+  const aTokenImplAddress = '0xCfBc025d9ffCb049C091d823eaFB10c8638DDF77';
 
   type ATokenInput = {
     asset: string;
@@ -50,11 +50,12 @@ async function updateAToken(tokenAddress: string) {
   const aTokenInput: ATokenInput = {
     asset: tokenAddress,
     treasury: owner.address,
-    incentivesController: HederaConfig.IncentivesController.hedera_testnet,
+    // incentivesController: HederaConfig.IncentivesController.hedera_testnet,
+    incentivesController: '0x0000000000000000000000000000000000000000',
     name: 'Bonzo aToken HBARX',
     symbol: 'aBonzoHBARX',
-    // implementation: aTokenImpl.address,
-    implementation: aTokenImplAddress,
+    implementation: aTokenImpl.address,
+    // implementation: aTokenImplAddress,
     params: '0x',
   };
 
@@ -65,7 +66,7 @@ async function updateAToken(tokenAddress: string) {
 }
 
 async function main() {
-  await updateAToken('0x0000000000000000000000000000000000220ced');
+  await updateAToken('0x0000000000000000000000000000000000120f46');
 }
 
 main()
