@@ -36,7 +36,7 @@ async function updateConfiguratorImpl() {
 
   // Set the new implementation and initialize it
   const tx = await lendingPoolAddressesProviderContract.setLendingPoolConfiguratorImpl(
-    '0x760f9A0e5939e57B8253A969CF2151fFa1Bf8A4e'
+    newImpl.address
   );
   await tx.wait();
 
@@ -97,10 +97,10 @@ async function updateReserveStrategyAddress() {
 }
 
 async function main() {
-  // await updateConfiguratorImpl();
+  await updateConfiguratorImpl();
   // await updateDecimals(8);
   // await updateReserveFactor();
-  await updateReserveStrategyAddress();
+  // await updateReserveStrategyAddress();
 }
 
 main()

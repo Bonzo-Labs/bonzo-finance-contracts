@@ -158,7 +158,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eHederaNetwork.mainnet]: ZERO_ADDRESS,
   },
   IncentivesController: {
-    [eHederaNetwork.hedera_testnet]: '0x2672a5D73722dc3F724294d07C6Fd067aD329C8b',
+    [eHederaNetwork.hedera_testnet]: '0x3dE87C21163ca9c4aE9f1b3Ffe2B1e2eB5E184d8',
     [eHederaNetwork.mainnet]: ZERO_ADDRESS,
   },
 };
