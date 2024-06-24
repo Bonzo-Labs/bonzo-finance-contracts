@@ -41,7 +41,7 @@ describe('Lending Pool Contract Tests', function () {
     const wallet = hre.ethers.Wallet.createRandom().connect(hre.ethers.provider);
     const source = (await hre.ethers.getSigners())[0];
     await htsTransfer(currency, source, wallet.address, 1);
-    await hbarTransfer(source, wallet.address, 5_00_000_000);
+    await hbarTransfer(source, wallet.address, 10_00_000_000);
     expect(await getHtsBalance(currency, wallet.address)).eq(1);
     await htsApprove(currency, 1, lendingPoolContract.address, wallet);
     await (await lendingPoolContract.connect(wallet).deposit(currency, 1, wallet.address, 0)).wait();
@@ -53,3 +53,24 @@ describe('Lending Pool Contract Tests', function () {
   });
 });
 
+// describe('Current working set', function () {
+//   it.only('Work In Progress....', async function () {
+//     const currency = (await getTestableTokens())[0].tokenAddress;
+//     const wallet = hre.ethers.Wallet.createRandom().connect(hre.ethers.provider);
+//     const [source, secondary] = (await hre.ethers.getSigners());
+//     await hbarTransfer(source, secondary.address, 10_000_000);
+//     await htsAssociate(currency, secondary);
+//     // await htsTransfer(currency, source, secondary.address, 1);
+//     // await hbarTransfer(source, wallet.address, 5_00_000_000);
+//     // expect(await getHtsBalance(currency, wallet.address)).eq(1);
+//     // await htsApprove(currency, 1, lendingPoolContract.address, wallet);
+//     // await (await lendingPoolContract.connect(wallet).deposit(currency, 1, wallet.address, 0)).wait();
+//     // expect(await getHtsBalance(currency, wallet.address)).eq(0);
+//     // await (await lendingPoolContract.connect(wallet).withdraw(currency, 1, wallet.address)).wait();
+//     // expect(await getHtsBalance(currency, wallet.address)).eq(1);
+//     // await htsTransfer(currency, wallet, source.address, 1);
+//     // expect(await getHtsBalance(currency, wallet.address)).eq(0);
+//   });
+// });
+
+// Is it possible to withdraw on behalf of a non-materialized account.

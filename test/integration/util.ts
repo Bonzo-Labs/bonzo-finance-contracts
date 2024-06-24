@@ -23,7 +23,7 @@ export async function htsAssociate(token: string, owner: Signer): Promise<any> {
 
 export async function htsTransfer(token: string, owner: Signer, destination: string, amount: BigNumberish) {
     const fromAddress = await owner.getAddress();
-    const tx = await getHederaTokenServiceContract().connect(owner).transferToken(token, fromAddress, destination, amount, { gasLimit: 750000 });
+    const tx = await getHederaTokenServiceContract().connect(owner).transferToken(token, fromAddress, destination, amount, { gasLimit: 900_000 });
     return await tx.wait();
 }
 
