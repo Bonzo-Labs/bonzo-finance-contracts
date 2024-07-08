@@ -1,7 +1,7 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
-import { LendingPoolAddressesProvider } from '../outputReserveDataCurrent.json';
+import { LendingPoolAddressesProvider } from '../outputReserveData.json';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
 const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
@@ -26,7 +26,7 @@ async function updateOracle(oracleAddress: string) {
 }
 
 async function main() {
-  await updateOracle('0x9fc8AF2c8365e96079A1358690C4039ec28d23e4');
+  await updateOracle('0xfac891666D590E277D8F4ff601C50D51B57179c4');
 }
 
 main()

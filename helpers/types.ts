@@ -233,7 +233,6 @@ export interface iAssetBase<T> {
   XSAUCE: T;
   KARATE: T;
   WHBAR: T;
-  CLXY: T;
 }
 
 export type iAssetsWithoutETH<T> = Omit<iAssetBase<T>, 'ETH'>;
@@ -242,7 +241,7 @@ export type iAssetsWithoutUSD<T> = Omit<iAssetBase<T>, 'USD'>;
 
 export type iAavePoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'CLXY' | 'WHBAR'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR'
 >;
 
 export type iLpPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
@@ -251,7 +250,7 @@ export type iMaticPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
 export type iHederaPoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'CLXY' | 'WHBAR'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR'
 >;
 
 export type iXDAIPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
@@ -271,12 +270,9 @@ export enum TokenContractId {
   XSAUCE = 'XSAUCE',
   KARATE = 'KARATE',
   WHBAR = 'WHBAR',
-  CLXY = 'CLXY',
 }
 
-export interface IReserveParams
-  extends IReserveBorrowParams,
-    IReserveCollateralParams {
+export interface IReserveParams extends IReserveBorrowParams, IReserveCollateralParams {
   aTokenImpl: eContractid;
   reserveFactor: string;
   strategy: IInterestRateStrategyParams;

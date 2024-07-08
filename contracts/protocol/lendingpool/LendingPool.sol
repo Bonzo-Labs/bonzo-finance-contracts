@@ -57,7 +57,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   int64 constant HAPI_SUCCESS = 22; // HTS Response code indicating success.
   int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
-  uint256 public constant LENDINGPOOL_REVISION = 0x2;
+  uint256 public constant LENDINGPOOL_REVISION = 0x1;
 
   modifier whenNotPaused() {
     _whenNotPaused();

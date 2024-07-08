@@ -16,14 +16,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
   return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
-// AToken implementation deployed to: 0x88DeEAA4A4Ad9Fb937DE179Ee629840e14A1690E
-
-async function updateAToken(tokenAddress: string) {
-  // const lendingPoolAddressesProviderContract = await setupContract(
-  //   'LendingPoolAddressesProvider',
-  //   LendingPoolAddressesProvider.hedera_testnet.address
-  // );
-
+async function updateStableDebtToken(tokenAddress: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
     LendingPoolConfigurator.hedera_testnet.address
@@ -31,15 +24,14 @@ async function updateAToken(tokenAddress: string) {
 
   console.log('Owner:', owner.address);
 
-  //   Implement new aToken contract
-  const aTokenFactory = await ethers.getContractFactory('AToken');
-  const aTokenImpl = await aTokenFactory.deploy();
-  await aTokenImpl.deployed();
-  console.log('AToken implementation deployed to:', aTokenImpl.address);
+  //   Implement new stable debt token contract
+  const stableTokenFactory = await ethers.getContractFactory('StableDebtToken');
+  const stableTokenImpl = await stableTokenFactory.deploy();
+  await stableTokenImpl.deployed();
+  console.log('Stable debt implementation deployed to:', stableTokenImpl.address);
 
-  type ATokenInput = {
+  type DebtTokenInput = {
     asset: string;
-    treasury: string;
     incentivesController: string;
     name: string;
     symbol: string;
@@ -47,25 +39,24 @@ async function updateAToken(tokenAddress: string) {
     params: string;
   };
 
-  const aTokenInput: ATokenInput = {
+  const debtTokenInput: DebtTokenInput = {
     asset: tokenAddress,
-    treasury: owner.address,
     // @ts-ignore
     incentivesController: HederaConfig.IncentivesController.hedera_testnet,
-    name: 'Bonzo aToken WHBAR',
-    symbol: 'aBonzoWHBAR',
-    implementation: aTokenImpl.address,
+    name: 'Bonzo stable debt Token WHBAR',
+    symbol: 'stableDebtWHBAR',
+    implementation: stableTokenImpl.address,
     params: '0x',
   };
 
-  console.log('Updating aToken Input -', aTokenInput);
-  const txn = await lendingPoolConfiguratorContract.updateAToken(aTokenInput);
+  console.log('Updating stable Token Input -', debtTokenInput);
+  const txn = await lendingPoolConfiguratorContract.updateStableDebtToken(debtTokenInput);
   await txn.wait();
-  console.log('aToken updated successfully');
+  console.log('stable debet Token updated successfully');
 }
 
 async function main() {
-  await updateAToken('0x0000000000000000000000000000000000003ad2');
+  await updateStableDebtToken('0x0000000000000000000000000000000000003ad2');
 }
 
 main()

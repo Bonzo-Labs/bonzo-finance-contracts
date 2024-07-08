@@ -4,7 +4,7 @@ const hre = require('hardhat');
 import { LendingPoolAddressesProvider, LendingPoolConfigurator } from '../outputReserveData.json';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 console.log('Signer:', owner.address);
 
 async function setupContract(artifactName: string, contractAddress: string) {
@@ -17,13 +17,6 @@ async function updateConfiguratorImpl() {
     'LendingPoolAddressesProvider',
     LendingPoolAddressesProvider.hedera_testnet.address
   );
-
-  // Ensure the owner of the contract
-  const contractOwner = await lendingPoolAddressesProviderContract.owner();
-  console.log('Contract Owner:', contractOwner);
-  if (contractOwner.toLowerCase() !== owner.address.toLowerCase()) {
-    throw new Error('Caller is not the owner');
-  }
 
   // Deploy the new LendingPoolConfigurator implementation
   const NewLendingPoolConfiguratorImpl = await ethers.getContractFactory('LendingPoolConfigurator');
@@ -48,17 +41,20 @@ async function updateDecimals(newDecimals) {
     'LendingPoolConfigurator',
     LendingPoolConfigurator.hedera_testnet.address
   );
+
   const currentDecimals = await lendingPoolConfigurator.getDecimals(
-    '0x00000000000000000000000000000000003991eD'
+    '0x00000000000000000000000000000000003991ed'
   );
   console.log('Current decimals:', currentDecimals.toString());
+
   await lendingPoolConfigurator.setDecimals(
-    '0x00000000000000000000000000000000003991eD',
+    '0x00000000000000000000000000000000003991ed',
     newDecimals
   );
   console.log('Decimals updated');
+
   const newDecimalsAfter = await lendingPoolConfigurator.getDecimals(
-    '0x00000000000000000000000000000000003991eD'
+    '0x00000000000000000000000000000000003991ed'
   );
   console.log('New decimals:', newDecimalsAfter.toString());
 }
@@ -70,7 +66,7 @@ async function updateReserveFactor() {
   );
 
   const reserveFactorTxn = await lendingPoolConfigurator.setReserveFactor(
-    '0x00000000000000000000000000000000003991eD',
+    '0x0000000000000000000000000000000000003ad2',
     1800
   );
   await reserveFactorTxn.wait();
@@ -89,18 +85,18 @@ async function updateReserveStrategyAddress() {
   );
 
   const txn = await lendingPoolConfigurator.setReserveInterestRateStrategyAddress(
-    '0x00000000000000000000000000000000003991eD',
-    '0x00000000000000000000000000000000003991eD'
+    '0x0000000000000000000000000000000000003ad2',
+    '0x901B7458A3F0039b51A0A603Ac1867aE1745FE0f'
   );
   await txn.wait();
   console.log('Reserve strategy address updated');
 }
 
 async function main() {
-  await updateConfiguratorImpl();
-  // await updateDecimals(8);
-  // await updateReserveFactor();
-  // await updateReserveStrategyAddress();
+  // await updateConfiguratorImpl();
+  // await updateDecimals(6);
+  await updateReserveFactor();
+  await updateReserveStrategyAddress();
 }
 
 main()

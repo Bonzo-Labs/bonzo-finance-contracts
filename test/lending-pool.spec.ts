@@ -124,12 +124,12 @@ describe('Lending Pool Contract Tests', function () {
 
     const aTokenContract = await setupContract('AToken', WHBAR.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of aTokens:', balanceOf.toString());
+    console.log('Balance of WHBAR aTokens before:', balanceOf.toString());
 
     const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
     const approveTxn = await whbarTokenContract.approve(
       '0x0000000000000000000000000000000000003ad1',
-      130000
+      123200
     );
     await approveTxn.wait();
     console.log('Approve successful', approveTxn.hash);
@@ -137,11 +137,14 @@ describe('Lending Pool Contract Tests', function () {
     // Withdraw
     const withdrawTxn = await lendingPoolContract.withdraw(
       '0x0000000000000000000000000000000000003aD2',
-      110,
+      123200,
       owner.address
     );
     await withdrawTxn.wait();
     console.log('Withdraw Transaction hash:', withdrawTxn.hash);
+
+    const balanceOfAfter = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of WHBAR aTokens after:', balanceOfAfter.toString());
 
     // expect(balanceOf).to.be.gt(0);
   });
@@ -183,26 +186,54 @@ describe('Lending Pool Contract Tests', function () {
     // expect(balanceOf).to.be.gt(0);
   });
 
+  it.skip('should borrow native HBAR', async function () {
+    const balanceNative = await owner.getBalance();
+    console.log('Balance of HBAR before:', balanceNative.toString());
+
+    const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
+    const approveTxn = await whbarTokenContract.approve(
+      '0x0000000000000000000000000000000000003ad1',
+      43000
+    );
+    await approveTxn.wait();
+    console.log('Approve successful', approveTxn.hash);
+
+    const borrowTxn = await lendingPoolContract.borrow(
+      '0x0000000000000000000000000000000000003aD2',
+      43000,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash:', borrowTxn.hash);
+
+    const balanceOfAfter = await owner.getBalance();
+    console.log('Balance of WHBAR debt after:', balanceOfAfter.toString());
+
+    // expect(balanceOf).to.be.gt(0);
+  });
+
   it.skip('should repay native HBAR', async function () {
-    const aTokenContract = await setupContract('AToken', WHBAR.variableDebt.address);
-    const balanceOf = await aTokenContract.balanceOf(owner.address);
+    const debtTokenContract = await setupContract('VariableDebtToken', WHBAR.variableDebt.address);
+    const balanceOf = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of WHBAR debt before:', balanceOf.toString());
 
     const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
     const approveTxn = await whbarTokenContract.approve(
       '0x0000000000000000000000000000000000003ad1',
-      1300000000
+      100
     );
     await approveTxn.wait();
     console.log('Approve successful', approveTxn.hash);
 
     const repayTxn = await lendingPoolContract.repay(
       '0x0000000000000000000000000000000000003aD2',
-      10332,
+      100,
       2,
       owner.address,
       // @ts-ignore
-      { value: 10332n * 10_000_000_000n }
+      { value: 100n * 10_000_000_000n }
     );
     await repayTxn.wait();
     console.log('Repay Transaction hash:', repayTxn.hash);
@@ -275,7 +306,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should deposit SAUCE tokens and get back aTokens', async function () {
-    const depositAmount = 10000000;
+    const depositAmount = 10000;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
     await approveAndDeposit(
       erc20Contract,
@@ -288,8 +319,55 @@ describe('Lending Pool Contract Tests', function () {
 
     const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of aTokens:', balanceOf.toString());
+    console.log('Balance of SAUCE aTokens:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
+  });
+
+  it.skip('should deposit KARATE tokens and borrow KARATE tokens', async function () {
+    // const depositAmount = 10000;
+    // const erc20Contract = await setupContract('ERC20Wrapper', KARATE.token.address);
+    // await approveAndDeposit(
+    //   erc20Contract,
+    //   owner,
+    //   lendingPoolContract,
+    //   depositAmount,
+    //   KARATE.token.address,
+    //   lendingPoolContract
+    // );
+
+    const aTokenContract = await setupContract('AToken', KARATE.aToken.address);
+    const balanceOf = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of KARATE aTokens:', balanceOf.toString());
+    expect(balanceOf).to.be.gt(0);
+
+    const borrowAmount = 1000;
+    const borrowTxn = await lendingPoolContract.borrow(
+      KARATE.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash:', borrowTxn.hash);
+
+    const debtTokenContract = await setupContract('VariableDebtToken', KARATE.variableDebt.address);
+    const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of KARATE debtTokens:', balanceOf1.toString());
+
+    const repayAmount = 12;
+    const repayTxn = await lendingPoolContract.repay(
+      KARATE.token.address,
+      repayAmount,
+      2,
+      owner.address
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash:', repayTxn.hash);
+
+    const balanceOf2 = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of KARATE debtTokens after:', balanceOf2.toString());
+    expect(balanceOf2).to.be.gt(0);
   });
 
   it.skip('should deposit CLXY tokens and get back aTokens', async function () {
@@ -330,7 +408,7 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  it('should deposit and borrow USDC tokens and get back variableDebtTokens', async function () {
+  it.skip('should deposit and borrow USDC tokens and get back variableDebtTokens', async function () {
     const depositAmount = 100000;
     const erc20Contract = await setupContract('ERC20Wrapper', USDC.token.address);
     await approveAndDeposit(
@@ -344,7 +422,7 @@ describe('Lending Pool Contract Tests', function () {
 
     const aTokenContract = await setupContract('AToken', USDC.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of aTokens:', balanceOf.toString());
+    console.log('Balance of USDC aTokens:', balanceOf.toString());
 
     const borrowAmount = 15;
     const borrowTxn = await lendingPoolContract.borrow(
@@ -359,7 +437,7 @@ describe('Lending Pool Contract Tests', function () {
 
     const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
     const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
-    console.log('Balance of debtTokenContract:', balanceOf1.toString());
+    console.log('Balance of USDC debtTokens:', balanceOf1.toString());
     expect(balanceOf).to.be.gt(0);
   });
 

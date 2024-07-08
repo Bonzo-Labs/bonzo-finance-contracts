@@ -25,7 +25,6 @@ export const HederaConfig: IHederaConfiguration = {
     KARATE: strategyKARATE,
     HBARX: strategyHBARX,
     SAUCE: strategySAUCE,
-    CLXY: strategyCLXY,
     WHBAR: strategyWHBAR,
   },
   ReserveAssets: {
@@ -36,7 +35,6 @@ export const HederaConfig: IHederaConfiguration = {
       XSAUCE: '0x000000000000000000000000000000000015a59b',
       KARATE: '0x00000000000000000000000000000000003991ed',
       WHBAR: '0x0000000000000000000000000000000000003ad2',
-      CLXY: '0x00000000000000000000000000000000000014f5',
     },
     [eHederaNetwork.mainnet]: {
       USDC: '',
@@ -45,7 +43,6 @@ export const HederaConfig: IHederaConfiguration = {
       XSAUCE: '',
       KARATE: '',
       WHBAR: '',
-      CLXY: '',
     },
   },
 };

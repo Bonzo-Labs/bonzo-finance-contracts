@@ -16,7 +16,7 @@ import {
 import HederaConfig from '../../markets/hedera/index';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -26,10 +26,10 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 const assetConfigurations = {
-  '0x0000000000000000000000000000000000001599': {
+  '0x0000000000000000000000000000000000003ad2': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
-    underlyingAssetName: 'DUMMY',
+    interestRateStrategyAddress: rateStrategyStableThree.hedera_testnet.address,
+    underlyingAssetName: 'WHBAR',
   },
 };
 
@@ -107,9 +107,11 @@ async function updateReserve(tokenAddress: string) {
 
 async function addNewAssetToOracle(tokenAddress: string) {
   const oracleContract = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
-  const txn = await oracleContract.addNewAsset('DUMMY', tokenAddress, 427, 8);
-  await txn.wait();
-  console.log('Asset added to oracle');
+  // const txn = await oracleContract.addNewAsset('WHBAR', tokenAddress, 427, 8);
+  // await txn.wait();
+  // console.log('Asset added to oracle');
+  const price = await oracleContract.getPriceFeed(tokenAddress);
+  console.log(price);
 }
 
 async function enableBorrowing(tokenAddress: string) {
@@ -140,14 +142,16 @@ async function configureReserveAsCollateral(tokenAddress: string) {
 }
 
 async function main() {
-  // Step 1: Update the reserve
-  await updateReserve('0x0000000000000000000000000000000000001599');
+  const newAsset = '0x0000000000000000000000000000000000003ad2';
+  // // Step 1: Update the reserve
+  // await updateReserve(newAsset);
   // Step 2: Add the asset to the oracle
-  await addNewAssetToOracle('0x0000000000000000000000000000000000001599');
-  // Step 3: Enable borrowing
-  await enableBorrowing('0x0000000000000000000000000000000000001599');
-  // Step 4: configureReserveAsCollateral
-  await configureReserveAsCollateral('0x0000000000000000000000000000000000001599');
+  // Note: If you can't add a new asset to the oracle, then update the oracle
+  await addNewAssetToOracle(newAsset);
+  // // Step 3: Enable borrowing
+  // await enableBorrowing(newAsset);
+  // // Step 4: configureReserveAsCollateral
+  // await configureReserveAsCollateral(newAsset);
 }
 
 main()
