@@ -24,7 +24,7 @@ const {
 const { SAUCE, USDC, XSAUCE, KARATE, WHBAR } = outputReserveData;
 
 let provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+let owner = new ethers.Wallet(process.env.PRIVATE_KEY3 || '', provider);
 
 const whbarTokenId = '0.0.15058';
 const whbarContractId = '0.0.15057'; // TestWHBAR contract
@@ -99,7 +99,7 @@ describe('Lending Pool Contract Tests', function () {
     );
   });
 
-  it.skip('should supply native HBAR from the signer and get awhbar tokens and then withdraw', async function () {
+  it.skip('should supply native HBAR from the signer and get awhbar tokens', async function () {
     const hbarBalance = await owner.getBalance();
     console.log('HBAR Balance:', hbarBalance.toString());
 
@@ -121,6 +121,20 @@ describe('Lending Pool Contract Tests', function () {
 
     // Sleep for 5 seconds to allow the transaction to be processed
     await new Promise((r) => setTimeout(r, 5000));
+
+    const aTokenContract = await setupContract('AToken', WHBAR.aToken.address);
+    const balanceOf = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of WHBAR aTokens:', balanceOf.toString());
+
+    expect(balanceOf).to.be.gt(0);
+  });
+
+  it.skip('should withdraw whbar tokens and get HBAR', async function () {
+    const hbarBalance = await owner.getBalance();
+    console.log('HBAR Balance:', hbarBalance.toString());
+
+    const address = await lendingPoolContract.getWhbarAddress();
+    console.log('WHBAR Address inside the contract:', address);
 
     const aTokenContract = await setupContract('AToken', WHBAR.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
@@ -305,8 +319,8 @@ describe('Lending Pool Contract Tests', function () {
     expect(userData).to.exist;
   });
 
-  it.skip('should deposit SAUCE tokens and get back aTokens', async function () {
-    const depositAmount = 10000;
+  it('should deposit SAUCE tokens and get back aTokens', async function () {
+    const depositAmount = 10002;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
     await approveAndDeposit(
       erc20Contract,
@@ -320,6 +334,24 @@ describe('Lending Pool Contract Tests', function () {
     const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of SAUCE aTokens:', balanceOf.toString());
+    expect(balanceOf).to.be.gt(0);
+  });
+
+  it('should borrow SAUCE DebtTokens', async function () {
+    const borrowAmount = 104;
+    const borrowTxn = await lendingPoolContract.borrow(
+      SAUCE.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
+    const balanceOf = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
   });
 
@@ -438,24 +470,6 @@ describe('Lending Pool Contract Tests', function () {
     const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
     const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC debtTokens:', balanceOf1.toString());
-    expect(balanceOf).to.be.gt(0);
-  });
-
-  it.skip('should borrow SAUCE with a stable rate get back stableDebtTokens', async function () {
-    const borrowAmount = 10;
-    const borrowTxn = await lendingPoolContract.borrow(
-      CLXY.token.address,
-      borrowAmount,
-      1,
-      0,
-      owner.address
-    );
-    await borrowTxn.wait();
-    console.log('Borrow Transaction hash: ', borrowTxn.hash);
-
-    const debtTokenContract = await setupContract('StableDebtToken', CLXY.stableDebt.address);
-    const balanceOf = await debtTokenContract.balanceOf(owner.address);
-    console.log('Balance of debtTokenContract:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
   });
 
