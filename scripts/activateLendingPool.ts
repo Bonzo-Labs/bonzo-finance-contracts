@@ -9,7 +9,7 @@ import {
 import { SAUCE } from './outputReserveData.json';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -38,11 +38,17 @@ async function lendingPool() {
 
   console.log('Owner:', owner.address);
 
-  // Step 1 - Need to unpause the contract
-  console.log('Paused before:', await lendingPoolContract.paused());
-  const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
-  await txn.wait();
-  console.log('Paused after:', await lendingPoolContract.paused());
+  const reservesList = await lendingPoolContract.getReservesList();
+  console.log('Reserves:', reservesList);
+
+  const positionManager = await lendingPoolContract.getPositionManager();
+  console.log('Position Manager:', positionManager);
+
+  // // Step 1 - Need to unpause the contract
+  // console.log('Paused before:', await lendingPoolContract.paused());
+  // const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
+  // await txn.wait();
+  // console.log('Paused after:', await lendingPoolContract.paused());
 
   // Enable or disable an asset as a collateral
   // const userReserveData = await dataProviderContract.getUserReserveData(

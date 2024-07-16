@@ -1,90 +1,140 @@
-import exp from 'constants';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
-import deployedContracts from '../deployed-contracts.json';
 import outputReserveData from '../scripts/outputReserveData.json';
-// import outputReserveData from '../scripts/outputReserveDataCurrent.json';
-import {
-  AccountId,
-  PrivateKey,
-  ContractExecuteTransaction,
-  ContractFunctionParameters,
-  Client,
-  Hbar,
-  HbarUnit,
-} from '@hashgraph/sdk';
 
-const {
-  LendingPool,
-  LendingPoolAddressesProvider,
-  AaveOracle,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-} = deployedContracts;
-const { SAUCE, USDC, XSAUCE, KARATE } = outputReserveData;
+const { WHBAR, LendingPool } = outputReserveData;
 
 let provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
 let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
-
 let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
-const whbarTokenId = '0.0.15058';
-const whbarContractId = '0.0.15057'; // TestWHBAR contract
-
-const client = Client.forTestnet();
-const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY!);
-const operatorAccountId = AccountId.fromString(process.env.ACCOUNT_ID!);
-client.setOperator(operatorAccountId, operatorPrKey);
-
-async function setupContract(artifactName, contractAddress, wallet) {
+async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, wallet);
+  return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
-describe('WHBAR Contract Tests', function () {
-  let lendingPoolContract, whbarContract, tokenContract, dataProviderContract;
+async function approveToken(tokenContract, spenderAddress, amount) {
+  const allowance = await tokenContract.allowance(owner.address, spenderAddress);
+  if (allowance.lt(amount)) {
+    const approveTx = await tokenContract.approve(spenderAddress, amount);
+    await approveTx.wait();
+    console.log('Approved:', approveTx.hash);
+  }
+}
+
+async function checkBalance(contract, address, label) {
+  const balance = await contract.balanceOf(address);
+  console.log(`${label} Balance:`, balance.toString());
+  return balance;
+}
+
+describe('Lending Pool Contract Tests', function () {
+  let lendingPoolContract, whbarTokenContract, aTokenContract, whbarContract;
 
   before(async function () {
-    console.log('Owner:', owner.address);
-    console.log('Delegator:', delegator.address);
-    lendingPoolContract = await setupContract(
-      'LendingPool',
-      LendingPool.hedera_testnet.address,
-      owner
-    );
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
     whbarContract = await setupContract(
       'WHBARContract',
-      '0x0000000000000000000000000000000000003ad1',
-      owner
+      '0x0000000000000000000000000000000000003ad1'
     );
-    tokenContract = await setupContract(
+    whbarTokenContract = await setupContract(
       'ERC20Wrapper',
-      '0x0000000000000000000000000000000000003ad2',
-      owner
+      '0x0000000000000000000000000000000000003ad2'
     );
-
-    // // Log ABI and function names for WHBAR contract
-    // console.log('WHBARContract ABI:', whbarContract.interface.fragments);
-    // console.log('WHBARContract Functions:', whbarContract.functions);
+    aTokenContract = await setupContract('AToken', WHBAR.aToken.address);
   });
 
-  it.skip('should deposit HBAR from the signer and get equivalent whbar in the normal deposit function', async function () {
-    const hbarBalance = await owner.getBalance();
-    console.log('HBAR Balance:', hbarBalance.toString());
+  async function withdrawWHBAR(amount, to) {
+    await approveToken(whbarTokenContract, lendingPoolContract.address, amount);
 
-    const whbarBalance = await tokenContract.balanceOf(owner.address);
-    console.log('WHBAR Balance:', whbarBalance.toString());
+    const balanceOfBefore = await checkBalance(
+      aTokenContract,
+      owner.address,
+      'WHBAR aToken before'
+    );
 
-    const scWrite2 = new ContractExecuteTransaction()
-      .setContractId(whbarContractId)
-      .setGas(100_000)
-      .setPayableAmount(new Hbar(1232, HbarUnit.Tinybar))
-      .setFunction('deposit', new ContractFunctionParameters());
-    const scWrite2Tx = await scWrite2.execute(client);
-    await scWrite2Tx.getReceipt(client);
-    console.log('Deposit txn done');
+    const withdrawTxn = await lendingPoolContract.withdraw(
+      '0x0000000000000000000000000000000000003ad2',
+      amount,
+      to
+    );
+    await withdrawTxn.wait();
+    console.log('Withdraw Transaction hash:', withdrawTxn.hash);
 
-    const whbarBalanceAfter = await tokenContract.balanceOf(owner.address);
-    console.log('WHBAR Balance after:', whbarBalanceAfter.toString());
+    const balanceOfAfter = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken after');
+    expect(balanceOfAfter).to.be.gte(0);
+  }
+
+  async function borrowWHBAR(amount, onBehalfOf) {
+    await approveToken(whbarTokenContract, WHBAR.token.address, amount);
+
+    const borrowTxn = await lendingPoolContract.borrow(
+      WHBAR.token.address,
+      amount,
+      2,
+      0,
+      onBehalfOf
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash:', borrowTxn.hash);
+  }
+
+  it.skip('should supply native HBAR and get awhbar tokens', async function () {
+    const depositAmount = 123200000;
+    await approveToken(whbarTokenContract, lendingPoolContract.address, depositAmount);
+
+    const txn = await lendingPoolContract.deposit(
+      WHBAR.token.address,
+      // @ts-ignore
+      123200000n,
+      owner.address,
+      0,
+      {
+        // @ts-ignore
+        value: 123200000n * 10_000_000_000n,
+      }
+    );
+    await txn.wait();
+    console.log('Transaction hash:', txn.hash);
+
+    await new Promise((r) => setTimeout(r, 2000));
+
+    const balanceOf = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
+    expect(balanceOf).to.be.gt(0);
+  });
+
+  it('should withdraw whbar tokens and get HBAR - msg.sender different from to', async function () {
+    await withdrawWHBAR(1022, delegator.address);
+  });
+
+  it.skip('should withdraw whbar tokens and get HBAR - msg.sender same as to', async function () {
+    await withdrawWHBAR(1122, owner.address);
+  });
+
+  it.skip('should borrow native HBAR - msg.sender same as ', async function () {
+    await borrowWHBAR(10320, owner.address);
+  });
+
+  it.skip('should repay native HBAR', async function () {
+    const amount = 100;
+    const debtTokenContract = await setupContract('VariableDebtToken', WHBAR.variableDebt.address);
+    const balanceOf = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
+
+    await approveToken(whbarTokenContract, WHBAR.token.address, amount);
+
+    const repayTxn = await lendingPoolContract.repay(
+      WHBAR.token.address,
+      // @ts-ignore
+      100n,
+      2,
+      owner.address,
+      // @ts-ignore
+      { value: 100n * 10_000_000_000n }
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash:', repayTxn.hash);
+
+    const balanceOfAfter = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt after');
+    expect(balanceOfAfter).to.be.gte(0);
   });
 });

@@ -209,12 +209,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
     }
 
-    // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
-    IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
-
     // Note - we are withdrawing the user's _whbarToken tokens and send them HBAR
     if (asset == address(_whbarToken)) {
+      // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
+      IAToken(aToken).burn(msg.sender, msg.sender, amountToWithdraw, reserve.liquidityIndex);
       IWHBAR(_whbarContract).withdraw(msg.sender, to, amountToWithdraw);
+    } else {
+      IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
     }
 
     emit Withdraw(asset, msg.sender, to, amountToWithdraw);
@@ -980,14 +981,14 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
 
     if (vars.releaseUnderlying) {
-      // In case of _whbarToken, the user gets _whbarToken tokens.
-      IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
-    }
-
-    // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
-    if (vars.asset == address(_whbarToken)) {
-      //   IWHBAR(_whbarContract).withdraw(msg.sender, vars.onBehalfOf, vars.amount);
-      IWHBAR(_whbarContract).withdraw(msg.sender, vars.onBehalfOf, vars.amount);
+      // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
+      if (vars.asset == address(_whbarToken)) {
+        // In case of _whbarToken, the user gets _whbarToken tokens.
+        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
+        IWHBAR(_whbarContract).withdraw(vars.user, vars.onBehalfOf, vars.amount);
+      } else {
+        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
+      }
     }
 
     emit Borrow(
