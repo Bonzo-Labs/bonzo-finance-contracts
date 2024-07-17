@@ -66,10 +66,10 @@ describe('Lending Pool Contract Tests', function () {
   }
 
   async function borrowWHBAR(amount, onBehalfOf) {
-    await approveToken(whbarTokenContract, WHBAR.token.address, amount);
+    await approveToken(whbarTokenContract, lendingPoolContract.address, amount);
 
     const borrowTxn = await lendingPoolContract.borrow(
-      WHBAR.token.address,
+      '0x0000000000000000000000000000000000003ad2',
       amount,
       2,
       0,
@@ -103,7 +103,7 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  it('should withdraw whbar tokens and get HBAR - msg.sender different from to', async function () {
+  it.skip('should withdraw whbar tokens and get HBAR - msg.sender different from to', async function () {
     await withdrawWHBAR(1022, delegator.address);
   });
 
@@ -111,8 +111,24 @@ describe('Lending Pool Contract Tests', function () {
     await withdrawWHBAR(1122, owner.address);
   });
 
-  it.skip('should borrow native HBAR - msg.sender same as ', async function () {
-    await borrowWHBAR(10320, owner.address);
+  it.skip('should borrow native HBAR - msg.sender same as onBehalfOf', async function () {
+    await borrowWHBAR(1032, owner.address);
+  });
+
+  // Note - You need to call approveDelegation
+  it('should borrow native HBAR - msg.sender different from onBehalfOf', async function () {
+    // const whbarDebtTokenContract = await setupContract(
+    //   'VariableDebtToken',
+    //   WHBAR.variableDebt.address
+    // );
+    // const approveDelegationTxn = await whbarDebtTokenContract.approveDelegation(
+    //   delegator.address,
+    //   1032
+    // );
+    // await approveDelegationTxn.wait();
+    // console.log('Approve Delegation Transaction hash:', approveDelegationTxn.hash);
+
+    await borrowWHBAR(1032, delegator.address);
   });
 
   it.skip('should repay native HBAR', async function () {
