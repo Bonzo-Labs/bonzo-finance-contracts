@@ -17,6 +17,9 @@ abstract contract Proxy {
     _fallback();
   }
 
+  receive() external payable {
+    _fallback();
+  }
   /**
    * @return The Address of the implementation.
    */
@@ -44,13 +47,13 @@ abstract contract Proxy {
       returndatacopy(0, 0, returndatasize())
 
       switch result
-        // delegatecall returns 0 on error.
-        case 0 {
-          revert(0, returndatasize())
-        }
-        default {
-          return(0, returndatasize())
-        }
+      // delegatecall returns 0 on error.
+      case 0 {
+        revert(0, returndatasize())
+      }
+      default {
+        return(0, returndatasize())
+      }
     }
   }
 

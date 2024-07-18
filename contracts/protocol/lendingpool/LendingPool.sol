@@ -25,7 +25,6 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {UserConfiguration} from '../libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
-import {IHederaTokenService} from '../../interfaces/IHederaTokenService.sol';
 import {IWHBAR} from '../../interfaces/IWHBAR.sol';
 import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
@@ -58,6 +57,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
   uint256 public constant LENDINGPOOL_REVISION = 0x2;
+  bytes4 private constant TRANSFER_FROM_SELECTOR =
+    bytes4(keccak256('transferFrom(address,address,address,uint256)'));
 
   modifier whenNotPaused() {
     _whenNotPaused();
@@ -136,13 +137,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     } else {
       // Note - we are natively calling the HTS to transfer the tokens to the aToken contract because we had given the approval natively.
       (bool success, bytes memory result) = hts.call(
-        abi.encodeWithSelector(
-          IHederaTokenService.transferFrom.selector,
-          asset,
-          msg.sender,
-          aToken,
-          amount
-        )
+        abi.encodeWithSelector(TRANSFER_FROM_SELECTOR, asset, msg.sender, aToken, amount)
       );
       int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
       if (responseCode != HAPI_SUCCESS) {

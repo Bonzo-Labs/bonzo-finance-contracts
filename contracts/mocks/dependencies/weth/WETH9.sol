@@ -1,3 +1,4 @@
+//SPDX-License-Identifier: UNLICENSED
 // Copyright (C) 2015, 2016, 2017 Dapphub
 
 // This program is free software: you can redistribute it and/or modify
@@ -58,11 +59,7 @@ contract WETH9 {
     return transferFrom(msg.sender, dst, wad);
   }
 
-  function transferFrom(
-    address src,
-    address dst,
-    uint256 wad
-  ) public returns (bool) {
+  function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
     require(balanceOf[src] >= wad);
 
     if (src != msg.sender && allowance[src][msg.sender] != uint256(-1)) {

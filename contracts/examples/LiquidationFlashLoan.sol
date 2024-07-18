@@ -29,7 +29,7 @@ contract LiquidationFlashLoan is FlashLoanReceiverBase {
     address[] calldata assets,
     uint256[] calldata amounts,
     uint256[] calldata premiums,
-    address initiator,
+    address /*initiator*/,
     bytes calldata params
   ) external override returns (bool) {
     //
