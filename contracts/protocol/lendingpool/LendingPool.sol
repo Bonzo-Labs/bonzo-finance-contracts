@@ -351,6 +351,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
 
+    // Stable rate mode disbabled due to a critical bug on Aave
+    require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
+
     ValidationLogic.validateSwapRateMode(
       reserve,
       _usersConfig[msg.sender],
@@ -919,6 +922,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   function _executeBorrow(ExecuteBorrowParams memory vars) internal {
     DataTypes.ReserveData storage reserve = _reserves[vars.asset];
     DataTypes.UserConfigurationMap storage userConfig = _usersConfig[vars.onBehalfOf];
+
+    // Disable Stable Rate Borrowing due to a critical bug
+    require(
+      DataTypes.InterestRateMode(vars.interestRateMode) != DataTypes.InterestRateMode.STABLE,
+      Errors.STABLE_DEBT_DISABLED
+    );
 
     address oracle = _addressesProvider.getPriceOracle();
 
