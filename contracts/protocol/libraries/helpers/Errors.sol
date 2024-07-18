@@ -104,6 +104,8 @@ library Errors {
   string public constant SDT_STABLE_DEBT_OVERFLOW = '79';
   string public constant SDT_BURN_EXCEEDS_BALANCE = '80';
 
+  string public constant STABLE_DEBT_DISABLED = '101';
+
   enum CollateralManagerErrors {
     NO_ERROR,
     NO_COLLATERAL_AVAILABLE,

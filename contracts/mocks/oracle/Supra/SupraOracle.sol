@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import './ISupraSValueFeed.sol';
-import {Ownable} from '../../../dependencies/openzeppelin/contracts/UpdatedOwnable.sol';
+import {OwnableExtended} from '../../../misc/OwnableExtended.sol';
 
 error InvalidAssetOrIndex();
 error UnsupportedAsset();
@@ -12,7 +12,7 @@ error AssetAlreadyExists();
 /// @title SupraOracle Contract
 /// @notice This contract interacts with the SupraSValueFeed to fetch and manage asset prices.
 /// @dev This contract is designed to work with the SupraSValueFeed interface.
-contract SupraOracle is Ownable {
+contract SupraOracle is OwnableExtended {
   ISupraSValueFeed private sValueFeed;
 
   mapping(address => uint16) private assetToPriceIndex;

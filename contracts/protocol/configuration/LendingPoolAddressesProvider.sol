@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: agpl-3.0
 pragma solidity 0.6.12;
 
-import {Ownable} from '../../dependencies/openzeppelin/contracts/Ownable.sol';
+import {OwnableOverriden} from '../../misc/OwnableOverriden.sol';
 
 // Prettier ignore to prevent buidler flatter bug
 // prettier-ignore
@@ -16,7 +16,7 @@ import {ILendingPoolAddressesProvider} from '../../interfaces/ILendingPoolAddres
  * - Owned by the Aave Governance
  * @author Aave
  **/
-contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider {
+contract LendingPoolAddressesProvider is OwnableOverriden, ILendingPoolAddressesProvider {
   string private _marketId;
   mapping(bytes32 => address) private _addresses;
 
@@ -57,11 +57,10 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
    * @param id The id
    * @param implementationAddress The address of the new implementation
    */
-  function setAddressAsProxy(bytes32 id, address implementationAddress)
-    external
-    override
-    onlyOwner
-  {
+  function setAddressAsProxy(
+    bytes32 id,
+    address implementationAddress
+  ) external override onlyOwner {
     _updateImpl(id, implementationAddress);
     emit AddressSet(id, implementationAddress, true);
   }
@@ -194,8 +193,9 @@ contract LendingPoolAddressesProvider is Ownable, ILendingPoolAddressesProvider 
   function _updateImpl(bytes32 id, address newAddress) internal {
     address payable proxyAddress = payable(_addresses[id]);
 
-    InitializableImmutableAdminUpgradeabilityProxy proxy =
-      InitializableImmutableAdminUpgradeabilityProxy(proxyAddress);
+    InitializableImmutableAdminUpgradeabilityProxy proxy = InitializableImmutableAdminUpgradeabilityProxy(
+        proxyAddress
+      );
     bytes memory params = abi.encodeWithSignature('initialize(address)', address(this));
 
     if (proxyAddress == address(0)) {
