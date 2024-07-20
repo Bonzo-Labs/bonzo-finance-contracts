@@ -37,7 +37,6 @@ contract OwnableOverriden is Ownable {
    */
   function acceptOwnership() public virtual {
     require(msg.sender == _pendingOwner, 'OwnableOverriden: caller is not the pending owner');
-    address previousOwner = owner();
     super.transferOwnership(_pendingOwner);
     _pendingOwner = address(0);
   }

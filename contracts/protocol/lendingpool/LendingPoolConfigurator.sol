@@ -70,12 +70,12 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     }
   }
 
-  function _initReserve(ILendingPool pool, InitReserveInput calldata input) internal {
+  function _initReserve(ILendingPool lendingPool, InitReserveInput calldata input) internal {
     address aTokenProxyAddress = _initTokenWithProxy(
       input.aTokenImpl,
       abi.encodeWithSelector(
         IInitializableAToken.initialize.selector,
-        pool,
+        lendingPool,
         input.treasury,
         input.underlyingAsset,
         IAaveIncentivesController(input.incentivesController),
@@ -90,7 +90,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       input.stableDebtTokenImpl,
       abi.encodeWithSelector(
         IInitializableDebtToken.initialize.selector,
-        pool,
+        lendingPool,
         input.underlyingAsset,
         IAaveIncentivesController(input.incentivesController),
         input.underlyingAssetDecimals,
@@ -104,7 +104,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       input.variableDebtTokenImpl,
       abi.encodeWithSelector(
         IInitializableDebtToken.initialize.selector,
-        pool,
+        lendingPool,
         input.underlyingAsset,
         IAaveIncentivesController(input.incentivesController),
         input.underlyingAssetDecimals,
@@ -114,7 +114,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       )
     );
 
-    pool.initReserve(
+    lendingPool.initReserve(
       input.underlyingAsset,
       aTokenProxyAddress,
       stableDebtTokenProxyAddress,
@@ -122,7 +122,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       input.interestRateStrategyAddress
     );
 
-    DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(
+    DataTypes.ReserveConfigurationMap memory currentConfig = lendingPool.getConfiguration(
       input.underlyingAsset
     );
 
@@ -131,7 +131,7 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     currentConfig.setActive(true);
     currentConfig.setFrozen(false);
 
-    pool.setConfiguration(input.underlyingAsset, currentConfig.data);
+    lendingPool.setConfiguration(input.underlyingAsset, currentConfig.data);
 
     emit ReserveInitialized(
       input.underlyingAsset,
