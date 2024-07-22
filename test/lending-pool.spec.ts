@@ -249,20 +249,14 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should fail to borrow SAUCE tokens at a stable rate', async function () {
     const borrowAmount = 104;
-    const borrowTxn = await lendingPoolContract.borrow(
-      SAUCE.token.address,
-      borrowAmount,
-      1,
-      0,
-      owner.address
-    );
-    await borrowTxn.wait();
-    console.log('Borrow Transaction hash: ', borrowTxn.hash);
 
-    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
+    await expect(
+      lendingPoolContract.borrow(SAUCE.token.address, borrowAmount, 1, 0, owner.address)
+    ).to.be.revertedWith('101');
+
+    const debtTokenContract = await setupContract('StableDebtToken', SAUCE.stableDebt.address);
     const balanceOf = await debtTokenContract.balanceOf(owner.address);
-    console.log('Balance of debtTokenContract:', balanceOf.toString());
-    expect(balanceOf).to.be.gt(0);
+    expect(balanceOf).to.equal(0);
   });
 
   it.skip('should deposit KARATE tokens and borrow KARATE tokens', async function () {
