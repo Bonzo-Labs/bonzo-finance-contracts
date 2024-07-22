@@ -2,10 +2,10 @@
 pragma solidity 0.6.12;
 pragma experimental ABIEncoderV2;
 
-import {Ownable} from '../../dependencies/openzeppelin/contracts/Ownable.sol';
+import {OwnableOverriden} from '../../misc/OwnableOverriden.sol';
 import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
-contract MockParaSwapTokenTransferProxy is Ownable {
+contract MockParaSwapTokenTransferProxy is OwnableOverriden {
   function transferFrom(
     address token,
     address from,

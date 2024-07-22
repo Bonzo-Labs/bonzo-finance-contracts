@@ -2,82 +2,191 @@
 pragma solidity ^0.8.19;
 
 import './ISupraSValueFeed.sol';
-import {Ownable} from '../../../dependencies/openzeppelin/contracts/UpdatedOwnable.sol';
+import {OwnableExtended} from '../../../misc/OwnableExtended.sol';
 
 error InvalidAssetOrIndex();
 error UnsupportedAsset();
 error DivisionByZero();
+error AssetAlreadyExists();
 
-contract SupraOracle is Ownable {
+/// @title SupraOracle Contract
+/// @notice This contract interacts with the SupraSValueFeed to fetch and manage asset prices.
+/// @dev This contract is designed to work with the SupraSValueFeed interface.
+contract SupraOracle is OwnableExtended {
   ISupraSValueFeed private sValueFeed;
 
   mapping(address => uint16) private assetToPriceIndex;
+  mapping(address => uint16) private assetToDecimals;
+  mapping(string => address) private assetToAddress;
 
-  // Known asset addresses as constants for gas efficiency
-  address private constant CLXY = 0x00000000000000000000000000000000000014F5;
-  address private constant HBARX = 0x0000000000000000000000000000000000220cED;
-  address private constant SAUCE = 0x0000000000000000000000000000000000120f46;
-  address private constant DAI = 0x0000000000000000000000000000000000001599;
   address private constant USDC = 0x0000000000000000000000000000000000001549;
+  address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
 
+  /// @notice Constructor to initialize the contract with the SupraSValueFeed address.
+  /// @param _sValueFeed The address of the SupraSValueFeed contract.
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
-    assetToPriceIndex[CLXY] = 424;
-    assetToPriceIndex[HBARX] = 427;
-    assetToPriceIndex[SAUCE] = 425;
-    assetToPriceIndex[DAI] = 432;
-    assetToPriceIndex[USDC] = 432;
+
+    assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
+    assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
+    assetToAddress['SAUCE'] = 0x0000000000000000000000000000000000120f46;
+    assetToAddress['XSAUCE'] = 0x000000000000000000000000000000000015a59b;
+    assetToAddress['USDC'] = USDC;
+    assetToAddress['WHBAR'] = WHBAR;
+
+    assetToPriceIndex[assetToAddress['KARATE']] = 472;
+    assetToPriceIndex[assetToAddress['HBARX']] = 427;
+    assetToPriceIndex[assetToAddress['SAUCE']] = 425;
+    assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
+    assetToPriceIndex[assetToAddress['USDC']] = 432;
+    // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
+    assetToPriceIndex[assetToAddress['WHBAR']] = 428;
+
+    assetToDecimals[assetToAddress['KARATE']] = 8;
+    assetToDecimals[assetToAddress['HBARX']] = 8;
+    assetToDecimals[assetToAddress['SAUCE']] = 6;
+    assetToDecimals[assetToAddress['XSAUCE']] = 6;
+    assetToDecimals[assetToAddress['USDC']] = 6;
+    assetToDecimals[assetToAddress['WHBAR']] = 8;
   }
 
+  /// @notice Updates the SupraSValueFeed contract address.
+  /// @param _newSValueFeed The new address of the SupraSValueFeed contract.
   function updateSupraSvalueFeed(ISupraSValueFeed _newSValueFeed) external onlyOwner {
     sValueFeed = _newSValueFeed;
   }
 
+  /// @notice Gets the current SupraSValueFeed contract address.
+  /// @return The address of the current SupraSValueFeed contract.
   function getSupraSvalueFeed() external view returns (ISupraSValueFeed) {
     return sValueFeed;
   }
 
-  function updatePriceIndex(address _asset, uint16 _newIndex) external onlyOwner {
-    if (_asset == address(0) || _newIndex == 0) revert InvalidAssetOrIndex();
-    assetToPriceIndex[_asset] = _newIndex;
+  /// @notice Adds a new asset to the oracle.
+  /// @param _name The name of the asset.
+  /// @param _asset The address of the asset.
+  /// @param _index The price index of the asset.
+  /// @param _decimals The number of decimals for the asset's price.
+  /// @dev Reverts if the asset or index is invalid or if the asset already exists.
+  function addNewAsset(
+    string memory _name,
+    address _asset,
+    uint16 _index,
+    uint16 _decimals
+  ) external onlyOwner {
+    if (_asset == address(0) || _index == 0) revert InvalidAssetOrIndex();
+    if (assetToAddress[_name] != address(0) || assetToPriceIndex[_asset] != 0) {
+      revert AssetAlreadyExists();
+    }
+
+    assetToAddress[_name] = _asset;
+    assetToPriceIndex[_asset] = _index;
+    assetToDecimals[_asset] = _decimals;
   }
 
-  // Gets the price of an asset in HBAR (not USD)
+  /// @notice Updates an existing asset's details.
+  /// @param _name The name of the asset.
+  /// @param _asset The new address of the asset.
+  /// @param _newIndex The new price index of the asset.
+  /// @param _newDecimals The new number of decimals for the asset's price.
+  /// @dev Reverts if the asset or index is invalid or if the asset does not exist.
+  function updateAsset(
+    string memory _name,
+    address _asset,
+    uint16 _newIndex,
+    uint16 _newDecimals
+  ) external onlyOwner {
+    if (_asset == address(0) || _newIndex == 0) revert InvalidAssetOrIndex();
+
+    address currentAddress = assetToAddress[_name];
+    if (currentAddress == address(0)) revert UnsupportedAsset();
+
+    delete assetToPriceIndex[currentAddress];
+    delete assetToDecimals[currentAddress];
+
+    assetToAddress[_name] = _asset;
+    assetToPriceIndex[_asset] = _newIndex;
+    assetToDecimals[_asset] = _newDecimals;
+  }
+
+  /// @notice Helper function for tests to get the address of an asset.
+  /// @param _asset The address of the asset.
+  /// @return The price feed of an asset
+  /// @dev Reverts if the asset is unsupported.
+  function getPriceFeed(address _asset) external view returns (ISupraSValueFeed.priceFeed memory) {
+    uint16 priceIndex = assetToPriceIndex[_asset];
+    if (priceIndex == 0) revert UnsupportedAsset();
+    return sValueFeed.getSvalue(priceIndex);
+  }
+
+  /// @notice Helper function to test the price of an asset in HBAR.
+  /// @param asset The address of the asset.
+  /// @param amount The amount of the asset.
+  /// @return amountInEth The equivalent price in HBAR.
+  /// @dev Reverts if the asset is unsupported or if there's a division by zero.
+  function getAmountInEth(
+    uint256 amount,
+    address asset
+  ) external view returns (uint256 amountInEth) {
+    uint256 price = getAssetPrice(asset);
+    amountInEth = (price * amount) / (10 ** assetToDecimals[asset]);
+  }
+
+  /// @notice Gets the price of an asset in HBAR.
+  /// @param _asset The address of the asset.
+  /// @return The price of the asset in HBAR.
+  /// @dev Reverts if the asset is unsupported or if there's a division by zero.
   function getAssetPrice(address _asset) public view returns (uint256) {
     uint16 priceIndex = assetToPriceIndex[_asset];
     if (priceIndex == 0) revert UnsupportedAsset();
 
     ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
 
-    // Early return for non-DAI/USDC assets
-    if (_asset != DAI && _asset != USDC) {
-      return priceFeed.price;
+    // Early return for non-USDC assets
+    if (_asset != USDC) {
+      if (_asset == WHBAR) {
+        return (10 ** decimals());
+      } else {
+        return priceFeed.price;
+      }
     }
 
     if (priceFeed.price == 0) revert DivisionByZero();
 
-    // For DAI/USDC, calculate the reciprocal of the HBAR price in USDC
-    // Use a large factor to scale up the numerator before division to maintain precision
-    uint256 scaleFactor = 10 ** decimals(); // Assuming priceFeed.price and your desired result are both scaled to 18 decimal places
-    uint256 reciprocalPrice = (scaleFactor * scaleFactor) / priceFeed.price; // Calculate the reciprocal with scaled precision
+    uint256 scaleFactor = 10 ** decimals();
+    uint256 reciprocalPrice = (scaleFactor * scaleFactor) / priceFeed.price;
 
     return reciprocalPrice;
   }
 
-  // Gets the price of an asset in USD
+  /// @notice Gets the price of an asset in USD.
+  /// @param _asset The address of the asset.
+  /// @return The price of the asset in USD.
+  /// @dev Reverts if there's a division by zero.
   function getAssetPriceInUSD(address _asset) public view returns (uint256) {
-    uint256 priceInHbar = getAssetPrice(_asset); // This will give us the asset's price in HBAR
-    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(432); // Index for HBAR to USD
+    uint256 priceInHbar = getAssetPrice(_asset);
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
 
     if (priceFeedUSD.price == 0) revert DivisionByZero();
 
-    // Since getAssetPrice already adjusts DAI and USDC prices to HBAR,
-    // we can use priceInHbar directly for conversion to USD.
-    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals()); // Adjust for decimal places
+    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals());
 
     return priceInUSD;
   }
 
+  /// @notice Converts an amount of HBAR to USD.
+  /// @param _amount The amount of HBAR.
+  /// @return priceInUSD The equivalent price in USD.
+  /// @dev Reverts if there's a division by zero.
+  function getHbarUSD(uint256 _amount) public view returns (uint256 priceInUSD) {
+    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
+    if (priceFeedUSD.price == 0) revert DivisionByZero();
+
+    priceInUSD = (_amount * priceFeedUSD.price) / (10 ** decimals());
+  }
+
+  /// @notice Gets the number of decimals used for prices.
+  /// @return The number of decimals (18).
   function decimals() public pure returns (uint8) {
     return 18;
   }

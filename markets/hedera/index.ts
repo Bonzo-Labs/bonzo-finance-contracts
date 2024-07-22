@@ -2,11 +2,13 @@ import { IHederaConfiguration, eHederaNetwork } from '../../helpers/types';
 
 import { CommonsConfig } from './commons';
 import {
-  strategyDAI,
+  strategyKARATE,
+  strategyXSAUCE,
   strategyUSDC,
-  strategyCLXY,
   strategyHBARX,
   strategySAUCE,
+  strategyCLXY,
+  strategyWHBAR,
 } from './reservesConfigs';
 
 // ----------------
@@ -18,26 +20,29 @@ export const HederaConfig: IHederaConfiguration = {
   MarketId: 'Hedera Market',
   ProviderId: 5, //TODO - update this
   ReservesConfig: {
-    DAI: strategyDAI,
+    XSAUCE: strategyXSAUCE,
     USDC: strategyUSDC,
-    CLXY: strategyCLXY,
+    KARATE: strategyKARATE,
     HBARX: strategyHBARX,
     SAUCE: strategySAUCE,
+    WHBAR: strategyWHBAR,
   },
   ReserveAssets: {
     [eHederaNetwork.hedera_testnet]: {
-      DAI: '0x0000000000000000000000000000000000001599',
       USDC: '0x0000000000000000000000000000000000001549',
-      CLXY: '0x00000000000000000000000000000000000014f5',
       HBARX: '0x0000000000000000000000000000000000220ced',
       SAUCE: '0x0000000000000000000000000000000000120f46',
+      XSAUCE: '0x000000000000000000000000000000000015a59b',
+      KARATE: '0x00000000000000000000000000000000003991ed',
+      WHBAR: '0x0000000000000000000000000000000000003ad2',
     },
     [eHederaNetwork.mainnet]: {
-      DAI: '',
       USDC: '',
-      CLXY: '',
       HBARX: '',
       SAUCE: '',
+      XSAUCE: '',
+      KARATE: '',
+      WHBAR: '',
     },
   },
 };

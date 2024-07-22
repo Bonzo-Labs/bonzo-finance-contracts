@@ -5,16 +5,16 @@
       "accountId": "0.0.5449"
     },
     "aToken": {
-      "address": "0xE218A99F780E2660c7f52deC03F4ee6BF1D398DA",
-      "accountId": "0.0.e218a99f780e2660c7f52dec03f4ee6bf1d398da"
+      "address": "0x97f0437382Af1e9DfcA2ffD6bb91DA6762d25942",
+      "accountId": "0.0.97f0437382af1e9dfca2ffd6bb91da6762d25942"
     },
     "stableDebt": {
-      "address": "0x79129eAbBb8f259ba461695943A27E553894a964",
-      "accountId": "0.0.79129eabbb8f259ba461695943a27e553894a964"
+      "address": "0xFCa0F1C4365FC33786f0dC9DfC08E1952Bc191AF",
+      "accountId": "0.0.fca0f1c4365fc33786f0dc9dfc08e1952bc191af"
     },
     "variableDebt": {
-      "address": "0xFF1E1e7c9898F295B465fb9cf4f73140f4314762",
-      "accountId": "0.0.ff1e1e7c9898f295b465fb9cf4f73140f4314762"
+      "address": "0x82e968A07e48E1361BBb66Caf2475Cb533d9D27E",
+      "accountId": "0.0.82e968a07e48e1361bbb66caf2475cb533d9d27e"
     }
   },
   "HBARX": {
@@ -23,16 +23,16 @@
       "accountId": "0.0.2231533"
     },
     "aToken": {
-      "address": "0xd278982dB0A414CF2c43C92AF77F8C38B03E5E7a",
-      "accountId": "0.0.d278982db0a414cf2c43c92af77f8c38b03e5e7a"
+      "address": "0xAaAFC8BD15B1bB833D356B46aFFdEf61aF920Ba2",
+      "accountId": "0.0.aaafc8bd15b1bb833d356b46affdef61af920ba2"
     },
     "stableDebt": {
-      "address": "0x527a049086AF790Ff0FFbD57613e85e387dC63eC",
-      "accountId": "0.0.527a049086af790ff0ffbd57613e85e387dc63ec"
+      "address": "0x748aDfB537713C209057405Fa1EEF6b13e192071",
+      "accountId": "0.0.748adfb537713c209057405fa1eef6b13e192071"
     },
     "variableDebt": {
-      "address": "0xCaBfEE3713628b6388Cd67ddc432f4F2734681E5",
-      "accountId": "0.0.cabfee3713628b6388cd67ddc432f4f2734681e5"
+      "address": "0xD037F4083f890b2f0df4b7c1Df751980f3DF59FB",
+      "accountId": "0.0.d037f4083f890b2f0df4b7c1df751980f3df59fb"
     }
   },
   "SAUCE": {
@@ -41,16 +41,16 @@
       "accountId": "0.0.1183558"
     },
     "aToken": {
-      "address": "0x7Df362796c3c7062Aa38bd11eEC657cc60571076",
-      "accountId": "0.0.7df362796c3c7062aa38bd11eec657cc60571076"
+      "address": "0x462a83085b7b17f50bD889E54399C23342f60091",
+      "accountId": "0.0.462a83085b7b17f50bd889e54399c23342f60091"
     },
     "stableDebt": {
-      "address": "0xEC89A87c969ae008CcC418ca3a55c26630C394D2",
-      "accountId": "0.0.ec89a87c969ae008ccc418ca3a55c26630c394d2"
+      "address": "0x56F2b2491643a5B282cc03Eb394ADA7c4704C058",
+      "accountId": "0.0.56f2b2491643a5b282cc03eb394ada7c4704c058"
     },
     "variableDebt": {
-      "address": "0x1127b26adD8FC68f70AaCa5CBC0F81AFF6F9A907",
-      "accountId": "0.0.1127b26add8fc68f70aaca5cbc0f81aff6f9a907"
+      "address": "0xb0E5f3f49cc62974fc7b9A2ceD7A1Ac0713BD32c",
+      "accountId": "0.0.b0e5f3f49cc62974fc7b9a2ced7a1ac0713bd32c"
     }
   },
   "XSAUCE": {
@@ -59,16 +59,16 @@
       "accountId": "0.0.1418651"
     },
     "aToken": {
-      "address": "0x59BC25E7B3219aAC53d2514fB2E102a7882AC6d4",
-      "accountId": "0.0.59bc25e7b3219aac53d2514fb2e102a7882ac6d4"
+      "address": "0x209F83cc0472720F755BD10BF822fb3ec0531BA9",
+      "accountId": "0.0.209f83cc0472720f755bd10bf822fb3ec0531ba9"
     },
     "stableDebt": {
-      "address": "0xFB4522BD5d8c4C70D421A2914a2cc5c390a863B5",
-      "accountId": "0.0.fb4522bd5d8c4c70d421a2914a2cc5c390a863b5"
+      "address": "0x0772AeBe3E6e79D5F121097Bf25B566dF0aDc4E2",
+      "accountId": "0.0.0772aebe3e6e79d5f121097bf25b566df0adc4e2"
     },
     "variableDebt": {
-      "address": "0xc0da1054E8cA2c1a9dc496882795189Deb157BF7",
-      "accountId": "0.0.c0da1054e8ca2c1a9dc496882795189deb157bf7"
+      "address": "0x32Edc07fE24692D1CaC4D1Bb8d1D66C33b2AfD59",
+      "accountId": "0.0.32edc07fe24692d1cac4d1bb8d1d66c33b2afd59"
     }
   },
   "KARATE": {
@@ -77,34 +77,16 @@
       "accountId": "0.0.3772909"
     },
     "aToken": {
-      "address": "0xC1437fDae341657580a1060fBF83378AC8cb5557",
-      "accountId": "0.0.c1437fdae341657580a1060fbf83378ac8cb5557"
+      "address": "0x302ab3e6bCc6d69b88c039E8De871c925dAeE057",
+      "accountId": "0.0.302ab3e6bcc6d69b88c039e8de871c925daee057"
     },
     "stableDebt": {
-      "address": "0x1b9801c5eD7c0dF58B857777F4dc8e6548B03492",
-      "accountId": "0.0.1b9801c5ed7c0df58b857777f4dc8e6548b03492"
+      "address": "0x95b7e5A55E519b41F2c6177b2524AD55571ff60C",
+      "accountId": "0.0.95b7e5a55e519b41f2c6177b2524ad55571ff60c"
     },
     "variableDebt": {
-      "address": "0xaaB809ee474Ad73725666F95259229E8015D3965",
-      "accountId": "0.0.aab809ee474ad73725666f95259229e8015d3965"
-    }
-  },
-  "WHBAR": {
-    "token": {
-      "address": "0x0000000000000000000000000000000000003ad2",
-      "accountId": "0.0.15058"
-    },
-    "aToken": {
-      "address": "0x0683f78d0215E93A05a6B62561927Ae135056eb7",
-      "accountId": "0.0.0683f78d0215e93a05a6b62561927ae135056eb7"
-    },
-    "stableDebt": {
-      "address": "0x1224BbBA1c53029Bc69fA20A098394E8b258Ad6e",
-      "accountId": "0.0.1224bbba1c53029bc69fa20a098394e8b258ad6e"
-    },
-    "variableDebt": {
-      "address": "0x74b7004342F49A527b1F71E68f045748191EDA11",
-      "accountId": "0.0.74b7004342f49a527b1f71e68f045748191eda11"
+      "address": "0xaA92F5A79403883dC1Fb16674AF046757Ea5a8e0",
+      "accountId": "0.0.aa92f5a79403883dc1fb16674af046757ea5a8e0"
     }
   },
   "LendingPoolAddressesProviderRegistry": {
@@ -139,7 +121,7 @@
   },
   "LendingPoolImpl": {
     "hedera_testnet": {
-      "address": "0x755418fD417d64BA76c685F5531326da9F98D7d7"
+      "address": "0x5E7CD71793C4D14AFc2E02dC732D32849d4e5F68"
     }
   },
   "LendingPool": {
@@ -171,7 +153,7 @@
   },
   "AToken": {
     "hedera_testnet": {
-      "address": "0x88DeEAA4A4Ad9Fb937DE179Ee629840e14A1690E",
+      "address": "0x1Fe553417D3D4d1aEC4439C5C2557e0fb8b631E1",
       "deployer": "0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103"
     }
   },
@@ -189,7 +171,7 @@
   },
   "PriceOracle": {
     "hedera_testnet": {
-      "address": "0xfac891666D590E277D8F4ff601C50D51B57179c4",
+      "address": "0x67F8B3b67c6633502D5e7033ab0Ccb3876e96fbb",
       "deployer": "0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103"
     }
   },

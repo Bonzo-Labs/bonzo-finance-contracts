@@ -3,7 +3,6 @@ const hre = require('hardhat');
 async function main() {
   const provider = new hre.ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   const deployer = new hre.ethers.Wallet(process.env.PRIVATE_KEY, provider);
-  console.log('Deployer address: ', deployer.address);
   console.log('Deploying contracts with the account:', deployer.address);
 
   // Deploy Event contract

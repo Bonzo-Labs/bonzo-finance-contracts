@@ -26,6 +26,8 @@ import {UserConfiguration} from '../libraries/configuration/UserConfiguration.so
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
 import {IHederaTokenService} from '../../interfaces/IHederaTokenService.sol';
+import {IWHBAR} from '../../interfaces/IWHBAR.sol';
+import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
 /**
  * @title LendingPool contract
@@ -55,7 +57,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   int64 constant HAPI_SUCCESS = 22; // HTS Response code indicating success.
   int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
-  uint256 public constant LENDINGPOOL_REVISION = 0x2;
+  uint256 public constant LENDINGPOOL_REVISION = 0x1;
 
   modifier whenNotPaused() {
     _whenNotPaused();
@@ -95,6 +97,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxStableRateBorrowSizePercent = 2500;
     _flashLoanPremiumTotal = 9;
     _maxNumberOfReserves = 128;
+    // TODO - change this to mainnet addresses
+    _whbarContract = IWHBAR(0x0000000000000000000000000000000000003aD1);
+    _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
   }
 
   /**
@@ -114,29 +119,35 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     address onBehalfOf,
     uint16 referralCode
-  ) external override whenNotPaused {
+  ) external payable override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
+    // Validate the deposit action
     ValidationLogic.validateDeposit(reserve, amount);
 
     address aToken = reserve.aTokenAddress;
-
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 
-    // Note - we are natively calling the HTS to transfer the tokens to the aToken contract because we had given the approval natively.
-    (bool success, bytes memory result) = hts.call(
-      abi.encodeWithSelector(
-        IHederaTokenService.transferFrom.selector,
-        asset,
-        msg.sender,
-        aToken,
-        amount
-      )
-    );
-    int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
-    if (responseCode != HAPI_SUCCESS) {
-      revert('Failed to send tokens to the aToken contract');
+    if (asset == address(_whbarToken)) {
+      require(msg.value == amount, 'Invalid amount of HBAR sent');
+      // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
+      IWHBAR(_whbarContract).deposit{value: amount}(msg.sender, aToken);
+    } else {
+      // Note - we are natively calling the HTS to transfer the tokens to the aToken contract because we had given the approval natively.
+      (bool success, bytes memory result) = hts.call(
+        abi.encodeWithSelector(
+          IHederaTokenService.transferFrom.selector,
+          asset,
+          msg.sender,
+          aToken,
+          amount
+        )
+      );
+      int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
+      if (responseCode != HAPI_SUCCESS) {
+        revert('Failed to send tokens to the aToken contract');
+      }
     }
 
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
@@ -198,7 +209,14 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
     }
 
-    IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
+    // Note - we are withdrawing the user's _whbarToken tokens and send them HBAR
+    if (asset == address(_whbarToken)) {
+      // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
+      IAToken(aToken).burn(msg.sender, msg.sender, amountToWithdraw, reserve.liquidityIndex);
+      IWHBAR(_whbarContract).withdraw(msg.sender, to, amountToWithdraw);
+    } else {
+      IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
+    }
 
     emit Withdraw(asset, msg.sender, to, amountToWithdraw);
 
@@ -262,7 +280,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
-  ) external override whenNotPaused returns (uint256) {
+  ) external payable override whenNotPaused returns (uint256) {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(onBehalfOf, reserve);
@@ -305,7 +323,13 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _usersConfig[onBehalfOf].setBorrowing(reserve.id, false);
     }
 
-    IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
+    if (asset == address(_whbarToken)) {
+      require(msg.value == paybackAmount, 'Invalid amount of HBAR sent');
+      // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
+      IWHBAR(_whbarContract).deposit{value: paybackAmount}(msg.sender, aToken);
+    } else {
+      IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
+    }
 
     IAToken(aToken).handleRepayment(msg.sender, paybackAmount);
 
@@ -326,6 +350,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(msg.sender, reserve);
 
     DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
+
+    // Stable rate mode disbabled due to a critical bug on Aave
+    require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
 
     ValidationLogic.validateSwapRateMode(
       reserve,
@@ -603,6 +630,10 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     return _reserves[asset];
   }
 
+  function getWhbarAddress() external view returns (address) {
+    return address(_whbarToken);
+  }
+
   /**
    * @dev Returns the user account data across all the reserves
    * @param user The address of the user
@@ -873,7 +904,11 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     bool releaseUnderlying;
   }
 
-  // TODO - Remove this function
+  /**
+   * @dev Helper function to check whether the oracle is returning the correct values
+   * @param amount amount of the asset
+   * @param asset The address of the underlying asset of the reserve
+   */
   function getAmountInEth(
     uint256 amount,
     address asset
@@ -884,54 +919,26 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
   }
 
-  // TODO - Remove this function
-  function getReserveFlags(address asset) external view returns (bool, bool, bool, bool) {
-    DataTypes.ReserveData storage reserve = _reserves[asset];
-
-    (bool isActive, bool isFrozen, bool borrowingEnabled, bool stableRateBorrowingEnabled) = reserve
-      .configuration
-      .getFlags();
-    return (isActive, isFrozen, borrowingEnabled, stableRateBorrowingEnabled);
-  }
-
-  // TODO - Remove this function
-  function getReserveGenericLogic(
-    address asset
-  ) external view returns (uint256, uint256, uint256, uint256, uint256) {
-    DataTypes.UserConfigurationMap storage userConfig = _usersConfig[msg.sender];
-    address oracle = _addressesProvider.getPriceOracle();
-    (
-      uint256 userCollateralBalanceETH,
-      uint256 userBorrowBalanceETH,
-      uint256 currentLtv,
-      uint256 currentLiquidationThreshold,
-      uint256 healthFactor
-    ) = GenericLogic.calculateUserAccountData(
-        msg.sender,
-        _reserves,
-        userConfig,
-        _reservesList,
-        _reservesCount,
-        oracle
-      );
-    return (
-      userCollateralBalanceETH,
-      userBorrowBalanceETH,
-      currentLtv,
-      currentLiquidationThreshold,
-      healthFactor
-    );
-  }
-
   function _executeBorrow(ExecuteBorrowParams memory vars) internal {
     DataTypes.ReserveData storage reserve = _reserves[vars.asset];
     DataTypes.UserConfigurationMap storage userConfig = _usersConfig[vars.onBehalfOf];
 
+    // Disable Stable Rate Borrowing due to a critical bug
+    require(
+      DataTypes.InterestRateMode(vars.interestRateMode) != DataTypes.InterestRateMode.STABLE,
+      Errors.STABLE_DEBT_DISABLED
+    );
+
     address oracle = _addressesProvider.getPriceOracle();
 
-    uint256 amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
-      10 ** reserve.configuration.getDecimals()
-    );
+    uint256 amountInETH;
+    if (vars.asset == address(_whbarToken)) {
+      amountInETH = vars.amount;
+    } else {
+      amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
+        10 ** reserve.configuration.getDecimals()
+      );
+    }
 
     ValidationLogic.validateBorrow(
       vars.asset,
@@ -983,7 +990,14 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
 
     if (vars.releaseUnderlying) {
-      IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
+      // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
+      if (vars.asset == address(_whbarToken)) {
+        // In case of _whbarToken, the user gets _whbarToken tokens.
+        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
+        IWHBAR(_whbarContract).withdraw(vars.user, vars.onBehalfOf, vars.amount);
+      } else {
+        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
+      }
     }
 
     emit Borrow(

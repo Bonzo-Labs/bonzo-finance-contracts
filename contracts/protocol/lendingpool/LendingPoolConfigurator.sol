@@ -4,9 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {SafeMath} from '../../dependencies/openzeppelin/contracts/SafeMath.sol';
 import {VersionedInitializable} from '../libraries/aave-upgradeability/VersionedInitializable.sol';
-import {
-  InitializableImmutableAdminUpgradeabilityProxy
-} from '../libraries/aave-upgradeability/InitializableImmutableAdminUpgradeabilityProxy.sol';
+import {InitializableImmutableAdminUpgradeabilityProxy} from '../libraries/aave-upgradeability/InitializableImmutableAdminUpgradeabilityProxy.sol';
 import {ReserveConfiguration} from '../libraries/configuration/ReserveConfiguration.sol';
 import {ILendingPoolAddressesProvider} from '../../interfaces/ILendingPoolAddressesProvider.sol';
 import {ILendingPool} from '../../interfaces/ILendingPool.sol';
@@ -23,7 +21,8 @@ import {ILendingPoolConfigurator} from '../../interfaces/ILendingPoolConfigurato
  * @title LendingPoolConfigurator contract
  * @author Aave
  * @dev Implements the configuration methods for the Aave protocol
- **/
+ *
+ */
 
 contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigurator {
   using SafeMath for uint256;
@@ -33,12 +32,15 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   ILendingPoolAddressesProvider internal addressesProvider;
   ILendingPool internal pool;
 
-  modifier onlyPoolAdmin {
+  uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
+  uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
+
+  modifier onlyPoolAdmin() {
     require(addressesProvider.getPoolAdmin() == msg.sender, Errors.CALLER_NOT_POOL_ADMIN);
     _;
   }
 
-  modifier onlyEmergencyAdmin {
+  modifier onlyEmergencyAdmin() {
     require(
       addressesProvider.getEmergencyAdmin() == msg.sender,
       Errors.LPC_CALLER_NOT_EMERGENCY_ADMIN
@@ -59,7 +61,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
 
   /**
    * @dev Initializes reserves in batch
-   **/
+   *
+   */
   function batchInitReserve(InitReserveInput[] calldata input) external onlyPoolAdmin {
     ILendingPool cachedPool = pool;
     for (uint256 i = 0; i < input.length; i++) {
@@ -68,51 +71,48 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   }
 
   function _initReserve(ILendingPool pool, InitReserveInput calldata input) internal {
-    address aTokenProxyAddress =
-      _initTokenWithProxy(
-        input.aTokenImpl,
-        abi.encodeWithSelector(
-          IInitializableAToken.initialize.selector,
-          pool,
-          input.treasury,
-          input.underlyingAsset,
-          IAaveIncentivesController(input.incentivesController),
-          input.underlyingAssetDecimals,
-          input.aTokenName,
-          input.aTokenSymbol,
-          input.params
-        )
-      );
+    address aTokenProxyAddress = _initTokenWithProxy(
+      input.aTokenImpl,
+      abi.encodeWithSelector(
+        IInitializableAToken.initialize.selector,
+        pool,
+        input.treasury,
+        input.underlyingAsset,
+        IAaveIncentivesController(input.incentivesController),
+        input.underlyingAssetDecimals,
+        input.aTokenName,
+        input.aTokenSymbol,
+        input.params
+      )
+    );
 
-    address stableDebtTokenProxyAddress =
-      _initTokenWithProxy(
-        input.stableDebtTokenImpl,
-        abi.encodeWithSelector(
-          IInitializableDebtToken.initialize.selector,
-          pool,
-          input.underlyingAsset,
-          IAaveIncentivesController(input.incentivesController),
-          input.underlyingAssetDecimals,
-          input.stableDebtTokenName,
-          input.stableDebtTokenSymbol,
-          input.params
-        )
-      );
+    address stableDebtTokenProxyAddress = _initTokenWithProxy(
+      input.stableDebtTokenImpl,
+      abi.encodeWithSelector(
+        IInitializableDebtToken.initialize.selector,
+        pool,
+        input.underlyingAsset,
+        IAaveIncentivesController(input.incentivesController),
+        input.underlyingAssetDecimals,
+        input.stableDebtTokenName,
+        input.stableDebtTokenSymbol,
+        input.params
+      )
+    );
 
-    address variableDebtTokenProxyAddress =
-      _initTokenWithProxy(
-        input.variableDebtTokenImpl,
-        abi.encodeWithSelector(
-          IInitializableDebtToken.initialize.selector,
-          pool,
-          input.underlyingAsset,
-          IAaveIncentivesController(input.incentivesController),
-          input.underlyingAssetDecimals,
-          input.variableDebtTokenName,
-          input.variableDebtTokenSymbol,
-          input.params
-        )
-      );
+    address variableDebtTokenProxyAddress = _initTokenWithProxy(
+      input.variableDebtTokenImpl,
+      abi.encodeWithSelector(
+        IInitializableDebtToken.initialize.selector,
+        pool,
+        input.underlyingAsset,
+        IAaveIncentivesController(input.incentivesController),
+        input.underlyingAssetDecimals,
+        input.variableDebtTokenName,
+        input.variableDebtTokenSymbol,
+        input.params
+      )
+    );
 
     pool.initReserve(
       input.underlyingAsset,
@@ -122,8 +122,9 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
       input.interestRateStrategyAddress
     );
 
-    DataTypes.ReserveConfigurationMap memory currentConfig =
-      pool.getConfiguration(input.underlyingAsset);
+    DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(
+      input.underlyingAsset
+    );
 
     currentConfig.setDecimals(input.underlyingAssetDecimals);
 
@@ -143,7 +144,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
 
   /**
    * @dev Updates the aToken implementation for the reserve
-   **/
+   *
+   */
   function updateAToken(UpdateATokenInput calldata input) external onlyPoolAdmin {
     ILendingPool cachedPool = pool;
 
@@ -152,46 +154,43 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     (, , , uint256 decimals, ) = cachedPool.getConfiguration(input.asset).getParamsMemory();
 
     bytes memory encodedCall = abi.encodeWithSelector(
-        IInitializableAToken.initialize.selector,
-        cachedPool,
-        input.treasury,
-        input.asset,
-        input.incentivesController,
-        decimals,
-        input.name,
-        input.symbol,
-        input.params
-      );
-
-    _upgradeTokenImplementation(
-      reserveData.aTokenAddress,
-      input.implementation,
-      encodedCall
+      IInitializableAToken.initialize.selector,
+      cachedPool,
+      input.treasury,
+      input.asset,
+      input.incentivesController,
+      decimals,
+      input.name,
+      input.symbol,
+      input.params
     );
+
+    _upgradeTokenImplementation(reserveData.aTokenAddress, input.implementation, encodedCall);
 
     emit ATokenUpgraded(input.asset, reserveData.aTokenAddress, input.implementation);
   }
 
   /**
    * @dev Updates the stable debt token implementation for the reserve
-   **/
+   *
+   */
   function updateStableDebtToken(UpdateDebtTokenInput calldata input) external onlyPoolAdmin {
     ILendingPool cachedPool = pool;
 
     DataTypes.ReserveData memory reserveData = cachedPool.getReserveData(input.asset);
-     
+
     (, , , uint256 decimals, ) = cachedPool.getConfiguration(input.asset).getParamsMemory();
 
     bytes memory encodedCall = abi.encodeWithSelector(
-        IInitializableDebtToken.initialize.selector,
-        cachedPool,
-        input.asset,
-        input.incentivesController,
-        decimals,
-        input.name,
-        input.symbol,
-        input.params
-      );
+      IInitializableDebtToken.initialize.selector,
+      cachedPool,
+      input.asset,
+      input.incentivesController,
+      decimals,
+      input.name,
+      input.symbol,
+      input.params
+    );
 
     _upgradeTokenImplementation(
       reserveData.stableDebtTokenAddress,
@@ -208,11 +207,9 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
 
   /**
    * @dev Updates the variable debt token implementation for the asset
-   **/
-  function updateVariableDebtToken(UpdateDebtTokenInput calldata input)
-    external
-    onlyPoolAdmin
-  {
+   *
+   */
+  function updateVariableDebtToken(UpdateDebtTokenInput calldata input) external onlyPoolAdmin {
     ILendingPool cachedPool = pool;
 
     DataTypes.ReserveData memory reserveData = cachedPool.getReserveData(input.asset);
@@ -220,15 +217,15 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     (, , , uint256 decimals, ) = cachedPool.getConfiguration(input.asset).getParamsMemory();
 
     bytes memory encodedCall = abi.encodeWithSelector(
-        IInitializableDebtToken.initialize.selector,
-        cachedPool,
-        input.asset,
-        input.incentivesController,
-        decimals,
-        input.name,
-        input.symbol,
-        input.params
-      );
+      IInitializableDebtToken.initialize.selector,
+      cachedPool,
+      input.asset,
+      input.incentivesController,
+      decimals,
+      input.name,
+      input.symbol,
+      input.params
+    );
 
     _upgradeTokenImplementation(
       reserveData.variableDebtTokenAddress,
@@ -247,11 +244,12 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
    * @dev Enables borrowing on a reserve
    * @param asset The address of the underlying asset of the reserve
    * @param stableBorrowRateEnabled True if stable borrow rate needs to be enabled by default on this reserve
-   **/
-  function enableBorrowingOnReserve(address asset, bool stableBorrowRateEnabled)
-    external
-    onlyPoolAdmin
-  {
+   *
+   */
+  function enableBorrowingOnReserve(
+    address asset,
+    bool stableBorrowRateEnabled
+  ) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
     currentConfig.setBorrowingEnabled(true);
@@ -265,7 +263,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev Disables borrowing on a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function disableBorrowingOnReserve(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -283,7 +282,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
    * @param liquidationThreshold The threshold at which loans using this asset as collateral will be considered undercollateralized
    * @param liquidationBonus The bonus liquidators receive to liquidate this asset. The values is always above 100%. A value of 105%
    * means the liquidator will receive a 5% bonus
-   **/
+   *
+   */
   function configureReserveAsCollateral(
     address asset,
     uint256 ltv,
@@ -331,7 +331,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev Enable stable rate borrowing on a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function enableReserveStableRate(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -345,7 +346,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev Disable stable rate borrowing on a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function disableReserveStableRate(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -357,9 +359,20 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   }
 
   /**
+   * @dev Gets the decimals of a reserve
+   * @param asset The address of the underlying asset of the reserve
+   * @return The decimals of the asset
+   */
+  function getDecimals(address asset) external view returns (uint8) {
+    DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
+    return uint8((currentConfig.data & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION);
+  }
+
+  /**
    * @dev Activates a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function activateReserve(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -373,7 +386,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev Deactivates a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function deactivateReserve(address asset) external onlyPoolAdmin {
     _checkNoLiquidity(asset);
 
@@ -390,7 +404,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
    * @dev Freezes a reserve. A frozen reserve doesn't allow any new deposit, borrow or rate swap
    *  but allows repayments, liquidations, rate rebalances and withdrawals
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function freezeReserve(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -404,7 +419,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev Unfreezes a reserve
    * @param asset The address of the underlying asset of the reserve
-   **/
+   *
+   */
   function unfreezeReserve(address asset) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -419,7 +435,8 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
    * @dev Updates the reserve factor of a reserve
    * @param asset The address of the underlying asset of the reserve
    * @param reserveFactor The new reserve factor of the reserve
-   **/
+   *
+   */
   function setReserveFactor(address asset, uint256 reserveFactor) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -434,11 +451,12 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
    * @dev Sets the interest rate strategy of a reserve
    * @param asset The address of the underlying asset of the reserve
    * @param rateStrategyAddress The new address of the interest strategy contract
-   **/
-  function setReserveInterestRateStrategyAddress(address asset, address rateStrategyAddress)
-    external
-    onlyPoolAdmin
-  {
+   *
+   */
+  function setReserveInterestRateStrategyAddress(
+    address asset,
+    address rateStrategyAddress
+  ) external onlyPoolAdmin {
     pool.setReserveInterestRateStrategyAddress(asset, rateStrategyAddress);
     emit ReserveInterestRateStrategyChanged(asset, rateStrategyAddress);
   }
@@ -446,17 +464,19 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   /**
    * @dev pauses or unpauses all the actions of the protocol, including aToken transfers
    * @param val true if protocol needs to be paused, false otherwise
-   **/
+   *
+   */
   function setPoolPause(bool val) external onlyEmergencyAdmin {
     pool.setPause(val);
   }
 
-  function _initTokenWithProxy(address implementation, bytes memory initParams)
-    internal
-    returns (address)
-  {
-    InitializableImmutableAdminUpgradeabilityProxy proxy =
-      new InitializableImmutableAdminUpgradeabilityProxy(address(this));
+  function _initTokenWithProxy(
+    address implementation,
+    bytes memory initParams
+  ) internal returns (address) {
+    InitializableImmutableAdminUpgradeabilityProxy proxy = new InitializableImmutableAdminUpgradeabilityProxy(
+        address(this)
+      );
 
     proxy.initialize(implementation, initParams);
 
@@ -468,8 +488,9 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     address implementation,
     bytes memory initParams
   ) internal {
-    InitializableImmutableAdminUpgradeabilityProxy proxy =
-      InitializableImmutableAdminUpgradeabilityProxy(payable(proxyAddress));
+    InitializableImmutableAdminUpgradeabilityProxy proxy = InitializableImmutableAdminUpgradeabilityProxy(
+        payable(proxyAddress)
+      );
 
     proxy.upgradeToAndCall(implementation, initParams);
   }

@@ -102,7 +102,10 @@ contract AToken is
     _underlyingAsset = underlyingAsset;
     _incentivesController = incentivesController;
 
-    _associate(underlyingAsset);
+    // Assoiate with the proxy only in the first revision, otherwise, subsequent upgrades will fail.
+    if (ATOKEN_REVISION == 0x1) {
+      _associate(underlyingAsset);
+    }
 
     emit Initialized(
       underlyingAsset,
