@@ -102,7 +102,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxNumberOfReserves = 128;
     // TODO - change this to mainnet addresses
     _whbarContract = IWHBAR(0x0000000000000000000000000000000000003aD1);
-    // _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
+    _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
   }
 
   /**
@@ -132,7 +132,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 
-    if (asset == address(0)) {
+    if (asset == address(_whbarToken)) {
       require(msg.value == amount, 'Invalid amount of HBAR sent');
       // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
       IWHBAR(_whbarContract).deposit{value: amount}(msg.sender, aToken);
@@ -213,7 +213,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     }
 
     // Note - we are withdrawing the user's _whbarToken tokens and send them HBAR
-    if (asset == address(0)) {
+    if (asset == address(_whbarToken)) {
       // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
       IAToken(aToken).burn(msg.sender, msg.sender, amountToWithdraw, reserve.liquidityIndex);
       IWHBAR(_whbarContract).withdraw(msg.sender, to, amountToWithdraw);
@@ -326,7 +326,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _usersConfig[onBehalfOf].setBorrowing(reserve.id, false);
     }
 
-    if (asset == address(0)) {
+    if (asset == address(_whbarToken)) {
       require(msg.value == paybackAmount, 'Invalid amount of HBAR sent');
       // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
       IWHBAR(_whbarContract).deposit{value: paybackAmount}(msg.sender, aToken);
@@ -946,7 +946,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address oracle = _addressesProvider.getPriceOracle();
 
     uint256 amountInETH;
-    if (vars.asset == address(0)) {
+    if (vars.asset == address(_whbarToken)) {
       amountInETH = vars.amount;
     } else {
       amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
@@ -1005,7 +1005,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     if (vars.releaseUnderlying) {
       // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
-      if (vars.asset == address(0)) {
+      if (vars.asset == address(_whbarToken)) {
         // In case of _whbarToken, the user gets _whbarToken tokens.
         IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
         IWHBAR(_whbarContract).withdraw(vars.user, vars.onBehalfOf, vars.amount);

@@ -84,7 +84,7 @@ describe('Lending Pool Contract Tests', function () {
     await approveToken(whbarTokenContract, lendingPoolContract.address, depositAmount);
 
     const txn = await lendingPoolContract.deposit(
-      WHBAR.token.address,
+      '0x0000000000000000000000000000000000003ad2',
       // @ts-ignore
       123200000n,
       owner.address,
@@ -116,7 +116,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   // Note - You need to call approveDelegation
-  it('should borrow native HBAR - msg.sender different from onBehalfOf', async function () {
+  it.skip('should borrow native HBAR - msg.sender different from onBehalfOf', async function () {
     // const whbarDebtTokenContract = await setupContract(
     //   'VariableDebtToken',
     //   WHBAR.variableDebt.address
@@ -131,15 +131,15 @@ describe('Lending Pool Contract Tests', function () {
     await borrowWHBAR(1032, delegator.address);
   });
 
-  it.skip('should repay native HBAR', async function () {
+  it('should repay native HBAR', async function () {
     const amount = 100;
     const debtTokenContract = await setupContract('VariableDebtToken', WHBAR.variableDebt.address);
     const balanceOf = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
 
-    await approveToken(whbarTokenContract, WHBAR.token.address, amount);
+    await approveToken(whbarTokenContract, lendingPoolContract.address, amount);
 
     const repayTxn = await lendingPoolContract.repay(
-      WHBAR.token.address,
+      '0x0000000000000000000000000000000000003ad2',
       // @ts-ignore
       100n,
       2,

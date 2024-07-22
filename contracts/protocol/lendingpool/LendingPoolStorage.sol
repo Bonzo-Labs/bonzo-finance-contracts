@@ -33,5 +33,5 @@ contract LendingPoolStorage {
   uint256 internal _maxNumberOfReserves;
 
   IWHBAR internal _whbarContract;
-  // IERC20 internal _whbarToken;
+  IERC20 internal _whbarToken;
 }

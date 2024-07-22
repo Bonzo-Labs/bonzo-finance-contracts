@@ -101,7 +101,7 @@ interface ILendingPool {
    * @param user The address of the user for which the rebalance has been executed
    *
    */
-  event RebalanceStableBorrowRate(address indexed reserve, address indexed user);
+  // event RebalanceStableBorrowRate(address indexed reserve, address indexed user);
 
   /**
    * @dev Emitted on flashLoan()
@@ -261,7 +261,7 @@ interface ILendingPool {
    * @param rateMode The rate mode that the user wants to swap to
    *
    */
-  function swapBorrowRateMode(address asset, uint256 rateMode) external;
+  // function swapBorrowRateMode(address asset, uint256 rateMode) external;
 
   /**
    * @dev Rebalances the stable interest rate of a user to the current stable rate defined on the reserve.
@@ -273,7 +273,7 @@ interface ILendingPool {
    * @param user The address of the user to be rebalanced
    *
    */
-  function rebalanceStableBorrowRate(address asset, address user) external;
+  // function rebalanceStableBorrowRate(address asset, address user) external;
 
   /**
    * @dev Allows depositors to enable/disable a specific deposited asset as collateral
