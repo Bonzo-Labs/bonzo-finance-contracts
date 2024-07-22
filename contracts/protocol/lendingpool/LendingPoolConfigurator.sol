@@ -32,9 +32,6 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
   ILendingPoolAddressesProvider internal addressesProvider;
   ILendingPool internal pool;
 
-  uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
-  uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
-
   modifier onlyPoolAdmin() {
     require(addressesProvider.getPoolAdmin() == msg.sender, Errors.CALLER_NOT_POOL_ADMIN);
     _;
@@ -356,16 +353,6 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     pool.setConfiguration(asset, currentConfig.data);
 
     emit StableRateDisabledOnReserve(asset);
-  }
-
-  /**
-   * @dev Gets the decimals of a reserve
-   * @param asset The address of the underlying asset of the reserve
-   * @return The decimals of the asset
-   */
-  function getDecimals(address asset) external view returns (uint8) {
-    DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
-    return uint8((currentConfig.data & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION);
   }
 
   /**

@@ -35,6 +35,13 @@ task('verify:general', 'Verify contracts at Etherscan')
     for (var entry of entries) {
       const address = entry[1][network].address;
       console.log(`\n- Verifying ${entry[0]} at ${address}...\n`);
+      if (
+        entry[0] === 'GenericLogic' ||
+        entry[0] === 'ReserveLogic' ||
+        entry[0] === 'ValidationLogic'
+      ) {
+        continue;
+      }
       if (address) {
         await localDRE.run('verify', { address, relatedSources: true });
       }

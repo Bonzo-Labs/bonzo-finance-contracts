@@ -57,6 +57,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   int64 constant HAPI_SUCCESS = 22; // HTS Response code indicating success.
   int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
+  uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
+  uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
+
   uint256 public constant LENDINGPOOL_REVISION = 0x1;
 
   modifier whenNotPaused() {
@@ -99,7 +102,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxNumberOfReserves = 128;
     // TODO - change this to mainnet addresses
     _whbarContract = IWHBAR(0x0000000000000000000000000000000000003aD1);
-    _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
+    // _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
   }
 
   /**
@@ -129,7 +132,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 
-    if (asset == address(_whbarToken)) {
+    if (asset == address(0)) {
       require(msg.value == amount, 'Invalid amount of HBAR sent');
       // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
       IWHBAR(_whbarContract).deposit{value: amount}(msg.sender, aToken);
@@ -210,7 +213,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     }
 
     // Note - we are withdrawing the user's _whbarToken tokens and send them HBAR
-    if (asset == address(_whbarToken)) {
+    if (asset == address(0)) {
       // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
       IAToken(aToken).burn(msg.sender, msg.sender, amountToWithdraw, reserve.liquidityIndex);
       IWHBAR(_whbarContract).withdraw(msg.sender, to, amountToWithdraw);
@@ -323,7 +326,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _usersConfig[onBehalfOf].setBorrowing(reserve.id, false);
     }
 
-    if (asset == address(_whbarToken)) {
+    if (asset == address(0)) {
       require(msg.value == paybackAmount, 'Invalid amount of HBAR sent');
       // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
       IWHBAR(_whbarContract).deposit{value: paybackAmount}(msg.sender, aToken);
@@ -338,58 +341,58 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     return paybackAmount;
   }
 
-  /**
-   * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
-   * @param asset The address of the underlying asset borrowed
-   * @param rateMode The rate mode that the user wants to swap to
-   *
-   */
-  function swapBorrowRateMode(address asset, uint256 rateMode) external override whenNotPaused {
-    DataTypes.ReserveData storage reserve = _reserves[asset];
+  // /**
+  //  * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
+  //  * @param asset The address of the underlying asset borrowed
+  //  * @param rateMode The rate mode that the user wants to swap to
+  //  *
+  //  */
+  // function swapBorrowRateMode(address asset, uint256 rateMode) external override whenNotPaused {
+  //   DataTypes.ReserveData storage reserve = _reserves[asset];
 
-    (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(msg.sender, reserve);
+  //   (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(msg.sender, reserve);
 
-    DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
+  //   DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
 
-    // Stable rate mode disbabled due to a critical bug on Aave
-    require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
+  //   // Stable rate mode disbabled due to a critical bug on Aave
+  //   require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
 
-    ValidationLogic.validateSwapRateMode(
-      reserve,
-      _usersConfig[msg.sender],
-      stableDebt,
-      variableDebt,
-      interestRateMode
-    );
+  //   ValidationLogic.validateSwapRateMode(
+  //     reserve,
+  //     _usersConfig[msg.sender],
+  //     stableDebt,
+  //     variableDebt,
+  //     interestRateMode
+  //   );
 
-    reserve.updateState();
+  //   reserve.updateState();
 
-    if (interestRateMode == DataTypes.InterestRateMode.STABLE) {
-      IStableDebtToken(reserve.stableDebtTokenAddress).burn(msg.sender, stableDebt);
-      IVariableDebtToken(reserve.variableDebtTokenAddress).mint(
-        msg.sender,
-        msg.sender,
-        stableDebt,
-        reserve.variableBorrowIndex
-      );
-    } else {
-      IVariableDebtToken(reserve.variableDebtTokenAddress).burn(
-        msg.sender,
-        variableDebt,
-        reserve.variableBorrowIndex
-      );
-      IStableDebtToken(reserve.stableDebtTokenAddress).mint(
-        msg.sender,
-        msg.sender,
-        variableDebt,
-        reserve.currentStableBorrowRate
-      );
-    }
+  //   if (interestRateMode == DataTypes.InterestRateMode.STABLE) {
+  //     IStableDebtToken(reserve.stableDebtTokenAddress).burn(msg.sender, stableDebt);
+  //     IVariableDebtToken(reserve.variableDebtTokenAddress).mint(
+  //       msg.sender,
+  //       msg.sender,
+  //       stableDebt,
+  //       reserve.variableBorrowIndex
+  //     );
+  //   } else {
+  //     IVariableDebtToken(reserve.variableDebtTokenAddress).burn(
+  //       msg.sender,
+  //       variableDebt,
+  //       reserve.variableBorrowIndex
+  //     );
+  //     IStableDebtToken(reserve.stableDebtTokenAddress).mint(
+  //       msg.sender,
+  //       msg.sender,
+  //       variableDebt,
+  //       reserve.currentStableBorrowRate
+  //     );
+  //   }
 
-    reserve.updateInterestRates(asset, reserve.aTokenAddress, 0, 0);
+  //   reserve.updateInterestRates(asset, reserve.aTokenAddress, 0, 0);
 
-    emit Swap(asset, msg.sender, rateMode);
-  }
+  //   emit Swap(asset, msg.sender, rateMode);
+  // }
 
   /**
    * @dev Rebalances the stable interest rate of a user to the current stable rate defined on the reserve.
@@ -401,37 +404,38 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
    * @param user The address of the user to be rebalanced
    *
    */
-  function rebalanceStableBorrowRate(address asset, address user) external override whenNotPaused {
-    DataTypes.ReserveData storage reserve = _reserves[asset];
+  //  Bonzo Note - Wwe are commenting this because we are not using stable rate
+  // function rebalanceStableBorrowRate(address asset, address user) external override whenNotPaused {
+  //   DataTypes.ReserveData storage reserve = _reserves[asset];
 
-    IERC20 stableDebtToken = IERC20(reserve.stableDebtTokenAddress);
-    IERC20 variableDebtToken = IERC20(reserve.variableDebtTokenAddress);
-    address aTokenAddress = reserve.aTokenAddress;
+  //   IERC20 stableDebtToken = IERC20(reserve.stableDebtTokenAddress);
+  //   IERC20 variableDebtToken = IERC20(reserve.variableDebtTokenAddress);
+  //   address aTokenAddress = reserve.aTokenAddress;
 
-    uint256 stableDebt = IERC20(stableDebtToken).balanceOf(user);
+  //   uint256 stableDebt = IERC20(stableDebtToken).balanceOf(user);
 
-    ValidationLogic.validateRebalanceStableBorrowRate(
-      reserve,
-      asset,
-      stableDebtToken,
-      variableDebtToken,
-      aTokenAddress
-    );
+  //   ValidationLogic.validateRebalanceStableBorrowRate(
+  //     reserve,
+  //     asset,
+  //     stableDebtToken,
+  //     variableDebtToken,
+  //     aTokenAddress
+  //   );
 
-    reserve.updateState();
+  //   reserve.updateState();
 
-    IStableDebtToken(address(stableDebtToken)).burn(user, stableDebt);
-    IStableDebtToken(address(stableDebtToken)).mint(
-      user,
-      user,
-      stableDebt,
-      reserve.currentStableBorrowRate
-    );
+  //   IStableDebtToken(address(stableDebtToken)).burn(user, stableDebt);
+  //   IStableDebtToken(address(stableDebtToken)).mint(
+  //     user,
+  //     user,
+  //     stableDebt,
+  //     reserve.currentStableBorrowRate
+  //   );
 
-    reserve.updateInterestRates(asset, aTokenAddress, 0, 0);
+  //   reserve.updateInterestRates(asset, aTokenAddress, 0, 0);
 
-    emit RebalanceStableBorrowRate(asset, user);
-  }
+  //   emit RebalanceStableBorrowRate(asset, user);
+  // }
 
   /**
    * @dev Allows depositors to enable/disable a specific deposited asset as collateral
@@ -630,9 +634,9 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     return _reserves[asset];
   }
 
-  function getWhbarAddress() external view returns (address) {
-    return address(_whbarToken);
-  }
+  // function getWhbarAddress() external view returns (address) {
+  //   return address(_whbarToken);
+  // }
 
   /**
    * @dev Returns the user account data across all the reserves
@@ -919,6 +923,16 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
   }
 
+  /**
+   * @dev Gets the decimals of a reserve
+   * @param asset The address of the underlying asset of the reserve
+   * @return The decimals of the asset
+   */
+  function getDecimals(address asset) external view returns (uint8) {
+    DataTypes.ReserveConfigurationMap memory currentConfig = _reserves[asset].configuration;
+    return uint8((currentConfig.data & ~DECIMALS_MASK) >> RESERVE_DECIMALS_START_BIT_POSITION);
+  }
+
   function _executeBorrow(ExecuteBorrowParams memory vars) internal {
     DataTypes.ReserveData storage reserve = _reserves[vars.asset];
     DataTypes.UserConfigurationMap storage userConfig = _usersConfig[vars.onBehalfOf];
@@ -932,7 +946,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     address oracle = _addressesProvider.getPriceOracle();
 
     uint256 amountInETH;
-    if (vars.asset == address(_whbarToken)) {
+    if (vars.asset == address(0)) {
       amountInETH = vars.amount;
     } else {
       amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
@@ -991,7 +1005,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     if (vars.releaseUnderlying) {
       // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
-      if (vars.asset == address(_whbarToken)) {
+      if (vars.asset == address(0)) {
         // In case of _whbarToken, the user gets _whbarToken tokens.
         IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
         IWHBAR(_whbarContract).withdraw(vars.user, vars.onBehalfOf, vars.amount);
