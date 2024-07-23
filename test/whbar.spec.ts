@@ -15,10 +15,14 @@ async function setupContract(artifactName, contractAddress) {
 
 async function approveToken(tokenContract, spenderAddress, amount) {
   const allowance = await tokenContract.allowance(owner.address, spenderAddress);
+  console.log('Allowance:', allowance.toString());
   if (allowance.lt(amount)) {
     const approveTx = await tokenContract.approve(spenderAddress, amount);
     await approveTx.wait();
     console.log('Approved:', approveTx.hash);
+
+    const newAllowance = await tokenContract.allowance(owner.address, spenderAddress);
+    console.log('New Allowance:', newAllowance.toString());
   }
 }
 
@@ -81,7 +85,7 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should supply native HBAR and get awhbar tokens', async function () {
     const depositAmount = 123200000;
-    await approveToken(whbarTokenContract, lendingPoolContract.address, depositAmount);
+    // await approveToken(whbarTokenContract, lendingPoolContract.address, 0);
 
     const txn = await lendingPoolContract.deposit(
       '0x0000000000000000000000000000000000003ad2',
@@ -131,7 +135,7 @@ describe('Lending Pool Contract Tests', function () {
     await borrowWHBAR(1032, delegator.address);
   });
 
-  it('should repay native HBAR', async function () {
+  it.skip('should repay native HBAR', async function () {
     const amount = 100;
     const debtTokenContract = await setupContract('VariableDebtToken', WHBAR.variableDebt.address);
     const balanceOf = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');

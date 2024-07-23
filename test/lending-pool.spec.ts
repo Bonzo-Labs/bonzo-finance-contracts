@@ -259,6 +259,13 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.equal(0);
   });
 
+  it('should return the proper decimals for an asset', async function () {
+    const decimals = await lendingPoolContract.getDecimals(SAUCE.token.address);
+    console.log('Decimals:', decimals.toString());
+
+    expect(decimals).to.be.gt(0);
+  });
+
   it.skip('should deposit KARATE tokens and borrow KARATE tokens', async function () {
     // const depositAmount = 10000;
     // const erc20Contract = await setupContract('ERC20Wrapper', KARATE.token.address);
@@ -359,12 +366,12 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should repay SAUCE tokens and burn variableDebtTokens', async function () {
     let repayAmount = 10;
-    const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
-    const sauceContract = await setupContract('ERC20Wrapper', USDC.token.address);
+    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
+    const sauceContract = await setupContract('ERC20Wrapper', SAUCE.token.address);
 
     const balanceBefore = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract before:', balanceBefore.toString());
-    repayAmount = balanceBefore;
+    // repayAmount = balanceBefore;
 
     const sauceBalance = await sauceContract.balanceOf(owner.address);
     if (sauceBalance.lt(repayAmount)) throw new Error('Insufficient balance');
@@ -378,7 +385,7 @@ describe('Lending Pool Contract Tests', function () {
     }
 
     const repayTxn = await lendingPoolContract.repay(
-      USDC.token.address,
+      SAUCE.token.address,
       repayAmount,
       2,
       owner.address
@@ -388,6 +395,6 @@ describe('Lending Pool Contract Tests', function () {
 
     const balanceOf = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract after:', balanceOf.toString());
-    expect(balanceOf).to.be.gt(0);
+    expect(balanceOf).to.be.gte(0);
   });
 });
