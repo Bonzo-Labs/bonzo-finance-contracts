@@ -100,8 +100,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxStableRateBorrowSizePercent = 2500;
     _flashLoanPremiumTotal = 9;
     _maxNumberOfReserves = 128;
-    _whbarContract = IWHBAR(0x0000000000000000000000000000000000163b59);
-    _whbarToken = IERC20(0x0000000000000000000000000000000000163b5a);
+    _whbarContract = IWHBAR(0x0000000000000000000000000000000000163B59);
+    _whbarToken = IERC20(0x0000000000000000000000000000000000163B5a);
   }
 
   /**

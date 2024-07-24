@@ -45,6 +45,11 @@ abstract contract Ownable is Context {
   event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
   /**
+   * @dev The caller account is not authorized to perform an operation.
+   */
+  error OwnableUnauthorizedAccount(address account);
+
+  /**
    * @dev Initializes the contract setting the deployer as the initial owner.
    */
   constructor() {
