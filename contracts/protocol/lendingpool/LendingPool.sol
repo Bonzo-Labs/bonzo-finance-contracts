@@ -288,6 +288,8 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(onBehalfOf, reserve);
 
     DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
+    // Disable Stable Rate Borrowing due to a critical bug
+    require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
 
     ValidationLogic.validateRepay(
       reserve,
@@ -339,102 +341,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     return paybackAmount;
   }
-
-  // /**
-  //  * @dev Allows a borrower to swap his debt between stable and variable mode, or viceversa
-  //  * @param asset The address of the underlying asset borrowed
-  //  * @param rateMode The rate mode that the user wants to swap to
-  //  *
-  //  */
-  // function swapBorrowRateMode(address asset, uint256 rateMode) external override whenNotPaused {
-  //   DataTypes.ReserveData storage reserve = _reserves[asset];
-
-  //   (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(msg.sender, reserve);
-
-  //   DataTypes.InterestRateMode interestRateMode = DataTypes.InterestRateMode(rateMode);
-
-  //   // Stable rate mode disbabled due to a critical bug on Aave
-  //   require(interestRateMode != DataTypes.InterestRateMode.STABLE, Errors.STABLE_DEBT_DISABLED);
-
-  //   ValidationLogic.validateSwapRateMode(
-  //     reserve,
-  //     _usersConfig[msg.sender],
-  //     stableDebt,
-  //     variableDebt,
-  //     interestRateMode
-  //   );
-
-  //   reserve.updateState();
-
-  //   if (interestRateMode == DataTypes.InterestRateMode.STABLE) {
-  //     IStableDebtToken(reserve.stableDebtTokenAddress).burn(msg.sender, stableDebt);
-  //     IVariableDebtToken(reserve.variableDebtTokenAddress).mint(
-  //       msg.sender,
-  //       msg.sender,
-  //       stableDebt,
-  //       reserve.variableBorrowIndex
-  //     );
-  //   } else {
-  //     IVariableDebtToken(reserve.variableDebtTokenAddress).burn(
-  //       msg.sender,
-  //       variableDebt,
-  //       reserve.variableBorrowIndex
-  //     );
-  //     IStableDebtToken(reserve.stableDebtTokenAddress).mint(
-  //       msg.sender,
-  //       msg.sender,
-  //       variableDebt,
-  //       reserve.currentStableBorrowRate
-  //     );
-  //   }
-
-  //   reserve.updateInterestRates(asset, reserve.aTokenAddress, 0, 0);
-
-  //   emit Swap(asset, msg.sender, rateMode);
-  // }
-
-  /**
-   * @dev Rebalances the stable interest rate of a user to the current stable rate defined on the reserve.
-   * - Users can be rebalanced if the following conditions are satisfied:
-   *     1. Usage ratio is above 95%
-   *     2. the current deposit APY is below REBALANCE_UP_THRESHOLD * maxVariableBorrowRate, which means that too much has been
-   *        borrowed at a stable rate and depositors are not earning enough
-   * @param asset The address of the underlying asset borrowed
-   * @param user The address of the user to be rebalanced
-   *
-   */
-  //  Bonzo Note - Wwe are commenting this because we are not using stable rate
-  // function rebalanceStableBorrowRate(address asset, address user) external override whenNotPaused {
-  //   DataTypes.ReserveData storage reserve = _reserves[asset];
-
-  //   IERC20 stableDebtToken = IERC20(reserve.stableDebtTokenAddress);
-  //   IERC20 variableDebtToken = IERC20(reserve.variableDebtTokenAddress);
-  //   address aTokenAddress = reserve.aTokenAddress;
-
-  //   uint256 stableDebt = IERC20(stableDebtToken).balanceOf(user);
-
-  //   ValidationLogic.validateRebalanceStableBorrowRate(
-  //     reserve,
-  //     asset,
-  //     stableDebtToken,
-  //     variableDebtToken,
-  //     aTokenAddress
-  //   );
-
-  //   reserve.updateState();
-
-  //   IStableDebtToken(address(stableDebtToken)).burn(user, stableDebt);
-  //   IStableDebtToken(address(stableDebtToken)).mint(
-  //     user,
-  //     user,
-  //     stableDebt,
-  //     reserve.currentStableBorrowRate
-  //   );
-
-  //   reserve.updateInterestRates(asset, aTokenAddress, 0, 0);
-
-  //   emit RebalanceStableBorrowRate(asset, user);
-  // }
 
   /**
    * @dev Allows depositors to enable/disable a specific deposited asset as collateral
@@ -973,23 +879,12 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 currentStableRate = 0;
 
     bool isFirstBorrowing = false;
-    if (DataTypes.InterestRateMode(vars.interestRateMode) == DataTypes.InterestRateMode.STABLE) {
-      currentStableRate = reserve.currentStableBorrowRate;
-
-      isFirstBorrowing = IStableDebtToken(reserve.stableDebtTokenAddress).mint(
-        vars.user,
-        vars.onBehalfOf,
-        vars.amount,
-        currentStableRate
-      );
-    } else {
-      isFirstBorrowing = IVariableDebtToken(reserve.variableDebtTokenAddress).mint(
-        vars.user,
-        vars.onBehalfOf,
-        vars.amount,
-        reserve.variableBorrowIndex
-      );
-    }
+    isFirstBorrowing = IVariableDebtToken(reserve.variableDebtTokenAddress).mint(
+      vars.user,
+      vars.onBehalfOf,
+      vars.amount,
+      reserve.variableBorrowIndex
+    );
 
     if (isFirstBorrowing) {
       userConfig.setBorrowing(reserve.id, true);
@@ -1007,7 +902,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       if (vars.asset == address(_whbarToken)) {
         // In case of _whbarToken, the user gets _whbarToken tokens.
         IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
-        IWHBAR(_whbarContract).withdraw(vars.user, vars.onBehalfOf, vars.amount);
+        IWHBAR(_whbarContract).withdraw(vars.user, vars.user, vars.amount);
       } else {
         IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
       }
