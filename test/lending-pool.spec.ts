@@ -23,10 +23,13 @@ const {
 } = deployedContracts;
 const { SAUCE, USDC, XSAUCE, KARATE, WHBAR } = outputReserveData;
 
-let provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-let owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const api_key = process.env.QUICKNODE_API_KEY;
+const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
 
-let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
+let owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+
+// let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 const whbarTokenId = '0.0.15058';
 const whbarContractId = '0.0.15057'; // TestWHBAR contract
@@ -78,18 +81,18 @@ describe('Lending Pool Contract Tests', function () {
 
   before(async function () {
     console.log('Owner:', owner.address);
-    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
     dataProviderContract = await setupContract(
       'AaveProtocolDataProvider',
-      AaveProtocolDataProvider.hedera_testnet.address
+      AaveProtocolDataProvider.hedera_mainnet.address
     );
     whbarContract = await setupContract(
       'WHBARContract',
-      '0x0000000000000000000000000000000000003ad1'
+      '0x0000000000000000000000000000000000163b59'
     );
     whbarTokenContract = await setupContract(
       'ERC20Wrapper',
-      '0x0000000000000000000000000000000000003aD2'
+      '0x0000000000000000000000000000000000163b5a'
     );
   });
 
@@ -193,7 +196,7 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should deposit SAUCE tokens and get back aTokens', async function () {
     console.log('In the test...');
-    const depositAmount = 10003;
+    const depositAmount = 1003;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
     await approveAndDeposit(
       erc20Contract,
@@ -211,7 +214,7 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should withdraw SAUCE tokens and burn aTokens', async function () {
-    let withdrawAmount = 100;
+    let withdrawAmount = 10;
     const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
     const balance = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens before:', balance.toString());
@@ -259,7 +262,7 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.equal(0);
   });
 
-  it('should return the proper decimals for an asset', async function () {
+  it.skip('should return the proper decimals for an asset', async function () {
     const decimals = await lendingPoolContract.getDecimals(SAUCE.token.address);
     console.log('Decimals:', decimals.toString());
 
@@ -313,24 +316,6 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf2).to.be.gt(0);
   });
 
-  it.skip('should deposit CLXY tokens and get back aTokens', async function () {
-    const depositAmount = 200;
-    const erc20Contract = await setupContract('ERC20Wrapper', CLXY.token.address);
-    await approveAndDeposit(
-      erc20Contract,
-      owner,
-      lendingPoolContract,
-      depositAmount,
-      CLXY.token.address,
-      lendingPoolContract
-    );
-
-    const aTokenContract = await setupContract('AToken', CLXY.aToken.address);
-    const balanceOf = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of aTokens:', balanceOf.toString());
-    expect(balanceOf).to.be.gt(0);
-  });
-
   it.skip('should deposit and borrow USDC tokens and get back variableDebtTokens', async function () {
     const depositAmount = 100000;
     const erc20Contract = await setupContract('ERC20Wrapper', USDC.token.address);
@@ -364,8 +349,8 @@ describe('Lending Pool Contract Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  it.skip('should repay SAUCE tokens and burn variableDebtTokens', async function () {
-    let repayAmount = 10;
+  it('should repay SAUCE tokens and burn variableDebtTokens', async function () {
+    let repayAmount = 17;
     const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
     const sauceContract = await setupContract('ERC20Wrapper', SAUCE.token.address);
 

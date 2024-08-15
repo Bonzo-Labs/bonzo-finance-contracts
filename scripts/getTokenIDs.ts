@@ -17,15 +17,18 @@ const fs = require('fs');
 const path = require('path');
 
 async function getTokenIDs() {
-  const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+  const api_key = process.env.QUICKNODE_API_KEY;
+  const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
+
+  const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
+  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
   console.log('Owner address: ', wallet.address);
   const contractArtifacts = await hre.artifacts.readArtifact('LendingPool');
   const abi = contractArtifacts.abi;
-  const contractAddress = LendingPool.hedera_testnet.address;
+  const contractAddress = LendingPool.hedera_mainnet.address;
   const lendingPoolContract = new ethers.Contract(contractAddress, abi, wallet);
 
-  const ReserveAssets = HederaConfig.ReserveAssets[eHederaNetwork.hedera_testnet];
+  const ReserveAssets = HederaConfig.ReserveAssets[eHederaNetwork.hedera_mainnet];
   console.log('Reserve Assets: ', ReserveAssets);
 
   let reserveDataOutput = {};
@@ -54,19 +57,19 @@ async function getTokenIDs() {
     reserveDataOutput[key] = {
       token: {
         address: ReserveAssets[key],
-        accountId: tokenContractId,
+        // accountId: tokenContractId,
       },
       aToken: {
         address: reserveData.aTokenAddress,
-        accountId: aTokenContractId,
+        // accountId: aTokenContractId,
       },
       stableDebt: {
         address: reserveData.stableDebtTokenAddress,
-        accountId: stableDebtContractId,
+        // accountId: stableDebtContractId,
       },
       variableDebt: {
         address: reserveData.variableDebtTokenAddress,
-        accountId: variableDebtContractId,
+        // accountId: variableDebtContractId,
       },
     };
   }

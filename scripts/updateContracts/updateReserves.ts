@@ -4,7 +4,6 @@ const hre = require('hardhat');
 import { LendingPool, LendingPoolConfigurator } from '../outputReserveData.json';
 import {
   strategyKARATE,
-  strategyCLXY,
   strategyHBARX,
   strategySAUCE,
   strategyUSDC,
@@ -34,9 +33,6 @@ const assetConfigurations = {
   },
   '0x0000000000000000000000000000000000001549': {
     strategy: strategyUSDC,
-  },
-  '0x00000000000000000000000000000000000014f5': {
-    strategy: strategyCLXY,
   },
 };
 

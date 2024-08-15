@@ -42,6 +42,7 @@ task('full:deploy-lending-pool', 'Deploy lending pool for dev enviroment')
         // Sleep for 5 seconds to wait for the tx to be mined
         await new Promise((resolve) => setTimeout(resolve, 10000));
         lendingPoolImplAddress = lendingPoolImpl.address;
+        console.log('\tInitializing lending pool implementation...', lendingPoolImplAddress);
         await lendingPoolImpl.initialize(addressesProvider.address);
       }
       console.log('\tSetting lending pool implementation with address:', lendingPoolImplAddress);

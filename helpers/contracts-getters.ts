@@ -210,7 +210,6 @@ export const getPairsTokenAggregator = (
     allAssetsAddresses,
     getQuoteCurrencies(oracleQuoteCurrency)
   );
-
   const pairs = Object.entries(assetsWithoutQuoteCurrency).reduce<[string, string][]>(
     (acc, [tokenSymbol, tokenAddress]) => {
       const aggregatorAddressIndex = Object.keys(aggregatorsAddresses).findIndex(

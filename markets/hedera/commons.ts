@@ -22,7 +22,7 @@ export const CommonsConfig: ICommonConfiguration = {
   OracleQuoteCurrency: 'HBAR',
   // OracleQuoteUnit: '1000000000000000000',  //JSON-RPC relay msg.value returns 18 decimals and also gasPrice returns 18 decimals
   OracleQuoteUnit: '100000000',
-  SupraPriceFeed: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917',
+  SupraPriceFeed: '0xD02cc7a670047b6b012556A88e275c685d25e0c9',
   ProtocolGlobalParams: {
     TokenDistributorPercentageBase: '10000',
     MockUsdPriceInWei: '5848466240000000',
@@ -41,7 +41,7 @@ export const CommonsConfig: ICommonConfiguration = {
       ...MOCK_CHAINLINK_AGGREGATORS_PRICES,
     },
   },
-  // TODO: reorg alphabetically, checking the reason of tests failing
+
   LendingRateOracleRatesCommon: {
     WETH: {
       borrowRate: oneRay.multipliedBy(0.03).toFixed(),
@@ -58,7 +58,7 @@ export const CommonsConfig: ICommonConfiguration = {
     WBTC: {
       borrowRate: oneRay.multipliedBy(0.03).toFixed(),
     },
-    Wmainnet: {
+    Whedera_mainnet: {
       borrowRate: oneRay.multipliedBy(0.05).toFixed(),
     },
     AAVE: {
@@ -72,53 +72,53 @@ export const CommonsConfig: ICommonConfiguration = {
   // If PoolAdmin/emergencyAdmin is set, will take priority over PoolAdminIndex/emergencyAdminIndex
   PoolAdmin: {
     [eHederaNetwork.hedera_testnet]: undefined,
-    [eHederaNetwork.mainnet]: undefined,
+    [eHederaNetwork.hedera_mainnet]: undefined,
   },
   PoolAdminIndex: 0,
   EmergencyAdminIndex: 0,
   EmergencyAdmin: {
     [eHederaNetwork.hedera_testnet]: undefined,
-    [eHederaNetwork.mainnet]: undefined,
+    [eHederaNetwork.hedera_mainnet]: undefined,
   },
   LendingPool: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   LendingPoolConfigurator: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   ProviderRegistry: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   ProviderRegistryOwner: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   LendingRateOracle: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   LendingPoolCollateralManager: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   TokenDistributor: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   WethGateway: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   AaveOracle: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   FallbackOracle: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   ChainlinkAggregator: {
     [eHederaNetwork.hedera_testnet]: {
@@ -128,7 +128,7 @@ export const CommonsConfig: ICommonConfiguration = {
       WBTC: ZERO_ADDRESS,
       USD: ZERO_ADDRESS,
     },
-    [eHederaNetwork.mainnet]: {
+    [eHederaNetwork.hedera_mainnet]: {
       DAI: ZERO_ADDRESS,
       USDC: ZERO_ADDRESS,
       USDT: ZERO_ADDRESS,
@@ -137,28 +137,28 @@ export const CommonsConfig: ICommonConfiguration = {
     },
   },
   ReserveAssets: {
-    [eHederaNetwork.mainnet]: {},
+    [eHederaNetwork.hedera_mainnet]: {},
     [eHederaNetwork.hedera_testnet]: {},
   },
   ReservesConfig: {},
   ATokenDomainSeparator: {
     [eHederaNetwork.hedera_testnet]: '',
-    [eHederaNetwork.mainnet]: '',
+    [eHederaNetwork.hedera_mainnet]: '',
   },
   WETH: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   WrappedNativeToken: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   ReserveFactorTreasuryAddress: {
-    [eHederaNetwork.hedera_testnet]: '0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103', // TODO - add the deployer address here
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_testnet]: '0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103',
+    [eHederaNetwork.hedera_mainnet]: '0x00000000000000000000000000000000005dc4d4',
   },
   IncentivesController: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
 };

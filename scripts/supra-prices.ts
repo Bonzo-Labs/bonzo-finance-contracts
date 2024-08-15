@@ -1,30 +1,28 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
-import {
-  LendingPool,
-  AaveProtocolDataProvider,
-} from './outputReserveData.json';
-import { KARATE } from './outputReserveData.json';
+import { LendingPool, AaveProtocolDataProvider } from './outputReserveData.json';
+import { KARATE, SAUCE, WHBAR } from './outputReserveData.json';
 const { BigNumber } = require('ethers');
 
-const oracleAddress = '0x4A2e698D8b06EA05fCc3Ff7B9ea23296b3156a9e';
+const oracleAddress = '0x48506bAeDD4D3594Edca1741499e54218AA13c85';
 
-const provider = new ethers.providers.JsonRpcProvider(
-  'https://testnet.hashio.io/api'
-);
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const api_key = process.env.QUICKNODE_API_KEY;
+const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
+
+const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
   return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
-// const DAI = '0x0000000000000000000000000000000000001599';
-const USDC = '0x0000000000000000000000000000000000001549';
-const HBARX = '0x0000000000000000000000000000000000220ced';
-const SAUCE = '0x0000000000000000000000000000000000120f46';
-const WHBAR = '0x0000000000000000000000000000000000003ad2';
-// const KARATE = '0x00000000000000000000000000000000003991eD';
+// // const DAI = '0x0000000000000000000000000000000000001599';
+// const USDC = '0x0000000000000000000000000000000000001549';
+// const HBARX = '0x0000000000000000000000000000000000220ced';
+// const SAUCE = '0x00000000000000000000000000000000000b2ad5';
+// const WHBAR = '0x0000000000000000000000000000000000163B5a';
+// const KARATE = '0x000000000000000000000000000000000022d6de';
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
@@ -49,21 +47,22 @@ async function supraPrices() {
   // const assetPriceHBARXUSD = await supra.getAssetPriceInUSD(HBARX);
   // console.log('HBARX price in USD = ', ethers.utils.formatUnits(assetPriceHBARXUSD, 18));
 
-  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE);
+  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.token.address);
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
-  const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(SAUCE);
-  console.log(
-    'SAUCE price in USD = ',
-    ethers.utils.formatUnits(assetPriceSAUCEUSD, 18)
-  );
 
-  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR);
+  const assetPriceKARATE = await supra.getAssetPrice(KARATE.token.address);
+  console.log('KARATE price = ', ethers.utils.formatUnits(assetPriceKARATE, 18));
+
+  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.token.address);
   console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
-  const assetPriceWHBARUSD = await supra.getAssetPriceInUSD(WHBAR);
-  console.log(
-    'WHBAR price in USD = ',
-    ethers.utils.formatUnits(assetPriceWHBARUSD, 18)
-  );
+
+  // const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(KARATE);
+  // console.log('SAUCE price in USD = ', ethers.utils.formatUnits(assetPriceSAUCEUSD, 18));
+
+  // const assetPriceWHBAR = await supra.getAssetPrice(WHBAR);
+  // console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
+  // const assetPriceWHBARUSD = await supra.getAssetPriceInUSD(WHBAR);
+  // console.log('WHBAR price in USD = ', ethers.utils.formatUnits(assetPriceWHBARUSD, 18));
 
   // const HbarUSD = await supra.getHbarUSD(10);
   // console.log('HBAR price raw =', HbarUSD.toString());

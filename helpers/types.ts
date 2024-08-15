@@ -30,7 +30,7 @@ export enum ePolygonNetwork {
 
 export enum eHederaNetwork {
   hedera_testnet = 'hedera_testnet',
-  mainnet = 'mainnet',
+  hedera_mainnet = 'hedera_mainnet',
 }
 
 export enum eXDaiNetwork {
@@ -233,6 +233,10 @@ export interface iAssetBase<T> {
   XSAUCE: T;
   KARATE: T;
   WHBAR: T;
+  DOVU: T;
+  HST: T;
+  // PACK: T;
+  // STEAM: T;
 }
 
 export type iAssetsWithoutETH<T> = Omit<iAssetBase<T>, 'ETH'>;
@@ -241,7 +245,7 @@ export type iAssetsWithoutUSD<T> = Omit<iAssetBase<T>, 'USD'>;
 
 export type iAavePoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR' | 'DOVU' | 'HST'
 >;
 
 export type iLpPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
@@ -250,7 +254,7 @@ export type iMaticPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
 
 export type iHederaPoolAssets<T> = Pick<
   iAssetsWithoutUSD<T>,
-  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR'
+  'USDC' | 'HBARX' | 'SAUCE' | 'XSAUCE' | 'KARATE' | 'WHBAR' | 'DOVU' | 'HST'
 >;
 
 export type iXDAIPoolAssets<T> = Pick<iAssetsWithoutUSD<T>, 'USDC'>;
@@ -270,6 +274,10 @@ export enum TokenContractId {
   XSAUCE = 'XSAUCE',
   KARATE = 'KARATE',
   WHBAR = 'WHBAR',
+  DOVU = 'DOVU',
+  HST = 'HST',
+  // PACK = 'PACK',
+  // STEAM = 'STEAM',
 }
 
 export interface IReserveParams extends IReserveBorrowParams, IReserveCollateralParams {
@@ -339,7 +347,7 @@ export interface iPolygonParamsPerNetwork<T> {
 
 export interface iHederaParamsPerNetwork<T> {
   [eHederaNetwork.hedera_testnet]: T;
-  [eHederaNetwork.mainnet]: T;
+  [eHederaNetwork.hedera_mainnet]: T;
 }
 
 export interface iXDaiParamsPerNetwork<T> {

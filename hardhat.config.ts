@@ -32,6 +32,11 @@ const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
 const keys = process.env.PRIVATE_KEY2!;
+const keys_mainnet = process.env.PRIVATE_KEY_MAINNET!;
+
+const api_key = process.env.QUICKNODE_API_KEY2;
+// const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
+const quicknode_url = `https://wiser-bitter-cloud.hedera-mainnet.quiknode.pro/${api_key}/`;
 
 // Prevent to load scripts before compilation and typechain
 if (!SKIP_LOAD) {
@@ -119,7 +124,7 @@ const buidlerConfig: HardhatUserConfig = {
     username: process.env.TENDERLY_USERNAME || '',
     forkNetwork: '1', //Network id of the network we want to fork
   },
-  defaultNetwork: 'hedera_testnet',
+  // defaultNetwork: 'hedera_testnet',
   networks: {
     coverage: {
       url: 'http://localhost:8555',
@@ -169,16 +174,16 @@ const buidlerConfig: HardhatUserConfig = {
         count: 20,
       },
     },
-    hedera_testnet: {
-      url: 'https://testnet.hashio.io/api',
-      chainId: 296,
-      // accounts: {
-      //   mnemonic: MNEMONIC,
-      //   path: MNEMONIC_PATH,
-      //   initialIndex: 0,
-      //   count: 20,
-      // },
-      accounts: [keys],
+    // hedera_testnet: {
+    //   url: 'https://testnet.hashio.io/api',
+    //   chainId: 296,
+    //   accounts: [keys],
+    //   timeout: 0,
+    // },
+    hedera_mainnet: {
+      url: quicknode_url,
+      chainId: 295,
+      accounts: [keys_mainnet],
       timeout: 0,
     },
   },

@@ -249,6 +249,8 @@ export const deployAaveLibraries = async (
 
 export const deployLendingPool = async (verify?: boolean) => {
   const libraries = await deployAaveLibraries(verify);
+  console.log('Waiting for 20 seconds');
+  await new Promise((resolve) => setTimeout(resolve, 20000));
   const lendingPoolImpl = await new LendingPoolFactory(libraries, await getFirstSigner()).deploy();
   await insertContractAddressInDb(eContractid.LendingPoolImpl, lendingPoolImpl.address);
   return withSaveAndVerify(lendingPoolImpl, eContractid.LendingPool, [], verify);

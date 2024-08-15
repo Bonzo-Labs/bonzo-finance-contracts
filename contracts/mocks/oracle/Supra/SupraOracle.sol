@@ -19,18 +19,22 @@ contract SupraOracle is Ownable2Step {
   mapping(address => uint16) private assetToDecimals;
   mapping(string => address) private assetToAddress;
 
-  address private constant USDC = 0x0000000000000000000000000000000000001549;
-  address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
+  address private constant USDC = 0x000000000000000000000000000000000006f89a;
+  address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
 
   /// @notice Constructor to initialize the contract with the SupraSValueFeed address.
   /// @param _sValueFeed The address of the SupraSValueFeed contract.
   constructor(ISupraSValueFeed _sValueFeed) {
     sValueFeed = _sValueFeed;
 
-    assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
-    assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
-    assetToAddress['SAUCE'] = 0x0000000000000000000000000000000000120f46;
-    assetToAddress['XSAUCE'] = 0x000000000000000000000000000000000015a59b;
+    assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
+    assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
+    assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
+    assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
+    assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
+    assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
+    // assetToAddress['PACK'] = 0x000000000000000000000000000000000015a59b;
+    // assetToAddress['STEAM'] = 0x000000000000000000000000000000000015a59b;
     assetToAddress['USDC'] = USDC;
     assetToAddress['WHBAR'] = WHBAR;
 
@@ -38,6 +42,10 @@ contract SupraOracle is Ownable2Step {
     assetToPriceIndex[assetToAddress['HBARX']] = 427;
     assetToPriceIndex[assetToAddress['SAUCE']] = 425;
     assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
+    assetToPriceIndex[assetToAddress['DOVU']] = 429;
+    // assetToPriceIndex[assetToAddress['PACK']] = 426;
+    // assetToPriceIndex[assetToAddress['STEAM']] = 426;
+    assetToPriceIndex[assetToAddress['HST']] = 428;
     assetToPriceIndex[assetToAddress['USDC']] = 432;
     // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
     assetToPriceIndex[assetToAddress['WHBAR']] = 428;
@@ -46,6 +54,10 @@ contract SupraOracle is Ownable2Step {
     assetToDecimals[assetToAddress['HBARX']] = 8;
     assetToDecimals[assetToAddress['SAUCE']] = 6;
     assetToDecimals[assetToAddress['XSAUCE']] = 6;
+    assetToDecimals[assetToAddress['DOVU']] = 8;
+    // assetToDecimals[assetToAddress['PACK']] = 6;
+    // assetToDecimals[assetToAddress['STEAM']] = 6;
+    assetToDecimals[assetToAddress['HST']] = 8;
     assetToDecimals[assetToAddress['USDC']] = 6;
     assetToDecimals[assetToAddress['WHBAR']] = 8;
   }
