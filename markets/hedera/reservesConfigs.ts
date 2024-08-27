@@ -22,6 +22,8 @@ export const strategyXSAUCE: IReserveParams = {
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '500000000', // 500 * (10^6)
+  borrowCap: '300000000', // 300 * (10^6)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -35,6 +37,8 @@ export const strategyKARATE: IReserveParams = {
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '50000000000', // 500 * (10^8)
+  borrowCap: '30000000000', // 300 * (10^8)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -48,6 +52,8 @@ export const strategyWHBAR: IReserveParams = {
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '50000000000', // 500 * (10^8)
+  borrowCap: '30000000000', // 300 * (10^8)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -61,6 +67,8 @@ export const strategyHBARX: IReserveParams = {
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '50000000000', // 500 * (10^8)
+  borrowCap: '30000000000', // 300 * (10^8)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -74,6 +82,8 @@ export const strategySAUCE: IReserveParams = {
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '500000000', // 500 * (10^6)
+  borrowCap: '300000000', // 300 * (10^6)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -87,6 +97,8 @@ export const strategyUSDC: IReserveParams = {
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '500000000', // 500 * (10^6)
+  borrowCap: '300000000', // 300 * (10^6)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -100,6 +112,8 @@ export const strategyDOVU: IReserveParams = {
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '50000000000', // 500 * (10^8)
+  borrowCap: '30000000000', // 300 * (10^8)
 };
 
 // TODO - Reverse the LTVA and liquidationThreshold values
@@ -113,6 +127,8 @@ export const strategyHST: IReserveParams = {
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
+  supplyCap: '50000000000', // 500 * (10^8)
+  borrowCap: '30000000000', // 300 * (10^8)
 };
 
 // // TODO - Reverse the LTVA and liquidationThreshold values

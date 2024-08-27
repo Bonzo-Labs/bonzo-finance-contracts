@@ -64,7 +64,9 @@ contract AaveProtocolDataProvider {
     return aTokens;
   }
 
-  function getReserveConfigurationData(address asset)
+  function getReserveConfigurationData(
+    address asset
+  )
     external
     view
     returns (
@@ -80,8 +82,9 @@ contract AaveProtocolDataProvider {
       bool isFrozen
     )
   {
-    DataTypes.ReserveConfigurationMap memory configuration =
-      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getConfiguration(asset);
+    DataTypes.ReserveConfigurationMap memory configuration = ILendingPool(
+      ADDRESSES_PROVIDER.getLendingPool()
+    ).getConfiguration(asset);
 
     (ltv, liquidationThreshold, liquidationBonus, decimals, reserveFactor) = configuration
       .getParamsMemory();
@@ -92,7 +95,19 @@ contract AaveProtocolDataProvider {
     usageAsCollateralEnabled = liquidationThreshold > 0;
   }
 
-  function getReserveData(address asset)
+  function getReserveCaps(
+    address asset
+  ) external view returns (uint256 borrowCap, uint256 supplyCap) {
+    DataTypes.ReserveConfigurationMap memory configuration = ILendingPool(
+      ADDRESSES_PROVIDER.getLendingPool()
+    ).getConfiguration(asset);
+
+    (borrowCap, supplyCap) = configuration.getCapsMemory();
+  }
+
+  function getReserveData(
+    address asset
+  )
     external
     view
     returns (
@@ -108,8 +123,8 @@ contract AaveProtocolDataProvider {
       uint40 lastUpdateTimestamp
     )
   {
-    DataTypes.ReserveData memory reserve =
-      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getReserveData(asset);
+    DataTypes.ReserveData memory reserve = ILendingPool(ADDRESSES_PROVIDER.getLendingPool())
+      .getReserveData(asset);
 
     return (
       IERC20Detailed(asset).balanceOf(reserve.aTokenAddress),
@@ -125,7 +140,10 @@ contract AaveProtocolDataProvider {
     );
   }
 
-  function getUserReserveData(address asset, address user)
+  function getUserReserveData(
+    address asset,
+    address user
+  )
     external
     view
     returns (
@@ -140,11 +158,12 @@ contract AaveProtocolDataProvider {
       bool usageAsCollateralEnabled
     )
   {
-    DataTypes.ReserveData memory reserve =
-      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getReserveData(asset);
+    DataTypes.ReserveData memory reserve = ILendingPool(ADDRESSES_PROVIDER.getLendingPool())
+      .getReserveData(asset);
 
-    DataTypes.UserConfigurationMap memory userConfig =
-      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getUserConfiguration(user);
+    DataTypes.UserConfigurationMap memory userConfig = ILendingPool(
+      ADDRESSES_PROVIDER.getLendingPool()
+    ).getUserConfiguration(user);
 
     currentATokenBalance = IERC20Detailed(reserve.aTokenAddress).balanceOf(user);
     currentVariableDebt = IERC20Detailed(reserve.variableDebtTokenAddress).balanceOf(user);
@@ -159,7 +178,9 @@ contract AaveProtocolDataProvider {
     usageAsCollateralEnabled = userConfig.isUsingAsCollateral(reserve.id);
   }
 
-  function getReserveTokensAddresses(address asset)
+  function getReserveTokensAddresses(
+    address asset
+  )
     external
     view
     returns (
@@ -168,8 +189,8 @@ contract AaveProtocolDataProvider {
       address variableDebtTokenAddress
     )
   {
-    DataTypes.ReserveData memory reserve =
-      ILendingPool(ADDRESSES_PROVIDER.getLendingPool()).getReserveData(asset);
+    DataTypes.ReserveData memory reserve = ILendingPool(ADDRESSES_PROVIDER.getLendingPool())
+      .getReserveData(asset);
 
     return (
       reserve.aTokenAddress,

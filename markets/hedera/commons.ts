@@ -154,7 +154,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
   },
   ReserveFactorTreasuryAddress: {
-    [eHederaNetwork.hedera_testnet]: '0x1e17A29D259fF4f78f02e97c7DECCc7EC3aea103',
+    [eHederaNetwork.hedera_testnet]: '0x5c865c43b1a92155dc2d3f50cfec0fa039ab15ae',
     [eHederaNetwork.hedera_mainnet]: '0x00000000000000000000000000000000005dbdc1',
   },
   IncentivesController: {

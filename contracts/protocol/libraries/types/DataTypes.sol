@@ -38,6 +38,8 @@ library DataTypes {
     //bit 59: stable rate borrowing enabled
     //bit 60-63: reserved
     //bit 64-79: reserve factor
+    //bit 80-115 borrow cap in whole tokens, borrowCap == 0 => no cap
+    //bit 116-151 supply cap in whole tokens, supplyCap == 0 => no cap
     uint256 data;
   }
 
@@ -45,5 +47,32 @@ library DataTypes {
     uint256 data;
   }
 
-  enum InterestRateMode {NONE, STABLE, VARIABLE}
+  enum InterestRateMode {
+    NONE,
+    STABLE,
+    VARIABLE
+  }
+
+  struct ReserveCache {
+    uint256 currScaledVariableDebt;
+    uint256 nextScaledVariableDebt;
+    uint256 currPrincipalStableDebt;
+    uint256 currAvgStableBorrowRate;
+    uint256 currTotalStableDebt;
+    uint256 nextAvgStableBorrowRate;
+    uint256 nextTotalStableDebt;
+    uint256 currLiquidityIndex;
+    uint256 nextLiquidityIndex;
+    uint256 currVariableBorrowIndex;
+    uint256 nextVariableBorrowIndex;
+    uint256 currLiquidityRate;
+    uint256 currVariableBorrowRate;
+    uint256 reserveFactor;
+    ReserveConfigurationMap reserveConfiguration;
+    address aTokenAddress;
+    address stableDebtTokenAddress;
+    address variableDebtTokenAddress;
+    uint40 reserveLastUpdateTimestamp;
+    uint40 stableDebtLastUpdateTimestamp;
+  }
 }

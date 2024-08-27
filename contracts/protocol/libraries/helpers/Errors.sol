@@ -103,6 +103,10 @@ library Errors {
   string public constant LP_NOT_CONTRACT = '78';
   string public constant SDT_STABLE_DEBT_OVERFLOW = '79';
   string public constant SDT_BURN_EXCEEDS_BALANCE = '80';
+  string public constant RC_INVALID_BORROW_CAP = '81'; // 'Invalid borrow cap for the reserve'
+  string public constant RC_INVALID_SUPPLY_CAP = '82'; // 'Invalid supply cap for the reserve'
+  string public constant RC_BORROW_CAP_EXCEEDED = '83'; // 'Borrow cap is exceeded'
+  string public constant RC_SUPPLY_CAP_EXCEEDED = '84'; // 'Supply cap is exceeded'
 
   string public constant STABLE_DEBT_DISABLED = '101';
 

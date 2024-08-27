@@ -128,6 +128,22 @@ interface ILendingPoolConfigurator {
   event ReserveFactorChanged(address indexed asset, uint256 factor);
 
   /**
+   * @dev Emitted when the borrow cap of a reserve is updated.
+   * @param asset The address of the underlying asset of the reserve
+   * @param oldBorrowCap The old borrow cap
+   * @param newBorrowCap The new borrow cap
+   */
+  event BorrowCapChanged(address indexed asset, uint256 oldBorrowCap, uint256 newBorrowCap);
+
+  /**
+   * @dev Emitted when the supply cap of a reserve is updated.
+   * @param asset The address of the underlying asset of the reserve
+   * @param oldSupplyCap The old supply cap
+   * @param newSupplyCap The new supply cap
+   */
+  event SupplyCapChanged(address indexed asset, uint256 oldSupplyCap, uint256 newSupplyCap);
+
+  /**
    * @dev Emitted when the reserve decimals are updated
    * @param asset The address of the underlying asset of the reserve
    * @param decimals The new decimals

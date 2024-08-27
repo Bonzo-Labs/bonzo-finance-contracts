@@ -284,6 +284,7 @@ export interface IReserveParams extends IReserveBorrowParams, IReserveCollateral
   aTokenImpl: eContractid;
   reserveFactor: string;
   strategy: IInterestRateStrategyParams;
+  supplyCap: string;
 }
 
 export interface IInterestRateStrategyParams {
@@ -306,6 +307,7 @@ export interface IReserveBorrowParams {
   borrowingEnabled: boolean;
   stableBorrowRateEnabled: boolean;
   reserveDecimals: string;
+  borrowCap: string;
 }
 
 export interface IReserveCollateralParams {
