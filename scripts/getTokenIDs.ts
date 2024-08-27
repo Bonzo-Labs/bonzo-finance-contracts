@@ -37,39 +37,34 @@ async function getTokenIDs() {
     const reserveData = await lendingPoolContract.getReserveData(ReserveAssets[key]);
     console.log('Reserve Data: ', reserveData);
 
-    const tokenContractId = await ContractId.fromEvmAddress(0, 0, ReserveAssets[key]).toString();
-    const aTokenContractId = await ContractId.fromEvmAddress(
-      0,
-      0,
-      reserveData.aTokenAddress
-    ).toString();
-    const stableDebtContractId = await ContractId.fromEvmAddress(
-      0,
-      0,
-      reserveData.stableDebtTokenAddress
-    ).toString();
-    const variableDebtContractId = await ContractId.fromEvmAddress(
-      0,
-      0,
-      reserveData.variableDebtTokenAddress
-    ).toString();
-
     reserveDataOutput[key] = {
-      token: {
-        address: ReserveAssets[key],
-        // accountId: tokenContractId,
+      hedera_testnet: {
+        token: {
+          address: '',
+        },
+        aToken: {
+          address: '',
+        },
+        stableDebt: {
+          address: '',
+        },
+        variableDebt: {
+          address: '',
+        },
       },
-      aToken: {
-        address: reserveData.aTokenAddress,
-        // accountId: aTokenContractId,
-      },
-      stableDebt: {
-        address: reserveData.stableDebtTokenAddress,
-        // accountId: stableDebtContractId,
-      },
-      variableDebt: {
-        address: reserveData.variableDebtTokenAddress,
-        // accountId: variableDebtContractId,
+      hedera_mainnet: {
+        token: {
+          address: ReserveAssets[key],
+        },
+        aToken: {
+          address: reserveData.aTokenAddress,
+        },
+        stableDebt: {
+          address: reserveData.stableDebtTokenAddress,
+        },
+        variableDebt: {
+          address: reserveData.variableDebtTokenAddress,
+        },
       },
     };
   }
