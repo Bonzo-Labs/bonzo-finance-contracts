@@ -3,8 +3,19 @@ const hre = require('hardhat');
 
 import { LendingPoolAddressesProvider } from '../outputReserveData.json';
 
-const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+require('dotenv').config();
+
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+
+let provider, owner;
+if (chain_type === 'hedera_testnet') {
+  provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+} else if (chain_type === 'hedera_testnet') {
+  const url = process.env.PROVIDER_URL_MAINNET || '';
+  provider = new ethers.providers.JsonRpcProvider(url);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+}
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -12,8 +23,6 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 async function updateOracle(oracleAddress: string) {
-  const [deployer] = await ethers.getSigners();
-
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
     LendingPoolAddressesProvider.hedera_testnet.address
@@ -26,7 +35,7 @@ async function updateOracle(oracleAddress: string) {
 }
 
 async function main() {
-  await updateOracle('0xfac891666D590E277D8F4ff601C50D51B57179c4');
+  await updateOracle('0xAe9706419E60B5c4E92D45f6ab79439D266F87eD');
 }
 
 main()

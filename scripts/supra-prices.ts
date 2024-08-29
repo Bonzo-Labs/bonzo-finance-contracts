@@ -1,36 +1,39 @@
 import { ethers, network } from 'hardhat';
 const hre = require('hardhat');
-import { LendingPool, AaveProtocolDataProvider } from './outputReserveData.json';
+import { LendingPool, AaveProtocolDataProvider, PriceOracle } from './outputReserveData.json';
 import { KARATE, SAUCE, WHBAR } from './outputReserveData.json';
 const { BigNumber } = require('ethers');
+require('dotenv').config();
 
-const oracleAddress = '0x48506bAeDD4D3594Edca1741499e54218AA13c85';
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
 const api_key = process.env.QUICKNODE_API_KEY;
 const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
 
-const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+let provider, owner;
+if (chain_type === 'hedera_testnet') {
+  provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+} else if (chain_type === 'hedera_testnet') {
+  const url = process.env.PROVIDER_URL_MAINNET || '';
+  provider = new ethers.providers.JsonRpcProvider(url);
 
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+}
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
   return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
-// // const DAI = '0x0000000000000000000000000000000000001599';
-// const USDC = '0x0000000000000000000000000000000000001549';
-// const HBARX = '0x0000000000000000000000000000000000220ced';
-// const SAUCE = '0x00000000000000000000000000000000000b2ad5';
-// const WHBAR = '0x0000000000000000000000000000000000163B5a';
-// const KARATE = '0x000000000000000000000000000000000022d6de';
-
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
-  const supra = await setupContract('SupraOracle', oracleAddress);
-  const lendingPoolContract = await setupContract(
-    'LendingPool',
-    LendingPool.hedera_testnet.address
-  );
+  // const supra = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
+  const supra = await setupContract('SupraOracle', '0xAe9706419E60B5c4E92D45f6ab79439D266F87eD');
+
+  // const lendingPoolContract = await setupContract(
+  //   'LendingPool',
+  //   LendingPool.hedera_testnet.address
+  // );
 
   // const assetPriceDAI = await supra.getAssetPrice(DAI);
   // console.log('DAI price = ', ethers.utils.formatUnits(assetPriceDAI, 18));
@@ -47,13 +50,15 @@ async function supraPrices() {
   // const assetPriceHBARXUSD = await supra.getAssetPriceInUSD(HBARX);
   // console.log('HBARX price in USD = ', ethers.utils.formatUnits(assetPriceHBARXUSD, 18));
 
-  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.token.address);
+  console.log('Owner:', owner.address);
+
+  const saucePriceIndex = await supra.getPriceFeed(SAUCE.hedera_testnet.token.address);
+  console.log('SAUCE price index:', saucePriceIndex.toString());
+
+  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_testnet.token.address);
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
 
-  const assetPriceKARATE = await supra.getAssetPrice(KARATE.token.address);
-  console.log('KARATE price = ', ethers.utils.formatUnits(assetPriceKARATE, 18));
-
-  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.token.address);
+  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.hedera_testnet.token.address);
   console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
 
   // const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(KARATE);

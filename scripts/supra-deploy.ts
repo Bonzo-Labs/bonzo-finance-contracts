@@ -1,16 +1,24 @@
 const hre = require('hardhat');
+import { ethers, network } from 'hardhat';
+
+require('dotenv').config();
+
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
 async function main() {
-  const api_key = process.env.QUICKNODE_API_KEY;
-  const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
-
-  const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
-  const deployer = new hre.ethers.Wallet(process.env.PRIVATE_KEY_MAINNET, provider);
-  console.log('Deploying contracts with the account:', deployer.address);
+  let provider, owner;
+  if (chain_type === 'hedera_testnet') {
+    provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+    owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+  } else if (chain_type === 'hedera_testnet') {
+    const url = process.env.PROVIDER_URL_MAINNET || '';
+    provider = new ethers.providers.JsonRpcProvider(url);
+    owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  }
 
   // Deploy Event contract
   const Supra = await hre.ethers.getContractFactory('SupraOracle');
-  const supra = await Supra.deploy('0xD02cc7a670047b6b012556A88e275c685d25e0c9');
+  const supra = await Supra.deploy('0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917');
   await supra.deployed();
   console.log('Supra contract deployed to:', supra.address);
 }

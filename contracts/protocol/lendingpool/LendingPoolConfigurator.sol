@@ -457,6 +457,10 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     pool.setPause(val);
   }
 
+  function getBorrowCap(address asset) external view returns (uint256) {
+    return pool.getConfiguration(asset).getBorrowCap();
+  }
+
   function setBorrowCap(address asset, uint256 newBorrowCap) external onlyPoolAdmin {
     DataTypes.ReserveConfigurationMap memory currentConfig = pool.getConfiguration(asset);
 
@@ -464,6 +468,10 @@ contract LendingPoolConfigurator is VersionedInitializable, ILendingPoolConfigur
     currentConfig.setBorrowCap(newBorrowCap);
     pool.setConfiguration(asset, currentConfig.data);
     emit BorrowCapChanged(asset, oldBorrowCap, newBorrowCap);
+  }
+
+  function getSupplyCap(address asset) external view returns (uint256) {
+    return pool.getConfiguration(asset).getSupplyCap();
   }
 
   function setSupplyCap(address asset, uint256 newSupplyCap) external onlyPoolAdmin {

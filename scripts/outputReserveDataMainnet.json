@@ -5,13 +5,13 @@
         "address": "0x0000000000000000000000000000000000001549"
       },
       "aToken": {
-        "address": "0x050913640D8f763f666c7006fEe1d59257F58414"
+        "address": "0x556A80DBbCCBA58d05b38fCaa3101e0aFe1381De"
       },
       "stableDebt": {
-        "address": "0xe0BEc58D33fe5cA456BA662Af10936f4686Af6E3"
+        "address": "0xD1d5D7B067027A2b0Fc9869871BF40a16f4BE665"
       },
       "variableDebt": {
-        "address": "0xB5b7D5388a26e6F35a2Bb70459f00d0cA28771C6"
+        "address": "0x214c5CCB42F620b3AAE50B2f0627c44b4b318bE2"
       }
     },
     "hedera_mainnet": {
@@ -35,13 +35,13 @@
         "address": "0x0000000000000000000000000000000000220ced"
       },
       "aToken": {
-        "address": "0x34A486f71Cf83757dFb14cb8E517cCF5E9c21233"
+        "address": "0x443d4D11eb2C7a956c7ADa3994578FF32D79Be80"
       },
       "stableDebt": {
-        "address": "0x4e1dcb54AEb652D51020C68Bf5fBdE5374b83bef"
+        "address": "0xFa93F88947349c53c10dAF268Be045ee91093861"
       },
       "variableDebt": {
-        "address": "0x09442E0e2df1E469577Fc6a4C2564B89771D99a0"
+        "address": "0x76863F4784A274A11156173b139d6953Da8Ba9b5"
       }
     },
     "hedera_mainnet": {
@@ -65,13 +65,13 @@
         "address": "0x0000000000000000000000000000000000120f46"
       },
       "aToken": {
-        "address": "0x3CE40792A198Cf2E03Eb07Ab97FE8A88b75350CE"
+        "address": "0x00995F2933Cc51a52e6C0920daBeFC080fc6466b"
       },
       "stableDebt": {
-        "address": "0x760413439F42Be6aC29637aA52cc1D4aCbbAC2FE"
+        "address": "0x906C8B3FC674eaa0D2f7CBcE38e1b7cA061a29e5"
       },
       "variableDebt": {
-        "address": "0xFdC813355BA82396178Af158e82fDe56e858088B"
+        "address": "0x87663b889883d94D3f5FaCA76917c08e37B1E82f"
       }
     },
     "hedera_mainnet": {
@@ -95,13 +95,13 @@
         "address": "0x000000000000000000000000000000000015a59b"
       },
       "aToken": {
-        "address": "0xF2A38C544186Cc8b8A936776486b4E324983b937"
+        "address": "0xcD880d3bacd1e9A84B7f3384Ad4227bF48Dff896"
       },
       "stableDebt": {
-        "address": "0xa67982a04344C3e3fB7744a6914C4E6e5f73aff5"
+        "address": "0x17c5f86907a10Fe8A12072949F585f49347A802D"
       },
       "variableDebt": {
-        "address": "0x71206a0E879C2d5BE0FB4ACfcdCdf686BFf80018"
+        "address": "0x9CE693639d3a143347Fb0f9dC45d95F02Cf8c1F5"
       }
     },
     "hedera_mainnet": {
@@ -125,13 +125,13 @@
         "address": "0x00000000000000000000000000000000003991ed"
       },
       "aToken": {
-        "address": "0x34Fb4F2984e96E42B8075740ca59f164A67C6c90"
+        "address": "0xDfeba670C8Df3eE31D557d83D14007eB9dCBEBDe"
       },
       "stableDebt": {
-        "address": "0x634D993953E2C5a8b7aE884D1963D7FeA70c95B4"
+        "address": "0xC1c326DA1919992e2E0cbeC69522f39513EfFD3B"
       },
       "variableDebt": {
-        "address": "0x7263739428E36D2d0a50595F29bE990f8eD2d8c0"
+        "address": "0x48970506875a8cD418515Bc0eA75A60903CdeFD6"
       }
     },
     "hedera_mainnet": {
@@ -155,13 +155,13 @@
         "address": "0x0000000000000000000000000000000000003ad2"
       },
       "aToken": {
-        "address": "0xDbd640Ff52d18d54e8925876664AfcA2dee162dA"
+        "address": "0x1a63eC7e7c67aB5d778f3Fb01676Aa8E27b11301"
       },
       "stableDebt": {
-        "address": "0x58f93251269e0c19663D8DbD57399B19B4Aa19b1"
+        "address": "0x1945dB8856fbDeA4E2aC2c56c67068ADd3227373"
       },
       "variableDebt": {
-        "address": "0x80067AA0Cfe8618D029371ed839F4d1658371942"
+        "address": "0x6382769e7b762cF69ddFE28364674905e2Edef23"
       }
     },
     "hedera_mainnet": {
@@ -179,9 +179,69 @@
       }
     }
   },
+  "DOVU": {
+    "hedera_testnet": {
+      "token": {
+        "address": ""
+      },
+      "aToken": {
+        "address": ""
+      },
+      "stableDebt": {
+        "address": ""
+      },
+      "variableDebt": {
+        "address": ""
+      }
+    },
+    "hedera_mainnet": {
+      "token": {
+        "address": "0x000000000000000000000000000000000038b3db"
+      },
+      "aToken": {
+        "address": "0xed851A30ECfA8dfAE92A33276576aD5ba3e325E1"
+      },
+      "stableDebt": {
+        "address": "0x5aAD42d11B836C3891F1C19f81b5959D199D7f20"
+      },
+      "variableDebt": {
+        "address": "0x93a8DCCD2dDd03ff06f40D11CB2d861727AaD2cE"
+      }
+    }
+  },
+  "HST": {
+    "hedera_testnet": {
+      "token": {
+        "address": ""
+      },
+      "aToken": {
+        "address": ""
+      },
+      "stableDebt": {
+        "address": ""
+      },
+      "variableDebt": {
+        "address": ""
+      }
+    },
+    "hedera_mainnet": {
+      "token": {
+        "address": "0x00000000000000000000000000000000000ec585"
+      },
+      "aToken": {
+        "address": "0x7B4DF1136B2EfEFf18C760eD19616E104172Ec6f"
+      },
+      "stableDebt": {
+        "address": "0x18B3CaAaFF23Bf4AFD91BE9C5b61B28F06AcE863"
+      },
+      "variableDebt": {
+        "address": "0xe0494EA6d7067aaA15cbE1769b0eEF4418931792"
+      }
+    }
+  },
   "LendingPoolAddressesProviderRegistry": {
     "hedera_testnet": {
-      "address": "0xC1788723DB0b2063f5834C4EF5064AF9A629E5E9",
+      "address": "0x78ECF1870f7cD1226C910ea14A2E7f555cFB47C8",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -191,7 +251,7 @@
   },
   "LendingPoolAddressesProvider": {
     "hedera_testnet": {
-      "address": "0x34032BF1bF02d5a010F9842845283F21D810A1cc",
+      "address": "0xe70257Fdc6C2836044Ca104F05a7FcD9Fc8CBf22",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -201,7 +261,7 @@
   },
   "ReserveLogic": {
     "hedera_testnet": {
-      "address": "0x9c432926bF9C0121C99CeFcea801E2d47096DD64",
+      "address": "0x6A69AF768F2bA746916E3194c3bA25E7d1Be0234",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -211,7 +271,7 @@
   },
   "GenericLogic": {
     "hedera_testnet": {
-      "address": "0x01F601C0809C0E1bC2b00a7559A320594578df6E",
+      "address": "0x7fdaAcaF3A82D7A35Af9CFB2A9f438692720C7A7",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -221,7 +281,7 @@
   },
   "ValidationLogic": {
     "hedera_testnet": {
-      "address": "0x982FD2916bbe02F5B3192A09a013fb1B71B9591b",
+      "address": "0xA6BD6c1dB93b0c13199E8d334FBCAAcEA3994518",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -231,7 +291,7 @@
   },
   "LendingPoolImpl": {
     "hedera_testnet": {
-      "address": "0xEAB57c6B9B05Bc94e34BF8Bc80fA98Ee822298eF"
+      "address": "0xD9A93978171CdFa124F1AD31eE766533577329c8"
     },
     "hedera_mainnet": {
       "address": "0xe999A20dD259D6c4225Ab7Ccf0387491C4a79e1B"
@@ -239,7 +299,7 @@
   },
   "LendingPool": {
     "hedera_testnet": {
-      "address": "0x604F345cE61A254B474D472fEABD63f4E9E3786B"
+      "address": "0x969Efea65aE5c4Caf84051368B5070BD5550c792"
     },
     "hedera_mainnet": {
       "address": "0x6c17D7F4ab7738E3D2a21ea6C70a6A1E8352E27e"
@@ -247,7 +307,7 @@
   },
   "LendingPoolConfiguratorImpl": {
     "hedera_testnet": {
-      "address": "0xC8E0f9e9C451170FF50dD19f0bdcf147A2774B6F"
+      "address": "0x26E77D8e3152801E7a6135742725b9Cd0f54f132"
     },
     "hedera_mainnet": {
       "address": "0x1DD3369d90b73ECf8110467814Fa64b97853c816"
@@ -255,7 +315,7 @@
   },
   "LendingPoolConfigurator": {
     "hedera_testnet": {
-      "address": "0xebC1fD2b21e3CE02a9d9280b1445955549E4CAcA"
+      "address": "0x1E3bAfCFB32C40b6B74073D483087C2b3ecC904d"
     },
     "hedera_mainnet": {
       "address": "0x6D77b2255930c03F2BcA6E5c0143984ee34Ac6D6"
@@ -263,7 +323,7 @@
   },
   "StableAndVariableTokensHelper": {
     "hedera_testnet": {
-      "address": "0x2a9D7f2F7F11C8bf2Fb5AfB9bABCe7193dEf2433",
+      "address": "0xc3d74948cA73b83beC5DAC1768525b951BBd2391",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -273,7 +333,7 @@
   },
   "ATokensAndRatesHelper": {
     "hedera_testnet": {
-      "address": "0xe0cE5A25933288dFAAa2D173875AE8dE2b2B4759",
+      "address": "0x549D272ebB9d075088EFF2630610f361f7F2B3a9",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -283,7 +343,7 @@
   },
   "AToken": {
     "hedera_testnet": {
-      "address": "0x786fFbd9baD5F2028F0a2E061295b537c4696A32",
+      "address": "0xa38b92dD17Cc328D90bA412DfFC5CF73CFd17F3e",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -293,7 +353,7 @@
   },
   "StableDebtToken": {
     "hedera_testnet": {
-      "address": "0xe22968EF6223593C6a0185879E4905fFba583Ab7",
+      "address": "0xFCfc85F1ae9620021980b64ce2E838F8d9b42E76",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -303,7 +363,7 @@
   },
   "VariableDebtToken": {
     "hedera_testnet": {
-      "address": "0xD855f10A60090E128b3910A5053E51b54cBb61e5",
+      "address": "0xE022B62d16Dd4858cE92aA022D7F9749079ba636",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -313,7 +373,7 @@
   },
   "PriceOracle": {
     "hedera_testnet": {
-      "address": "0xBB33929728ee50D3af0e6A3DEF1ce461f341Ae1D",
+      "address": "0x3f6988458C25D686EBb5742869ECB4F2293ED0ca",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -323,7 +383,7 @@
   },
   "AaveOracle": {
     "hedera_testnet": {
-      "address": "0xc89f1C092F7B9751AddCb6D1D596F142E0094390",
+      "address": "0x549543B4d4fc3C65Bc07D2119313d8f73bD85d37",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -333,7 +393,7 @@
   },
   "LendingRateOracle": {
     "hedera_testnet": {
-      "address": "0xe502DFF5Df407A6e774cb023c5261FEc13B2b37C",
+      "address": "0xFc6dd738aAdDA673e8d23ae26fA04EBC62EeE16b",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -343,7 +403,7 @@
   },
   "AaveProtocolDataProvider": {
     "hedera_testnet": {
-      "address": "0x2ECcc7737Dd2AB066847D976EF9A63EADDe4dbfC",
+      "address": "0xb76718B39616094481726007DF3BEC2c8FeCcaAD",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -353,7 +413,7 @@
   },
   "WETHGateway": {
     "hedera_testnet": {
-      "address": "0x0AF1D61E32366Ba578E41314Ab49ee09E3e48dBB",
+      "address": "0x6B4152C0361b0670fB6Fd224141C712a46bd536F",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -363,7 +423,7 @@
   },
   "DefaultReserveInterestRateStrategy": {
     "hedera_testnet": {
-      "address": "0x932157b0FCC6c00DC068260ca6de4538c845a9d1",
+      "address": "0x22CD30ccfBD6b3a5707E48f8c56dAa4cAb409639",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -383,7 +443,7 @@
   },
   "rateStrategyVolatileOne": {
     "hedera_testnet": {
-      "address": "0x7C862e247Df42D0517f943a4F4c52AEed4d04aaD"
+      "address": "0x2AD035A7dfb386b32d478531A35fD1F64A948b5e"
     },
     "hedera_mainnet": {
       "address": "0x57Bdc8335e558807D4eE49c4814859dc4D3c988D"
@@ -401,7 +461,7 @@
   },
   "LendingPoolCollateralManagerImpl": {
     "hedera_testnet": {
-      "address": "0xF0383c4DeEC4520F784B53e67f07F237209100D2"
+      "address": "0xEf3301d9B1679Cc66226B347f9c748E0FFeE5002"
     },
     "hedera_mainnet": {
       "address": "0x372d7EC2A3618ee97e18FdB9877735a16B114B48"
@@ -409,7 +469,7 @@
   },
   "LendingPoolCollateralManager": {
     "hedera_testnet": {
-      "address": "0xF0383c4DeEC4520F784B53e67f07F237209100D2",
+      "address": "0xEf3301d9B1679Cc66226B347f9c748E0FFeE5002",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -419,7 +479,7 @@
   },
   "WalletBalanceProvider": {
     "hedera_testnet": {
-      "address": "0xC1D1E557237d6feE077452196706E8C9A8923382",
+      "address": "0x8f93d389F644d3eCfA3Cf0047Ff14D6A84f43937",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {
@@ -432,7 +492,7 @@
       "address": "0x3F461C4559f4CF3d31c5b08267f0b6f90d99080F"
     },
     "hedera_testnet": {
-      "address": "0xe39a39965165Afbe67d082Fd7FA4727522df6B81"
+      "address": "0x1FBc4F1fBDea937b877544340628b5e872BE94A4"
     }
   },
   "rateStrategyUSDC": {
@@ -440,7 +500,7 @@
       "address": "0x2bA1f3D0dBCCDbfeBdcB10AA3319b45B4F97eb58"
     },
     "hedera_testnet": {
-      "address": "0xbc0F7470bDE5b1A9286dB680A100B9540CCC9cf9"
+      "address": "0xFf8220D8190a2D5127cf4F6996368177d3035CcB"
     }
   },
   "rateStrategyHBARX": {
@@ -448,7 +508,7 @@
       "address": "0xeD8ee27Ad4256aDDFD8eB0D4b6c44618f2c338E0"
     },
     "hedera_testnet": {
-      "address": "0xA3F60c26c7C532D718C2314Ed12e253aAffCeCA9"
+      "address": "0x40d0bdF5debF7347ce98cff8739953EA0D6619eb"
     }
   },
   "rateStrategyHBAR": {
@@ -456,7 +516,7 @@
       "address": "0xeD15896efdc29D9E1b1560Fd782C82084D288966"
     },
     "hedera_testnet": {
-      "address": "0x932157b0FCC6c00DC068260ca6de4538c845a9d1"
+      "address": "0x22CD30ccfBD6b3a5707E48f8c56dAa4cAb409639"
     }
   }
 }

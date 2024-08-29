@@ -16,7 +16,7 @@ let provider, owner;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
-} else if (chain_type === 'hedera_mainnet') {
+} else if (chain_type === 'hedera_testnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   // console.log('Provider = ', provider);
@@ -33,31 +33,31 @@ async function lendingPool() {
   // Load the contract artifacts
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_mainnet.address
+    LendingPool.hedera_testnet.address
   );
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator.hedera_testnet.address
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address
+    LendingPoolAddressesProvider.hedera_testnet.address
   );
   const dataProviderContract = await setupContract(
     'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_mainnet.address
+    AaveProtocolDataProvider.hedera_testnet.address
   );
-  const sauceAToken = await setupContract('AToken', WHBAR.hedera_mainnet.aToken.address);
+  const sauceAToken = await setupContract('AToken', WHBAR.hedera_testnet.aToken.address);
 
   console.log('Owner:', owner.address);
 
   // const disableTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
-  //   SAUCE.hedera_mainnet.token.address
+  //   SAUCE.hedera_testnet.token.address
   // );
   // await disableTxn.wait();
 
   // const reserveData = await dataProviderContract.getReserveConfigurationData(
-  //   SAUCE.hedera_mainnet.token.address
+  //   SAUCE.hedera_testnet.token.address
   // );
   // console.log('Reserve Data:', reserveData);
 

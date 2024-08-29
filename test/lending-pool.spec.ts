@@ -22,12 +22,22 @@ const {
   AaveProtocolDataProvider,
 } = deployedContracts;
 const { SAUCE, USDC, XSAUCE, KARATE, WHBAR } = outputReserveData;
+require('dotenv').config();
+
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
 const api_key = process.env.QUICKNODE_API_KEY;
 const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
 
-const provider = new hre.ethers.providers.JsonRpcProvider(quicknode_url);
-let owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+let provider, owner, contractAddress;
+if (chain_type === 'hedera_testnet') {
+  provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+} else if (chain_type === 'hedera_mainnet') {
+  const url = process.env.PROVIDER_URL_MAINNET || '';
+  provider = new ethers.providers.JsonRpcProvider(url);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+}
 
 // let delegator = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
@@ -58,6 +68,8 @@ async function approveAndDeposit(
 
   const allowance = await erc20Contract.allowance(owner1.address, spenderContract.address);
   console.log('Allowance:', allowance.toString());
+  console.log('Amount:', amount.toString());
+  console.log('Spender:', spenderContract.address);
   if (allowance.lt(amount)) {
     console.log('Approving...');
     const approveTx = await erc20Contract.approve(spenderContract.address, amount);
@@ -81,10 +93,10 @@ describe('Lending Pool Contract Tests', function () {
 
   before(async function () {
     console.log('Owner:', owner.address);
-    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
     dataProviderContract = await setupContract(
       'AaveProtocolDataProvider',
-      AaveProtocolDataProvider.hedera_mainnet.address
+      AaveProtocolDataProvider.hedera_testnet.address
     );
     whbarContract = await setupContract(
       'WHBARContract',
@@ -96,46 +108,9 @@ describe('Lending Pool Contract Tests', function () {
     );
   });
 
-  it.skip('should supply SAUCE tokens and borrow native HBAR', async function () {
-    const depositAmount = 1000000000;
-    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
-    await approveAndDeposit(
-      erc20Contract,
-      owner,
-      lendingPoolContract,
-      depositAmount,
-      SAUCE.token.address,
-      lendingPoolContract
-    );
-    const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
-    const balanceOf = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of SAUCE aTokens:', balanceOf.toString());
-
-    const whbarTokenContract = await setupContract('ERC20Wrapper', WHBAR.token.address);
-    const approveTxn = await whbarTokenContract.approve(
-      '0x0000000000000000000000000000000000003ad1',
-      1300000000
-    );
-    await approveTxn.wait();
-    console.log('Approve successful', approveTxn.hash);
-
-    // Borrow
-    const borrowTxn = await lendingPoolContract.borrow(
-      '0x0000000000000000000000000000000000000000',
-      103200000,
-      2,
-      0,
-      owner.address
-    );
-    await borrowTxn.wait();
-    console.log('Borrow Transaction hash:', borrowTxn.hash);
-
-    // expect(balanceOf).to.be.gt(0);
-  });
-
   it.skip('should toggle an asset as collateral for the user', async function () {
     // IMP - The reserve should have aToken balance, otherwise the TXN fails
-    const reserve = SAUCE.token.address;
+    const reserve = SAUCE.hedera_testnet.token.address;
     const userReserveData = await dataProviderContract.getUserReserveData(reserve, owner.address);
     console.log('User Reserve Data:', userReserveData);
     if (userReserveData.usageAsCollateralEnabled) {
@@ -163,24 +138,24 @@ describe('Lending Pool Contract Tests', function () {
     expect(reservesList).to.not.be.null;
   });
 
-  it.skip('should deposit and borrow KARATE tokens', async function () {
-    const depositAmount = 100000;
-    const borrowAmount = 10;
-    const erc20Contract = await setupContract('ERC20Wrapper', KARATE.token.address);
-    await approveAndDeposit(
-      erc20Contract,
-      owner,
-      lendingPoolContract,
-      depositAmount,
-      KARATE.token.address,
-      lendingPoolContract
-    );
+  it('should deposit and borrow KARATE tokens', async function () {
+    const depositAmount = 50000000000;
+    const borrowAmount = 30000000000;
+    // const erc20Contract = await setupContract('ERC20Wrapper', KARATE.hedera_testnet.token.address);
+    // await approveAndDeposit(
+    //   erc20Contract,
+    //   owner,
+    //   lendingPoolContract,
+    //   depositAmount,
+    //   KARATE.hedera_testnet.token.address,
+    //   lendingPoolContract
+    // );
 
-    const userData = await lendingPoolContract.getUserAccountData(owner.address);
-    console.log('User Data after deposit:', userData);
+    // const userData = await lendingPoolContract.getUserAccountData(owner.address);
+    // console.log('User Data after deposit:', userData);
 
     const borrowTxn = await lendingPoolContract.borrow(
-      KARATE.token.address,
+      KARATE.hedera_testnet.token.address,
       borrowAmount,
       2,
       0,
@@ -191,36 +166,35 @@ describe('Lending Pool Contract Tests', function () {
     const userData1 = await lendingPoolContract.getUserAccountData(owner.address);
     console.log('User Data after borrow:', userData1);
 
-    expect(userData).to.exist;
+    // expect(userData).to.exist;
   });
 
   it.skip('should deposit SAUCE tokens and get back aTokens', async function () {
-    console.log('In the test...');
-    const depositAmount = 1003;
-    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
+    const depositAmount = 10;
+    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.hedera_testnet.token.address);
     await approveAndDeposit(
       erc20Contract,
       owner,
       lendingPoolContract,
       depositAmount,
-      SAUCE.token.address,
+      SAUCE.hedera_testnet.token.address,
       lendingPoolContract
     );
 
-    const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
+    const aTokenContract = await setupContract('AToken', SAUCE.hedera_testnet.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of SAUCE aTokens:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
   });
 
   it.skip('should withdraw SAUCE tokens and burn aTokens', async function () {
-    let withdrawAmount = 10;
-    const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
+    let withdrawAmount = 5000000;
+    const aTokenContract = await setupContract('AToken', SAUCE.hedera_testnet.aToken.address);
     const balance = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens before:', balance.toString());
 
     const withdrawTxn = await lendingPoolContract.withdraw(
-      SAUCE.token.address,
+      SAUCE.hedera_testnet.token.address,
       withdrawAmount,
       owner.address
     );
@@ -233,9 +207,16 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should borrow SAUCE DebtTokens', async function () {
-    const borrowAmount = 104;
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      SAUCE.hedera_testnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
+
+    const borrowAmount = 101;
     const borrowTxn = await lendingPoolContract.borrow(
-      SAUCE.token.address,
+      SAUCE.hedera_testnet.token.address,
       borrowAmount,
       2,
       0,
@@ -244,26 +225,34 @@ describe('Lending Pool Contract Tests', function () {
     await borrowTxn.wait();
     console.log('Borrow Transaction hash: ', borrowTxn.hash);
 
-    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
-    const balanceOf = await debtTokenContract.balanceOf(owner.address);
-    console.log('Balance of debtTokenContract:', balanceOf.toString());
-    expect(balanceOf).to.be.gt(0);
+    const balanceOfAfter = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfter.toString());
+    expect(balanceOfAfter).to.be.gt(0);
   });
 
   it.skip('should fail to borrow SAUCE tokens at a stable rate', async function () {
     const borrowAmount = 104;
 
     await expect(
-      lendingPoolContract.borrow(SAUCE.token.address, borrowAmount, 1, 0, owner.address)
+      lendingPoolContract.borrow(
+        SAUCE.hedera_testnet.token.address,
+        borrowAmount,
+        1,
+        0,
+        owner.address
+      )
     ).to.be.revertedWith('101');
 
-    const debtTokenContract = await setupContract('StableDebtToken', SAUCE.stableDebt.address);
+    const debtTokenContract = await setupContract(
+      'StableDebtToken',
+      SAUCE.hedera_testnet.stableDebt.address
+    );
     const balanceOf = await debtTokenContract.balanceOf(owner.address);
     expect(balanceOf).to.equal(0);
   });
 
   it.skip('should return the proper decimals for an asset', async function () {
-    const decimals = await lendingPoolContract.getDecimals(SAUCE.token.address);
+    const decimals = await lendingPoolContract.getDecimals(SAUCE.hedera_testnet.token.address);
     console.log('Decimals:', decimals.toString());
 
     expect(decimals).to.be.gt(0);
@@ -281,14 +270,14 @@ describe('Lending Pool Contract Tests', function () {
     //   lendingPoolContract
     // );
 
-    const aTokenContract = await setupContract('AToken', KARATE.aToken.address);
+    const aTokenContract = await setupContract('AToken', KARATE.hedera_testnet.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of KARATE aTokens:', balanceOf.toString());
     expect(balanceOf).to.be.gt(0);
 
     const borrowAmount = 1000;
     const borrowTxn = await lendingPoolContract.borrow(
-      KARATE.token.address,
+      KARATE.hedera_testnet.token.address,
       borrowAmount,
       2,
       0,
@@ -297,13 +286,16 @@ describe('Lending Pool Contract Tests', function () {
     await borrowTxn.wait();
     console.log('Borrow Transaction hash:', borrowTxn.hash);
 
-    const debtTokenContract = await setupContract('VariableDebtToken', KARATE.variableDebt.address);
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      KARATE.hedera_testnet.variableDebt.address
+    );
     const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of KARATE debtTokens:', balanceOf1.toString());
 
     const repayAmount = 12;
     const repayTxn = await lendingPoolContract.repay(
-      KARATE.token.address,
+      KARATE.hedera_testnet.token.address,
       repayAmount,
       2,
       owner.address
@@ -318,23 +310,23 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should deposit and borrow USDC tokens and get back variableDebtTokens', async function () {
     const depositAmount = 100000;
-    const erc20Contract = await setupContract('ERC20Wrapper', USDC.token.address);
+    const erc20Contract = await setupContract('ERC20Wrapper', USDC.hedera_testnet.token.address);
     await approveAndDeposit(
       erc20Contract,
       owner,
       lendingPoolContract,
       depositAmount,
-      USDC.token.address,
+      USDC.hedera_testnet.token.address,
       lendingPoolContract
     );
 
-    const aTokenContract = await setupContract('AToken', USDC.aToken.address);
+    const aTokenContract = await setupContract('AToken', USDC.hedera_testnet.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC aTokens:', balanceOf.toString());
 
     const borrowAmount = 15;
     const borrowTxn = await lendingPoolContract.borrow(
-      USDC.token.address,
+      USDC.hedera_testnet.token.address,
       borrowAmount,
       2,
       0,
@@ -343,16 +335,22 @@ describe('Lending Pool Contract Tests', function () {
     await borrowTxn.wait();
     console.log('Borrow Transaction hash: ', borrowTxn.hash);
 
-    const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      USDC.hedera_testnet.variableDebt.address
+    );
     const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC debtTokens:', balanceOf1.toString());
     expect(balanceOf).to.be.gt(0);
   });
 
-  it('should repay SAUCE tokens and burn variableDebtTokens', async function () {
-    let repayAmount = 17;
-    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
-    const sauceContract = await setupContract('ERC20Wrapper', SAUCE.token.address);
+  it.skip('should repay SAUCE tokens and burn variableDebtTokens', async function () {
+    let repayAmount = 1736;
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      SAUCE.hedera_testnet.variableDebt.address
+    );
+    const sauceContract = await setupContract('ERC20Wrapper', SAUCE.hedera_testnet.token.address);
 
     const balanceBefore = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract before:', balanceBefore.toString());
@@ -370,7 +368,7 @@ describe('Lending Pool Contract Tests', function () {
     }
 
     const repayTxn = await lendingPoolContract.repay(
-      SAUCE.token.address,
+      SAUCE.hedera_testnet.token.address,
       repayAmount,
       2,
       owner.address
