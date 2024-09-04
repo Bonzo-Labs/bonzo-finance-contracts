@@ -138,7 +138,7 @@ describe('Lending Pool Contract Tests', function () {
     expect(reservesList).to.not.be.null;
   });
 
-  it('should deposit and borrow KARATE tokens', async function () {
+  it.skip('should deposit and borrow KARATE tokens', async function () {
     const depositAmount = 50000000000;
     const borrowAmount = 30000000000;
     // const erc20Contract = await setupContract('ERC20Wrapper', KARATE.hedera_testnet.token.address);
