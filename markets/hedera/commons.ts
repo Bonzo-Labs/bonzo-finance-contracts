@@ -16,13 +16,14 @@ export const CommonsConfig: ICommonConfiguration = {
   MarketId: 'Commons',
   ATokenNamePrefix: 'Bonzo aToken',
   StableDebtTokenNamePrefix: 'Bonzo Stable Debt ',
-  VariableDebtTokenNamePrefix: 'Bonzo Variable Debt ',
+  VariableDebtTokenNamePrefix: 'Bonzo variableDebt ',
   SymbolPrefix: 'm',
   ProviderId: 0, // Overriden in index.ts
   OracleQuoteCurrency: 'HBAR',
   // OracleQuoteUnit: '1000000000000000000',  //JSON-RPC relay msg.value returns 18 decimals and also gasPrice returns 18 decimals
   OracleQuoteUnit: '100000000',
-  SupraPriceFeed: '0xD02cc7a670047b6b012556A88e275c685d25e0c9',
+  SupraPriceFeed: '0xD02cc7a670047b6b012556A88e275c685d25e0c9', // Mainnet
+  // SupraPriceFeed: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917', // Testnet
   ProtocolGlobalParams: {
     TokenDistributorPercentageBase: '10000',
     MockUsdPriceInWei: '5848466240000000',
@@ -155,10 +156,10 @@ export const CommonsConfig: ICommonConfiguration = {
   },
   ReserveFactorTreasuryAddress: {
     [eHederaNetwork.hedera_testnet]: '0x5c865c43b1a92155dc2d3f50cfec0fa039ab15ae',
-    [eHederaNetwork.hedera_mainnet]: '0x00000000000000000000000000000000005dbdc1',
+    [eHederaNetwork.hedera_mainnet]: '0x00000000000000000000000000000000005dc4d4',
   },
   IncentivesController: {
     [eHederaNetwork.hedera_testnet]: ZERO_ADDRESS,
-    [eHederaNetwork.hedera_mainnet]: ZERO_ADDRESS,
+    [eHederaNetwork.hedera_mainnet]: '0x8bE49a1B166c6eDeD139584A181E718cDd35dc57',
   },
 };

@@ -35,8 +35,8 @@ contract SupraOracle is Ownable2Step {
     assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
     assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
     assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
-    // assetToAddress['PACK'] = 0x000000000000000000000000000000000015a59b;
-    // assetToAddress['STEAM'] = 0x000000000000000000000000000000000015a59b;
+    assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
+    assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
 
     // assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
     // assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
@@ -55,20 +55,19 @@ contract SupraOracle is Ownable2Step {
     assetToPriceIndex[assetToAddress['SAUCE']] = 425;
     assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
     assetToPriceIndex[assetToAddress['DOVU']] = 429;
-    // assetToPriceIndex[assetToAddress['PACK']] = 426;
-    // assetToPriceIndex[assetToAddress['STEAM']] = 426;
+    assetToPriceIndex[assetToAddress['PACK']] = 478;
+    assetToPriceIndex[assetToAddress['STEAM']] = 479;
     assetToPriceIndex[assetToAddress['HST']] = 428;
     assetToPriceIndex[assetToAddress['USDC']] = 432;
-    // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
-    assetToPriceIndex[assetToAddress['WHBAR']] = 428;
+    assetToPriceIndex[assetToAddress['WHBAR']] = 428; // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
 
     assetToDecimals[assetToAddress['KARATE']] = 8;
     assetToDecimals[assetToAddress['HBARX']] = 8;
     assetToDecimals[assetToAddress['SAUCE']] = 6;
     assetToDecimals[assetToAddress['XSAUCE']] = 6;
     assetToDecimals[assetToAddress['DOVU']] = 8;
-    // assetToDecimals[assetToAddress['PACK']] = 6;
-    // assetToDecimals[assetToAddress['STEAM']] = 6;
+    assetToDecimals[assetToAddress['PACK']] = 6;
+    assetToDecimals[assetToAddress['STEAM']] = 6;
     assetToDecimals[assetToAddress['HST']] = 8;
     assetToDecimals[assetToAddress['USDC']] = 6;
     assetToDecimals[assetToAddress['WHBAR']] = 8;

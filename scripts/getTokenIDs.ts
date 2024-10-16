@@ -4,7 +4,18 @@ require('dotenv').config();
 import { LendingPool } from '../deployed-contracts.json';
 import HederaConfig from '../markets/hedera/index';
 import { eHederaNetwork } from '../helpers/types';
-import { USDC, HBARX, SAUCE, XSAUCE, KARATE, WHBAR, DOVU, HST } from './outputReserveData.json';
+import {
+  USDC,
+  HBARX,
+  SAUCE,
+  XSAUCE,
+  KARATE,
+  WHBAR,
+  DOVU,
+  HST,
+  PACK,
+  STEAM,
+} from './outputReserveData.json';
 const fs = require('fs');
 const path = require('path');
 
@@ -55,6 +66,8 @@ async function getTokenIDs() {
       WHBAR,
       DOVU,
       HST,
+      PACK,
+      STEAM,
     }[key];
 
     if (chain_type === 'hedera_testnet') {

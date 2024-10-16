@@ -28,7 +28,7 @@ async function setupContract(artifactName, contractAddress) {
 }
 
 async function approveToken(tokenContract, spenderAddress, amount) {
-  console.log('Checking allowance now...');
+  console.log('Checking allowance now for...', owner.address);
   const allowance = await tokenContract.allowance(owner.address, spenderAddress);
   console.log('Allowance:', allowance.toString());
   if (allowance.lt(amount)) {
@@ -51,10 +51,10 @@ describe('WHBAR Tests', function () {
   let lendingPoolContract, whbarTokenContract, aTokenContract, whbarContract;
 
   before(async function () {
-    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
     whbarContract = await setupContract('WHBARContract', whbarContractAddress);
     whbarTokenContract = await setupContract('ERC20Wrapper', whbarTokenAddress);
-    aTokenContract = await setupContract('AToken', WHBAR.hedera_testnet.aToken.address);
+    aTokenContract = await setupContract('AToken', WHBAR.hedera_mainnet.aToken.address);
   });
 
   async function withdrawWHBAR(amount, to) {
@@ -87,18 +87,17 @@ describe('WHBAR Tests', function () {
   }
 
   it.skip('should supply native HBAR and get awhbar tokens', async function () {
-    const depositAmount = 90;
-    // await approveToken(whbarTokenContract, lendingPoolContract.address, depositAmount);
+    await approveToken(whbarTokenContract, lendingPoolContract.address, 102);
 
     const txn = await lendingPoolContract.deposit(
       whbarTokenAddress,
       // @ts-ignore
-      90n,
+      102n,
       owner.address,
       0,
       {
         // @ts-ignore
-        value: 90n * 10_000_000_000n,
+        value: 102n * 10_000_000_000n,
       }
     );
     await txn.wait();
@@ -115,11 +114,11 @@ describe('WHBAR Tests', function () {
   // });
 
   it.skip('should withdraw whbar tokens and get HBAR - msg.sender same as to', async function () {
-    await withdrawWHBAR(112, owner.address);
+    await withdrawWHBAR(13, owner.address);
   });
 
   it.skip('should borrow native HBAR - msg.sender same as onBehalfOf', async function () {
-    await borrowWHBAR(100, owner.address);
+    await borrowWHBAR(4, owner.address);
   });
 
   // Note - You need to call approveDelegation
@@ -138,10 +137,10 @@ describe('WHBAR Tests', function () {
   });
 
   it.skip('should repay native HBAR', async function () {
-    const amount = 100;
+    const amount = 4;
     const debtTokenContract = await setupContract(
       'VariableDebtToken',
-      WHBAR.hedera_testnet.variableDebt.address
+      WHBAR.hedera_mainnet.variableDebt.address
     );
     const balanceOf = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
 
@@ -150,11 +149,11 @@ describe('WHBAR Tests', function () {
     const repayTxn = await lendingPoolContract.repay(
       whbarTokenAddress,
       // @ts-ignore
-      100n,
+      4n,
       2,
       owner.address,
       // @ts-ignore
-      { value: 100n * 10_000_000_000n }
+      { value: 4n * 10_000_000_000n }
     );
     await repayTxn.wait();
     console.log('Repay Transaction hash:', repayTxn.hash);

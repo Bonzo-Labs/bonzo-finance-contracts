@@ -5,8 +5,8 @@ import {
   LendingPoolAddressesProvider,
   LendingPoolConfigurator,
   AaveProtocolDataProvider,
-} from './outputReserveData.json';
-import { SAUCE, WHBAR } from './outputReserveData.json';
+} from './outputReserveDataTestnet.json';
+import { SAUCE, WHBAR, USDC, KARATE, HBARX } from './outputReserveDataTestnet.json';
 
 require('dotenv').config();
 
@@ -47,26 +47,31 @@ async function lendingPool() {
     'AaveProtocolDataProvider',
     AaveProtocolDataProvider.hedera_testnet.address
   );
-  const sauceAToken = await setupContract('AToken', WHBAR.hedera_testnet.aToken.address);
+  // const sauceAToken = await setupContract('AToken', WHBAR.hedera_testnet.aToken.address);
 
-  console.log('Owner:', owner.address);
+  // console.log('Owner:', owner.address);
 
-  // const disableTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
-  //   SAUCE.hedera_testnet.token.address
+  // const disableTxn = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(
+  //   HBARX.token.address,
+  //   false
   // );
   // await disableTxn.wait();
+  // console.log('Borrowing disabled');
+
+  // const deactivateTxn = await lendingPoolConfiguratorContract.deactivateReserve(
+  //   KARATE.token.address
+  // );
+  // await deactivateTxn.wait();
+  // console.log('Reserve deactivated');
+
+  // const freezeTxn = await lendingPoolConfiguratorContract.unfreezeReserve(HBARX.token.address);
+  // await freezeTxn.wait();
+  // console.log('Reserve frozen');
 
   // const reserveData = await dataProviderContract.getReserveConfigurationData(
   //   SAUCE.hedera_testnet.token.address
   // );
   // console.log('Reserve Data:', reserveData);
-
-  const name = await sauceAToken.name();
-  console.log('Name:', name);
-  const symbol = await sauceAToken.symbol();
-  console.log('Symbol:', symbol);
-  const decimals = await sauceAToken.decimals();
-  console.log('Decimals:', decimals);
 
   // const reservesList = await lendingPoolContract.getReservesList();
   // console.log('Reserves:', reservesList);

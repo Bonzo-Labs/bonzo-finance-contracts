@@ -9,8 +9,8 @@ import {
   strategySAUCE,
   strategyDOVU,
   strategyHST,
-  // strategyPACK,
-  // strategySTEAM,
+  strategyPACK,
+  strategySTEAM,
   strategyWHBAR,
 } from './reservesConfigs';
 
@@ -31,8 +31,8 @@ export const HederaConfig: IHederaConfiguration = {
     WHBAR: strategyWHBAR,
     DOVU: strategyDOVU,
     HST: strategyHST,
-    // PACK: strategyPACK,
-    // STEAM: strategySTEAM,
+    PACK: strategyPACK,
+    STEAM: strategySTEAM,
   },
   ReserveAssets: {
     [eHederaNetwork.hedera_testnet]: {
@@ -56,8 +56,8 @@ export const HederaConfig: IHederaConfiguration = {
       WHBAR: '0x0000000000000000000000000000000000163b5a',
       DOVU: '0x000000000000000000000000000000000038b3db',
       HST: '0x00000000000000000000000000000000000ec585',
-      // PACK: '0x0000000000000000000000000000000000492a28',
-      // STEAM: '0x000000000000000000000000000000000030fb8b',
+      PACK: '0x0000000000000000000000000000000000492a28',
+      STEAM: '0x000000000000000000000000000000000030fb8b',
     },
   },
 };

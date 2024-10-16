@@ -7,17 +7,16 @@ require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
-const api_key = process.env.QUICKNODE_API_KEY;
-const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
-
 let provider, owner;
+let oracleAddress;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
-} else if (chain_type === 'hedera_testnet') {
+  oracleAddress = PriceOracle.hedera_testnet.address;
+} else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-
+  oracleAddress = PriceOracle.hedera_mainnet.address;
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 }
 async function setupContract(artifactName: string, contractAddress: string) {
@@ -27,8 +26,8 @@ async function setupContract(artifactName: string, contractAddress: string) {
 
 async function supraPrices() {
   const [deployer] = await ethers.getSigners();
-  // const supra = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
-  const supra = await setupContract('SupraOracle', '0xAe9706419E60B5c4E92D45f6ab79439D266F87eD');
+  const supra = await setupContract('SupraOracle', oracleAddress);
+  // const supra = await setupContract('SupraOracle', '0x6C82bA4156Be3795Ad2AE643309e1BAeC8694d32');
 
   // const lendingPoolContract = await setupContract(
   //   'LendingPool',
@@ -51,9 +50,10 @@ async function supraPrices() {
   // console.log('HBARX price in USD = ', ethers.utils.formatUnits(assetPriceHBARXUSD, 18));
 
   console.log('Owner:', owner.address);
+  console.log('SAUCE token address: ', SAUCE.hedera_testnet.token.address);
 
-  const saucePriceIndex = await supra.getPriceFeed(SAUCE.hedera_testnet.token.address);
-  console.log('SAUCE price index:', saucePriceIndex.toString());
+  // const saucePriceIndex = await supra.getPriceFeed(SAUCE.hedera_testnet.token.address);
+  // console.log('SAUCE price index:', saucePriceIndex.toString());
 
   const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_testnet.token.address);
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));

@@ -23,8 +23,8 @@ async function setupContract(artifactName, contractAddress) {
 }
 
 // Define arrays for supply and borrow caps
-const supplyCaps = [500, 500, 500, 500, 500, 50, 500, 500];
-const borrowCaps = [300, 300, 300, 300, 300, 30, 300, 300];
+const supplyCaps = [500, 500, 500, 500, 500, 500];
+const borrowCaps = [300, 300, 300, 300, 300, 300];
 
 async function setSupplyAndBorrowCaps() {
   const lendingPoolConfiguratorContract = await setupContract(
@@ -36,7 +36,7 @@ async function setSupplyAndBorrowCaps() {
   const reserveAssets =
     chain_type === 'hedera_testnet'
       ? [USDC, HBARX, SAUCE, XSAUCE, KARATE, WHBAR]
-      : [USDC, HBARX, SAUCE, XSAUCE, KARATE, WHBAR, DOVU, HST];
+      : [USDC, HBARX, SAUCE, XSAUCE, KARATE, WHBAR];
 
   for (let i = 0; i < reserveAssets.length; i++) {
     const asset = reserveAssets[i];
@@ -74,7 +74,7 @@ async function setSupplyAndBorrowCaps() {
 
     console.log('---');
     // Sleep for 30 sec
-    await new Promise((resolve) => setTimeout(resolve, 30000));
+    await new Promise((resolve) => setTimeout(resolve, 10000));
   }
 }
 

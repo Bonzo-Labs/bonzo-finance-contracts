@@ -7,86 +7,81 @@ import {
   rateStrategyVolatileOne,
   rateStrategySAUCE,
   rateStrategyHBARX,
+  rateStrategyVolatileTwo,
 } from './rateStrategies';
 
 // Reference - https://docs.aave.com/risk/v/aave-v2/liquidity-risk/borrow-interest-rate for the rate strategies
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyXSAUCE: IReserveParams = {
   strategy: rateStrategySAUCE,
   baseLTVAsCollateral: '7000',
-  liquidationThreshold: '8400',
+  liquidationThreshold: '7600',
   liquidationBonus: '10800',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '500000000', // 500 * (10^6)
-  borrowCap: '300000000', // 300 * (10^6)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyKARATE: IReserveParams = {
   strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '5500',
-  liquidationThreshold: '7400',
+  liquidationThreshold: '6500',
   liquidationBonus: '11300',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '50000000000', // 500 * (10^8)
-  borrowCap: '30000000000', // 300 * (10^8)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyWHBAR: IReserveParams = {
   strategy: rateStrategyHBAR,
   baseLTVAsCollateral: '7500',
-  liquidationThreshold: '8700',
+  liquidationThreshold: '8000',
   liquidationBonus: '10500',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '50000000000', // 500 * (10^8)
-  borrowCap: '30000000000', // 300 * (10^8)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyHBARX: IReserveParams = {
   strategy: rateStrategyHBARX,
   baseLTVAsCollateral: '7000',
-  liquidationThreshold: '8200',
+  liquidationThreshold: '7500',
   liquidationBonus: '10500',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '50000000000', // 500 * (10^8)
-  borrowCap: '30000000000', // 300 * (10^8)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategySAUCE: IReserveParams = {
   strategy: rateStrategySAUCE,
   baseLTVAsCollateral: '7000',
-  liquidationThreshold: '8300',
+  liquidationThreshold: '7600',
   liquidationBonus: '10800',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '500000000', // 500 * (10^6)
-  borrowCap: '300000000', // 300 * (10^6)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyUSDC: IReserveParams = {
   strategy: rateStrategyUSDC,
   baseLTVAsCollateral: '7500',
@@ -97,62 +92,62 @@ export const strategyUSDC: IReserveParams = {
   reserveDecimals: '6',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '500000000', // 500 * (10^6)
-  borrowCap: '300000000', // 300 * (10^6)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyDOVU: IReserveParams = {
   strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '5500',
-  liquidationThreshold: '6700',
+  liquidationThreshold: '6500',
   liquidationBonus: '11200',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '50000000000', // 500 * (10^8)
-  borrowCap: '30000000000', // 300 * (10^8)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// TODO - Reverse the LTVA and liquidationThreshold values
 export const strategyHST: IReserveParams = {
   strategy: rateStrategyVolatileOne,
   baseLTVAsCollateral: '4000',
-  liquidationThreshold: '5200',
+  liquidationThreshold: '5000',
   liquidationBonus: '11200',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
-  supplyCap: '50000000000', // 500 * (10^8)
-  borrowCap: '30000000000', // 300 * (10^8)
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
-// // TODO - Reverse the LTVA and liquidationThreshold values
-// export const strategyPACK: IReserveParams = {
-//   strategy: rateStrategyVolatileOne,
-//   baseLTVAsCollateral: '4500',
-//   liquidationThreshold: '6000',
-//   liquidationBonus: '11200',
-//   borrowingEnabled: true,
-//   stableBorrowRateEnabled: false,
-//   reserveDecimals: '6',
-//   aTokenImpl: eContractid.AToken,
-//   reserveFactor: '2000',
-// };
+export const strategyPACK: IReserveParams = {
+  strategy: rateStrategyVolatileOne,
+  baseLTVAsCollateral: '4500',
+  liquidationThreshold: '6000',
+  liquidationBonus: '11200',
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: '6',
+  aTokenImpl: eContractid.AToken,
+  reserveFactor: '2000',
+  supplyCap: '0',
+  borrowCap: '0',
+};
 
-// // TODO - Reverse the LTVA and liquidationThreshold values
-// export const strategySTEAM: IReserveParams = {
-//   strategy: rateStrategyVolatileOne,
-//   baseLTVAsCollateral: '4500',
-//   liquidationThreshold: '5500',
-//   liquidationBonus: '11400',
-//   borrowingEnabled: true,
-//   stableBorrowRateEnabled: false,
-//   reserveDecimals: '2',
-//   aTokenImpl: eContractid.AToken,
-//   reserveFactor: '2000',
-// };
+export const strategySTEAM: IReserveParams = {
+  strategy: rateStrategyVolatileTwo,
+  baseLTVAsCollateral: '4500',
+  liquidationThreshold: '5000',
+  liquidationBonus: '11400',
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: '2',
+  aTokenImpl: eContractid.AToken,
+  reserveFactor: '2000',
+  supplyCap: '0',
+  borrowCap: '0',
+};
