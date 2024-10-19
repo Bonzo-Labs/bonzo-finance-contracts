@@ -140,6 +140,75 @@ async function getTokenIDs() {
   console.log('Reserve data has been written to outputReserveData.json');
 }
 
+async function copyTestnetAddresses() {
+  const outputReserveDataPath = path.join(__dirname, 'outputReserveData.json');
+  const outputReserveDataTestnetPath = path.join(__dirname, 'outputReserveDataTestnet.json');
+
+  // Read both JSON files
+  const outputReserveData = JSON.parse(fs.readFileSync(outputReserveDataPath, 'utf8'));
+  const outputReserveDataTestnet = JSON.parse(
+    fs.readFileSync(outputReserveDataTestnetPath, 'utf8')
+  );
+
+  // Iterate through each token in the testnet data
+  for (const [token, data] of Object.entries(outputReserveDataTestnet) as any) {
+    if (outputReserveData[token]) {
+      // If the token exists in the main data, update its testnet addresses
+      outputReserveData[token].hedera_testnet = {
+        token: { address: data.token?.address || '' },
+        aToken: { address: data.aToken?.address || '' },
+        stableDebt: { address: data.stableDebt?.address || '' },
+        variableDebt: { address: data.variableDebt?.address || '' },
+      };
+    }
+  }
+
+  // Copy non-token specific addresses
+  const nonTokenKeys = [
+    'LendingPoolAddressesProviderRegistry',
+    'LendingPoolAddressesProvider',
+    'ReserveLogic',
+    'GenericLogic',
+    'ValidationLogic',
+    'LendingPoolImpl',
+    'LendingPool',
+    'LendingPoolConfiguratorImpl',
+    'LendingPoolConfigurator',
+    'StableAndVariableTokensHelper',
+    'ATokensAndRatesHelper',
+    'AToken',
+    'StableDebtToken',
+    'VariableDebtToken',
+    'PriceOracle',
+    'AaveOracle',
+    'LendingRateOracle',
+    'AaveProtocolDataProvider',
+    'WETHGateway',
+    'DefaultReserveInterestRateStrategy',
+    'rateStrategyStableTwo',
+    'rateStrategyStableThree',
+    'rateStrategyVolatileOne',
+    'rateStrategyVolatileTwo',
+    'rateStrategyVolatileThree',
+    'LendingPoolCollateralManagerImpl',
+    'LendingPoolCollateralManager',
+    'WalletBalanceProvider',
+  ];
+
+  for (const key of nonTokenKeys) {
+    if (outputReserveDataTestnet[key] && outputReserveDataTestnet[key].hedera_testnet) {
+      if (!outputReserveData[key]) {
+        outputReserveData[key] = {};
+      }
+      outputReserveData[key].hedera_testnet = outputReserveDataTestnet[key].hedera_testnet;
+    }
+  }
+
+  // Write the updated data back to the file
+  fs.writeFileSync(outputReserveDataPath, JSON.stringify(outputReserveData, null, 2), 'utf8');
+  console.log('Testnet addresses have been copied to outputReserveData.json');
+}
+
 async function main() {
   await getTokenIDs();
 }
