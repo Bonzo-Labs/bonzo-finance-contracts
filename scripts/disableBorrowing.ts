@@ -18,7 +18,7 @@ async function disableBorrowing() {
   } else if (chain_type === 'hedera_mainnet') {
     const url = process.env.PROVIDER_URL_MAINNET || '';
     provider = new ethers.providers.JsonRpcProvider(url);
-    wallet = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+    wallet = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
     contractAddress = LendingPoolConfigurator.hedera_mainnet.address;
     ReserveAssets = HederaConfig.ReserveAssets[eHederaNetwork.hedera_mainnet];
   }
@@ -35,7 +35,6 @@ async function disableBorrowing() {
   for (const key in ReserveAssets) {
     const assetAddress = ReserveAssets[key];
     console.log(`Disabling borrowing for asset: ${key} at address: ${assetAddress}`);
-
     try {
       const disableTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
         assetAddress
