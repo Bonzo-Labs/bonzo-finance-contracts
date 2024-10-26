@@ -102,6 +102,7 @@
     "matic:mumbai:verify": "npm run hardhat:mumbai verify:general -- --all --pool Matic",
     "matic:mainnet:verify": "npm run hardhat:matic verify:general -- --all --pool Matic",
     "hedera:testnet:verify": "npm run hardhat:hedera_testnet verify:general -- --all --pool Hedera",
+    "hedera:mainnet:verify": "npm run hardhat:hedera_mainnet verify:general -- --all --pool Hedera",
     "matic:mumbai:verify:tokens": "npm run hardhat:mumbai verify:tokens -- --pool Matic",
     "matic:mainnet:verify:tokens": "npm run hardhat:matic verify:tokens -- --pool Matic",
     "kovan:verify:tokens": "npm run hardhat:kovan verify:tokens -- --pool Aave",

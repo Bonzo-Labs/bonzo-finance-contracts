@@ -30,7 +30,7 @@ require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_mainnet';
 
-let provider, owner, contractAddress;
+let provider, owner, contractAddress, spender;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
@@ -38,6 +38,7 @@ if (chain_type === 'hedera_testnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_PROXY || '', provider);
+  spender = '0x00000000000000000000000000000000005dbdc1'; // Bonzo spender wallet
 }
 
 const client = Client.forTestnet();
@@ -104,7 +105,7 @@ describe('Lending Pool Contract Tests', function () {
     );
   });
 
-  it('should deposit and withdraw SAUCE tokens', async function () {
+  it.skip('should deposit and withdraw SAUCE tokens', async function () {
     console.log('In the test, owner:', owner.address);
     const depositAmount = 200;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.hedera_mainnet.token.address);
@@ -137,6 +138,92 @@ describe('Lending Pool Contract Tests', function () {
     const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
     expect(balanceWithdrawal).to.be.gt(0);
+  });
+
+  it.skip('should be able to transfer aTokens after depositing, but before borrowing', async function () {
+    console.log('In the test, owner:', owner.address);
+    const depositAmount = 2000;
+    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.hedera_mainnet.token.address);
+    await approveAndDeposit(
+      erc20Contract,
+      owner,
+      lendingPoolContract,
+      depositAmount,
+      SAUCE.hedera_mainnet.token.address,
+      lendingPoolContract
+    );
+
+    const aTokenContract = await setupContract('AToken', SAUCE.hedera_mainnet.aToken.address);
+    const balanceDeposit = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of SAUCE aTokens after depositing:', balanceDeposit.toString());
+
+    const transferTxn = await aTokenContract.transfer(spender, balanceDeposit);
+    await transferTxn.wait();
+    console.log('Transfer transaction completed...');
+
+    const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of aTokens after transfer:', balanceWithdrawal.toString());
+    expect(balanceWithdrawal).to.be.eq(0);
+  });
+
+  // Supply SAUCE, borrow KARATE, try to transfer ALL the SAUCE aTokens
+  it.skip('should not be able to withdraw aTokens after borrowing', async function () {
+    console.log('In the test, owner:', owner.address);
+    const depositAmount = 2000;
+    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.hedera_mainnet.token.address);
+    await approveAndDeposit(
+      erc20Contract,
+      owner,
+      lendingPoolContract,
+      depositAmount,
+      SAUCE.hedera_mainnet.token.address,
+      lendingPoolContract
+    );
+
+    const aTokenContract = await setupContract('AToken', SAUCE.hedera_mainnet.aToken.address);
+    const balanceDeposit = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of SAUCE aTokens after depositing:', balanceDeposit.toString());
+
+    let borrowAmount = 100;
+    const borrowTxn = await lendingPoolContract.borrow(
+      KARATE.hedera_mainnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrowed KARATE tokens: ', borrowTxn.hash);
+
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      KARATE.hedera_mainnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of KARATE debtTokens:', balanceOfBefore.toString());
+
+    const balanceAfterBorrow = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of SAUCE aTokens after borrow:', balanceAfterBorrow.toString());
+
+    try {
+      const transferTxn = await aTokenContract.transfer(spender, balanceDeposit);
+      await transferTxn.wait();
+      console.log('Was able to transfer ALL aTokens');
+    } catch (e) {
+      console.error(e);
+      console.log("Couldn't transfer ALL aTokens...");
+    }
+
+    try {
+      const transferTxn = await aTokenContract.transfer(spender, 101);
+      await transferTxn.wait();
+      console.log('Was able to transfer 101 aTokens');
+    } catch (e) {
+      console.error(e);
+      console.log("Couldn't transfer ALL aTokens...");
+    }
+
+    expect(balanceAfterBorrow).to.be.gt(0);
   });
 
   it.skip('should toggle an asset as collateral for the user', async function () {

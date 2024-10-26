@@ -63,52 +63,52 @@ async function configChanges() {
     newOwner
   );
 
-  // await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
 
-  // // Disable borrowing on the reserve
-  // const disableBorrowingTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
-  //   HBARX.hedera_mainnet.token.address
-  // );
-  // await disableBorrowingTxn.wait();
-  // console.log('Borrowing disabled for HBARX');
+  // Disable borrowing on the reserve
+  const disableBorrowingTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
+    HBARX.hedera_mainnet.token.address
+  );
+  await disableBorrowingTxn.wait();
+  console.log('Borrowing disabled for HBARX');
 
-  // await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
 
-  // console.log('Current Pool Admin', await lendingPoolAddressesProviderContract.getPoolAdmin());
-  // console.log(
-  //   'Current Emergency Admin',
-  //   await lendingPoolAddressesProviderContract.getEmergencyAdmin()
-  // );
+  console.log('Current Pool Admin', await lendingPoolAddressesProviderContract.getPoolAdmin());
+  console.log(
+    'Current Emergency Admin',
+    await lendingPoolAddressesProviderContract.getEmergencyAdmin()
+  );
 
-  // // Change the pool admin
-  // const changePoolAdminTxn = await lendingPoolAddressesProviderContract.setPoolAdmin(
-  //   newOwner.address
-  // );
-  // await changePoolAdminTxn.wait();
-  // console.log('Pool admin changed');
+  // Change the pool admin
+  const changePoolAdminTxn = await lendingPoolAddressesProviderContract.setPoolAdmin(
+    newOwner.address
+  );
+  await changePoolAdminTxn.wait();
+  console.log('Pool admin changed');
 
-  // // Change the emergency admin
-  // const changeEmergencyAdminTxn = await lendingPoolAddressesProviderContract.setEmergencyAdmin(
-  //   newOwner.address
-  // );
-  // await changeEmergencyAdminTxn.wait();
-  // console.log('Emergency admin changed');
+  // Change the emergency admin
+  const changeEmergencyAdminTxn = await lendingPoolAddressesProviderContract.setEmergencyAdmin(
+    newOwner.address
+  );
+  await changeEmergencyAdminTxn.wait();
+  console.log('Emergency admin changed');
 
-  // console.log('New Pool Admin', await lendingPoolAddressesProviderContract.getPoolAdmin());
-  // console.log(
-  //   'New Emergency Admin',
-  //   await lendingPoolAddressesProviderContract.getEmergencyAdmin()
-  // );
+  console.log('New Pool Admin', await lendingPoolAddressesProviderContract.getPoolAdmin());
+  console.log(
+    'New Emergency Admin',
+    await lendingPoolAddressesProviderContract.getEmergencyAdmin()
+  );
 
-  // // Enable borrowing on the reserve
-  // const enableBorrowingTxn = await configuratorNew.enableBorrowingOnReserve(
-  //   HBARX.hedera_mainnet.token.address,
-  //   false
-  // );
-  // await enableBorrowingTxn.wait();
-  // console.log('Borrowing enabled for HBARX');
+  // Enable borrowing on the reserve
+  const enableBorrowingTxn = await configuratorNew.enableBorrowingOnReserve(
+    HBARX.hedera_mainnet.token.address,
+    false
+  );
+  await enableBorrowingTxn.wait();
+  console.log('Borrowing enabled for HBARX');
 
-  // await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
 
   // Change owner
   const transferOwnershipTxn = await lendingPoolAddressesProviderContract.transferOwnership(

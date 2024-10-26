@@ -109,31 +109,12 @@ describe('WHBAR Tests', function () {
     expect(balanceOf).to.be.gt(0);
   });
 
-  // it.skip('should withdraw whbar tokens and get HBAR - msg.sender different from to', async function () {
-  //   await withdrawWHBAR(1022, delegator.address);
-  // });
-
   it.skip('should withdraw whbar tokens and get HBAR - msg.sender same as to', async function () {
     await withdrawWHBAR(13, owner.address);
   });
 
   it.skip('should borrow native HBAR - msg.sender same as onBehalfOf', async function () {
     await borrowWHBAR(4, owner.address);
-  });
-
-  // Note - You need to call approveDelegation
-  it.skip('should borrow native HBAR - msg.sender different from onBehalfOf', async function () {
-    // const whbarDebtTokenContract = await setupContract(
-    //   'VariableDebtToken',
-    //   WHBAR.variableDebt.address
-    // );
-    // const approveDelegationTxn = await whbarDebtTokenContract.approveDelegation(
-    //   delegator.address,
-    //   1032
-    // );
-    // await approveDelegationTxn.wait();
-    // console.log('Approve Delegation Transaction hash:', approveDelegationTxn.hash);
-    // await borrowWHBAR(1032, delegator.address);
   });
 
   it.skip('should repay native HBAR', async function () {

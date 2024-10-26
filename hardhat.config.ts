@@ -36,7 +36,7 @@ const keys_mainnet = process.env.PRIVATE_KEY_MAINNET!;
 
 const api_key = process.env.QUICKNODE_API_KEY2;
 // const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
-const quicknode_url = `https://wiser-bitter-cloud.hedera-mainnet.quiknode.pro/${api_key}/`;
+const quicknode_url = process.env.PROVIDER_URL_MAINNET;
 
 // Prevent to load scripts before compilation and typechain
 if (!SKIP_LOAD) {

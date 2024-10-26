@@ -50,15 +50,15 @@ async function supraPrices() {
   // console.log('HBARX price in USD = ', ethers.utils.formatUnits(assetPriceHBARXUSD, 18));
 
   console.log('Owner:', owner.address);
-  console.log('SAUCE token address: ', SAUCE.hedera_testnet.token.address);
+  console.log('SAUCE token address: ', SAUCE.hedera_mainnet.token.address);
 
   // const saucePriceIndex = await supra.getPriceFeed(SAUCE.hedera_testnet.token.address);
   // console.log('SAUCE price index:', saucePriceIndex.toString());
 
-  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_testnet.token.address);
+  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_mainnet.token.address);
   console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
 
-  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.hedera_testnet.token.address);
+  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.hedera_mainnet.token.address);
   console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
 
   // const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(KARATE);
