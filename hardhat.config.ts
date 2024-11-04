@@ -35,7 +35,6 @@ const keys = process.env.PRIVATE_KEY2!;
 const keys_mainnet = process.env.PRIVATE_KEY_MAINNET!;
 
 const api_key = process.env.QUICKNODE_API_KEY2;
-// const quicknode_url = `https://serene-long-resonance.hedera-mainnet.quiknode.pro/${api_key}/`;
 const quicknode_url = process.env.PROVIDER_URL_MAINNET;
 
 // Prevent to load scripts before compilation and typechain
@@ -124,7 +123,7 @@ const buidlerConfig: HardhatUserConfig = {
     username: process.env.TENDERLY_USERNAME || '',
     forkNetwork: '1', //Network id of the network we want to fork
   },
-  // defaultNetwork: 'hedera_testnet',
+  defaultNetwork: 'hedera_testnet',
   networks: {
     coverage: {
       url: 'http://localhost:8555',
@@ -174,12 +173,12 @@ const buidlerConfig: HardhatUserConfig = {
         count: 20,
       },
     },
-    // hedera_testnet: {
-    //   url: 'https://testnet.hashio.io/api',
-    //   chainId: 296,
-    //   accounts: [keys],
-    //   timeout: 0,
-    // },
+    hedera_testnet: {
+      url: 'https://testnet.hedera.validationcloud.io/v1/ViRFHy6Qx3lJYrY5NI76S8oHwMcRiQxnJBQ_5g-C25A',
+      chainId: 296,
+      accounts: [keys],
+      timeout: 0,
+    },
     hedera_mainnet: {
       url: quicknode_url,
       chainId: 295,
