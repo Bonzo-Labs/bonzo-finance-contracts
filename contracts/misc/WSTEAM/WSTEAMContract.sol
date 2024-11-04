@@ -133,6 +133,7 @@ contract WSTEAM is SafeHederaTokenService {
     safeTransferToken(steamToken, src, address(this), steamAmount); // Transfer STEAM tokens from the source to the contract
     uint256 wsteamAmount = toWSTEAM(steamAmount); // Calculate the amount of WSTEAM to mint (adjusting for decimals difference)
     safeMintToken(token, dst, wsteamAmount, new bytes[](0)); // Mint WSTEAM tokens to the destination
+    safeTransferToken(token, address(this), dst, wsteamAmount); // Now, transfer the tokens from the treasury to the user
 
     emit Deposit(src, dst, steamAmount, wsteamAmount);
   }
