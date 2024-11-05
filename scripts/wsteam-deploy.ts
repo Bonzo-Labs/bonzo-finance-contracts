@@ -4,8 +4,8 @@ require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
-// WSTEAM contract deployed to: 0x9dA63E6639544f95407aEaFBBEafe026a23C49D0
-// WSteam Token: 0x00000000000000000000000000000000004d6303
+// WSTEAM contract deployed to: 0x06da3554b380de078027157C4DDcef5E2056D82D
+// WSteam Token: 0x00000000000000000000000000000000004d6427
 
 async function main() {
   let provider, owner;

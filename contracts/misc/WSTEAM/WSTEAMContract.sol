@@ -12,6 +12,7 @@ import {SafeMath} from '../../dependencies/openzeppelin/contracts/SafeMath.sol';
  * @dev Wrapped STEAM token contract for the Hedera network.
  *      This contract allows wrapping of STEAM tokens (2 decimals) into WSTEAM tokens (8 decimals)
  *      and vice versa, maintaining a 1:1 ratio but with different decimal precision.
+ * @author Bonzo Finance
  */
 contract WSTEAM is SafeHederaTokenService {
   using Bits for uint;
@@ -64,7 +65,7 @@ contract WSTEAM is SafeHederaTokenService {
 
     IHederaTokenService.Expiry memory expiry;
     expiry.autoRenewAccount = address(this);
-    expiry.autoRenewPeriod = 7776000; // 90 days in seconds
+    expiry.autoRenewPeriod = 7776000; // 90 days
 
     IHederaTokenService.HederaToken memory myToken;
     myToken.name = 'Wrapped Steam';
@@ -132,7 +133,7 @@ contract WSTEAM is SafeHederaTokenService {
 
     safeTransferToken(steamToken, src, address(this), steamAmount); // Transfer STEAM tokens from the source to the contract
     uint256 wsteamAmount = toWSTEAM(steamAmount); // Calculate the amount of WSTEAM to mint (adjusting for decimals difference)
-    safeMintToken(token, dst, wsteamAmount, new bytes[](0)); // Mint WSTEAM tokens to the destination
+    safeMintToken(token, dst, wsteamAmount, new bytes[](0)); // Mint WSTEAM tokens (tokens get minted to the treasury, which is the contract itself)
     safeTransferToken(token, address(this), dst, wsteamAmount); // Now, transfer the tokens from the treasury to the user
 
     emit Deposit(src, dst, steamAmount, wsteamAmount);

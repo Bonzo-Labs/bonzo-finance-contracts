@@ -64,7 +64,7 @@ describe('WSTEAM Contract Tests', function () {
   });
 
   it('should get wsteam tokens after depositing steam to msg.sender', async function () {
-    const steamAmount = ethers.utils.parseUnits('10000000', 2); // 1 STEAM (2 decimals)
+    const steamAmount = ethers.utils.parseUnits('100', 2); // 1 STEAM (2 decimals)
     const expectedWsteamAmount = steamAmount.mul(DECIMALS_CONVERSION); // Convert to 8 decimals
 
     // Get initial balances
@@ -101,8 +101,8 @@ describe('WSTEAM Contract Tests', function () {
     expect(finalWsteamBalance).to.equal(initialWsteamBalance.add(expectedWsteamAmount));
   });
 
-  it.skip('should burn wsteam tokens and get steam tokens after withdrawing to msg.sender', async function () {
-    const wsteamAmount = ethers.utils.parseUnits('100', 8); // 0.1 WSTEAM (8 decimals)
+  it('should burn wsteam tokens and get steam tokens after withdrawing to msg.sender', async function () {
+    const wsteamAmount = ethers.utils.parseUnits('10', 8); // 0.1 WSTEAM (8 decimals)
     const expectedSteamAmount = wsteamAmount.div(DECIMALS_CONVERSION); // Convert to 2 decimals
 
     // Get initial balances
@@ -139,22 +139,25 @@ describe('WSTEAM Contract Tests', function () {
     expect(finalSteamBalance).to.equal(initialSteamBalance.add(expectedSteamAmount));
   });
 
-  it.skip('should get wsteam tokens after depositing steam to userAddress', async function () {
-    const steamAmount = ethers.utils.parseUnits('1000', 2); // 1 STEAM (2 decimals)
+  it('should get wsteam tokens after depositing steam to userAddress', async function () {
+    const steamAmount = ethers.utils.parseUnits('15', 2); // 1 STEAM (2 decimals)
     const expectedWsteamAmount = steamAmount.mul(DECIMALS_CONVERSION); // Convert to 8 decimals
 
     // Get initial balances
     const initialSteamBalance = await steamTokenContract.balanceOf(owner.address);
     const initialUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress.address);
+    console.log(
+      'Initial Steam Balance:',
+      initialSteamBalance.toString(),
+      'Initial User WSteam Balance:',
+      initialUserWsteamBalance.toString()
+    );
 
     const allowance = await steamTokenContract.allowance(owner.address, wsteamContract.address);
     if (allowance.lt(steamAmount)) {
       console.log('Approving WSTEAM contract to spend STEAM tokens...');
       await steamTokenContract.approve(wsteamContract.address, steamAmount);
     }
-
-    // Approve WSTEAM contract to spend STEAM tokens
-    await steamTokenContract.approve(wsteamContract.address, steamAmount);
 
     // Deposit STEAM tokens to userAddress
     const depositTx = await wsteamContract.depositTo(userAddress.address, steamAmount);
@@ -163,25 +166,43 @@ describe('WSTEAM Contract Tests', function () {
     // Check final balances
     const finalSteamBalance = await steamTokenContract.balanceOf(owner.address);
     const finalUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress.address);
+    console.log(
+      'Final Steam Balance:',
+      finalSteamBalance.toString(),
+      'Final User WSteam Balance:',
+      finalUserWsteamBalance.toString()
+    );
 
     expect(finalSteamBalance).to.equal(initialSteamBalance.sub(steamAmount));
     expect(finalUserWsteamBalance).to.equal(initialUserWsteamBalance.add(expectedWsteamAmount));
   });
 
-  it.skip('should burn wsteam tokens and get steam tokens after withdrawing to userAddress', async function () {
-    const wsteamAmount = ethers.utils.parseUnits('10000000', 8); // 0.1 WSTEAM (8 decimals)
+  it('should burn wsteam tokens and get steam tokens after withdrawing to userAddress', async function () {
+    const wsteamAmount = ethers.utils.parseUnits('13', 8); // 0.1 WSTEAM (8 decimals)
     const expectedSteamAmount = wsteamAmount.div(DECIMALS_CONVERSION); // Convert to 2 decimals
 
     // Get initial balances
-    const initialWsteamBalance = await wsteamContract.balanceOf(owner.address);
+    const initialWsteamBalance = await wsteamTokenContract.balanceOf(owner.address);
     const initialUserSteamBalance = await steamTokenContract.balanceOf(userAddress.address);
+    console.log(
+      'Initial WSteam Balance:',
+      initialWsteamBalance.toString(),
+      'Initial User Steam Balance:',
+      initialUserSteamBalance.toString()
+    );
+
+    const allowance = await wsteamTokenContract.allowance(owner.address, wsteamContract.address);
+    if (allowance.lt(wsteamAmount)) {
+      console.log('Approving WSTEAM contract to spend WSTEAM tokens...');
+      await wsteamTokenContract.approve(wsteamContract.address, wsteamAmount);
+    }
 
     // Withdraw WSTEAM tokens to userAddress
     const withdrawTx = await wsteamContract.withdrawTo(userAddress.address, wsteamAmount);
     await withdrawTx.wait();
 
     // Check final balances
-    const finalWsteamBalance = await wsteamContract.balanceOf(owner.address);
+    const finalWsteamBalance = await wsteamTokenContract.balanceOf(owner.address);
     const finalUserSteamBalance = await steamTokenContract.balanceOf(userAddress.address);
 
     expect(finalWsteamBalance).to.equal(initialWsteamBalance.sub(wsteamAmount));
