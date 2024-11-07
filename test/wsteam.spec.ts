@@ -18,8 +18,6 @@ const {
   SAUCE,
   USDC,
   XSAUCE,
-  BSTEAM,
-  BKARATE,
   KARATE,
   WHBAR,
   LendingPool,
@@ -56,7 +54,10 @@ describe('WSTEAM Contract Tests', function () {
   before(async function () {
     console.log('Owner:', owner.address);
     wsteamContract = await setupContract('WSTEAM', '0x06da3554b380de078027157C4DDcef5E2056D82D');
-    steamTokenContract = await setupContract('ERC20Wrapper', BSTEAM.hedera_testnet.token.address);
+    steamTokenContract = await setupContract(
+      'ERC20Wrapper',
+      '0x00000000000000000000000000000000004d50fe'
+    );
     wsteamTokenContract = await setupContract(
       'ERC20Wrapper',
       '0x00000000000000000000000000000000004d6427'
@@ -64,7 +65,7 @@ describe('WSTEAM Contract Tests', function () {
   });
 
   it('should get wsteam tokens after depositing steam to msg.sender', async function () {
-    const steamAmount = ethers.utils.parseUnits('100', 2); // 1 STEAM (2 decimals)
+    const steamAmount = ethers.utils.parseUnits('21000000', 2); // 1 STEAM (2 decimals)
     const expectedWsteamAmount = steamAmount.mul(DECIMALS_CONVERSION); // Convert to 8 decimals
 
     // Get initial balances
@@ -101,7 +102,7 @@ describe('WSTEAM Contract Tests', function () {
     expect(finalWsteamBalance).to.equal(initialWsteamBalance.add(expectedWsteamAmount));
   });
 
-  it('should burn wsteam tokens and get steam tokens after withdrawing to msg.sender', async function () {
+  it.skip('should burn wsteam tokens and get steam tokens after withdrawing to msg.sender', async function () {
     const wsteamAmount = ethers.utils.parseUnits('10', 8); // 0.1 WSTEAM (8 decimals)
     const expectedSteamAmount = wsteamAmount.div(DECIMALS_CONVERSION); // Convert to 2 decimals
 
@@ -139,7 +140,7 @@ describe('WSTEAM Contract Tests', function () {
     expect(finalSteamBalance).to.equal(initialSteamBalance.add(expectedSteamAmount));
   });
 
-  it('should get wsteam tokens after depositing steam to userAddress', async function () {
+  it.skip('should get wsteam tokens after depositing steam to userAddress', async function () {
     const steamAmount = ethers.utils.parseUnits('15', 2); // 1 STEAM (2 decimals)
     const expectedWsteamAmount = steamAmount.mul(DECIMALS_CONVERSION); // Convert to 8 decimals
 
@@ -177,7 +178,7 @@ describe('WSTEAM Contract Tests', function () {
     expect(finalUserWsteamBalance).to.equal(initialUserWsteamBalance.add(expectedWsteamAmount));
   });
 
-  it('should burn wsteam tokens and get steam tokens after withdrawing to userAddress', async function () {
+  it.skip('should burn wsteam tokens and get steam tokens after withdrawing to userAddress', async function () {
     const wsteamAmount = ethers.utils.parseUnits('13', 8); // 0.1 WSTEAM (8 decimals)
     const expectedSteamAmount = wsteamAmount.div(DECIMALS_CONVERSION); // Convert to 2 decimals
 

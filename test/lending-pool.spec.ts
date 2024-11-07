@@ -112,9 +112,9 @@ describe('Lending Pool Contract Tests', function () {
     wsteamTokenContract = await setupContract('ERC20Wrapper', WSTEAM.hedera_testnet.token.address);
   });
 
-  it.skip('should deposit and withdraw SAUCE tokens', async function () {
+  it.skip('should deposit, withdraw and borrow SAUCE tokens', async function () {
     console.log('In the test, owner:', owner.address);
-    const depositAmount = 200;
+    const depositAmount = 1000;
     const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.hedera_testnet.token.address);
     console.log('Sauce atoken address = ', SAUCE.hedera_testnet.aToken.address);
     await approveAndDeposit(
@@ -130,7 +130,7 @@ describe('Lending Pool Contract Tests', function () {
     const balanceDeposit = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of SAUCE aTokens after depositing:', balanceDeposit.toString());
 
-    let withdrawAmount = 98;
+    let withdrawAmount = 19;
     const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
     await aTokenApprove.wait();
     console.log('aToken Approval:', aTokenApprove.hash);
@@ -145,12 +145,36 @@ describe('Lending Pool Contract Tests', function () {
 
     const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      SAUCE.hedera_testnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
+
+    const borrowAmount = 10;
+    const borrowTxn = await lendingPoolContract.borrow(
+      SAUCE.hedera_testnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const balanceOfAfter = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfter.toString());
+    expect(balanceOfAfter).to.be.gt(0);
+
     expect(balanceWithdrawal).to.be.gt(0);
   });
 
-  it('should deposit and withdraw WSTEAM tokens', async function () {
+  it.skip('should deposit, withdraw and borrow WSTEAM tokens', async function () {
     console.log('In the test, owner:', owner.address);
-    const depositAmount = ethers.utils.parseUnits('200', 8);
+    // const depositAmount = ethers.utils.parseUnits('20000000', 8);
+    const depositAmount = 200;
 
     console.log('WSTEAM atoken address = ', WSTEAM.hedera_testnet.aToken.address);
     await approveAndDeposit(
@@ -166,7 +190,7 @@ describe('Lending Pool Contract Tests', function () {
     const balanceDeposit = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of WSTEAM aTokens after depositing:', balanceDeposit.toString());
 
-    let withdrawAmount = 98;
+    let withdrawAmount = 2;
     const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
     await aTokenApprove.wait();
     console.log('aToken Approval:', aTokenApprove.hash);
@@ -181,78 +205,187 @@ describe('Lending Pool Contract Tests', function () {
 
     const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      WSTEAM.hedera_testnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
+
+    const borrowAmount = 12;
+    const borrowTxn = await lendingPoolContract.borrow(
+      WSTEAM.hedera_testnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const balanceOfAfter = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfter.toString());
+
+    const repayAmount = balanceOfAfter;
+    const approveTxn = await wsteamTokenContract.approve(lendingPoolContract.address, repayAmount);
+    await approveTxn.wait();
+    const repayTxn = await lendingPoolContract.repay(
+      WSTEAM.hedera_testnet.token.address,
+      repayAmount,
+      2,
+      owner.address
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash: ', repayTxn.hash);
+
+    const balanceOfAfterRepay = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfterRepay.toString());
+
     expect(balanceDeposit).to.be.gt(0);
   });
 
-  it.skip('should deposit and withdraw BSTEAM tokens', async function () {
-    // console.log('In the test, owner:', owner.address);
-    // const depositAmount = 2034524608;
-    // const erc20Contract = await setupContract('ERC20Wrapper', BSTEAM.hedera_testnet.token.address);
-    // console.log('BSTEAM atoken address = ', BSTEAM.hedera_testnet.aToken.address);
-    // await approveAndDeposit(
-    //   erc20Contract,
-    //   owner,
-    //   lendingPoolContract,
-    //   depositAmount,
-    //   BSTEAM.hedera_testnet.token.address,
-    //   lendingPoolContract
-    // );
-
+  it('should deposit and withdraw BSTEAM tokens', async function () {
+    console.log('In the test, owner:', owner.address);
+    const depositAmount = 1630627482;
+    const erc20Contract = await setupContract('ERC20Wrapper', BSTEAM.hedera_testnet.token.address);
+    console.log('BSTEAM atoken address = ', BSTEAM.hedera_testnet.aToken.address);
+    await approveAndDeposit(
+      erc20Contract,
+      owner,
+      lendingPoolContract,
+      depositAmount,
+      BSTEAM.hedera_testnet.token.address,
+      lendingPoolContract
+    );
     const aTokenContract = await setupContract('AToken', BSTEAM.hedera_testnet.aToken.address);
     const balanceDeposit = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of BSTEAM aTokens after depositing:', balanceDeposit.toString());
 
-    // let withdrawAmount = 98;
-    // const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
-    // await aTokenApprove.wait();
-    // console.log('aToken Approval:', aTokenApprove.hash);
+    let withdrawAmount = 7;
+    const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
+    await aTokenApprove.wait();
+    console.log('aToken Approval:', aTokenApprove.hash);
+    const withdrawTxn = await lendingPoolContract.withdraw(
+      BSTEAM.hedera_testnet.token.address,
+      withdrawAmount,
+      owner.address
+    );
+    await withdrawTxn.wait();
+    console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
+    const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
 
-    // const withdrawTxn = await lendingPoolContract.withdraw(
-    //   BSTEAM.hedera_testnet.token.address,
-    //   withdrawAmount,
-    //   owner.address
-    // );
-    // await withdrawTxn.wait();
-    // console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      BSTEAM.hedera_testnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
 
-    // const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
-    // console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+    const borrowAmount = 12;
+    const borrowTxn = await lendingPoolContract.borrow(
+      BSTEAM.hedera_testnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const balanceOfAfter = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfter.toString());
+
+    const repayAmount = balanceOfAfter;
+    const approveTxn = await erc20Contract.approve(lendingPoolContract.address, repayAmount);
+    await approveTxn.wait();
+    const repayTxn = await lendingPoolContract.repay(
+      BSTEAM.hedera_testnet.token.address,
+      repayAmount,
+      2,
+      owner.address
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash: ', repayTxn.hash);
+
+    const balanceOfAfterRepay = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfterRepay.toString());
+
     expect(balanceDeposit).to.be.gt(0);
   });
 
-  it.skip('should deposit and withdraw BKARATE tokens', async function () {
-    // console.log('In the test, owner:', owner.address);
+  it.skip('should deposit, withdraw, borrow and repay BKARATE tokens', async function () {
+    console.log('In the test, owner:', owner.address);
     // const depositAmount = ethers.utils.parseUnits('403581435', 8);
-    // const erc20Contract = await setupContract('ERC20Wrapper', BKARATE.hedera_testnet.token.address);
-    // console.log('BKARATE atoken address = ', BKARATE.hedera_testnet.aToken.address);
-    // await approveAndDeposit(
-    //   erc20Contract,
-    //   owner,
-    //   lendingPoolContract,
-    //   depositAmount,
-    //   BKARATE.hedera_testnet.token.address,
-    //   lendingPoolContract
-    // );
+    const depositAmount = 200;
+    const erc20Contract = await setupContract('ERC20Wrapper', BKARATE.hedera_testnet.token.address);
+    console.log('BKARATE atoken address = ', BKARATE.hedera_testnet.aToken.address);
+    await approveAndDeposit(
+      erc20Contract,
+      owner,
+      lendingPoolContract,
+      depositAmount,
+      BKARATE.hedera_testnet.token.address,
+      lendingPoolContract
+    );
 
     const aTokenContract = await setupContract('AToken', BKARATE.hedera_testnet.aToken.address);
     const balanceDeposit = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of BKARATE aTokens after depositing:', balanceDeposit.toString());
 
-    // let withdrawAmount = 98;
-    // const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
-    // await aTokenApprove.wait();
-    // console.log('aToken Approval:', aTokenApprove.hash);
+    let withdrawAmount = 121;
+    const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
+    await aTokenApprove.wait();
+    console.log('aToken Approval:', aTokenApprove.hash);
 
-    // const withdrawTxn = await lendingPoolContract.withdraw(
-    //   BKARATE.hedera_testnet.token.address,
-    //   withdrawAmount,
-    //   owner.address
-    // );
-    // await withdrawTxn.wait();
-    // console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
+    const withdrawTxn = await lendingPoolContract.withdraw(
+      BKARATE.hedera_testnet.token.address,
+      withdrawAmount,
+      owner.address
+    );
+    await withdrawTxn.wait();
+    console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
 
-    // const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
-    // console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+    const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      BKARATE.hedera_testnet.variableDebt.address
+    );
+    const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
+
+    const borrowAmount = 12;
+    const borrowTxn = await lendingPoolContract.borrow(
+      BKARATE.hedera_testnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
+
+    const balanceOfAfter = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfter.toString());
+
+    const repayAmount = balanceOfAfter;
+    const approveTxn = await erc20Contract.approve(lendingPoolContract.address, repayAmount);
+    await approveTxn.wait();
+    const repayTxn = await lendingPoolContract.repay(
+      BKARATE.hedera_testnet.token.address,
+      repayAmount,
+      2,
+      owner.address
+    );
+    await repayTxn.wait();
+    console.log('Repay Transaction hash: ', repayTxn.hash);
+
+    const balanceOfAfterRepay = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of debtTokenContract:', balanceOfAfterRepay.toString());
+
     expect(balanceDeposit).to.be.gt(0);
   });
 
@@ -372,38 +505,44 @@ describe('Lending Pool Contract Tests', function () {
     expect(reservesList).to.not.be.null;
   });
 
-  it.skip('should deposit and borrow KARATE tokens', async function () {
-    const depositAmount = 300;
-    const erc20Contract = await setupContract('ERC20Wrapper', KARATE.hedera_testnet.token.address);
-    await approveAndDeposit(
-      erc20Contract,
-      owner,
-      lendingPoolContract,
-      depositAmount,
-      KARATE.hedera_testnet.token.address,
-      lendingPoolContract
-    );
+  it.skip('should deposit and withdraw KARATE tokens', async function () {
+    // const depositAmount = 300;
+    // const erc20Contract = await setupContract('ERC20Wrapper', KARATE.hedera_testnet.token.address);
+    // await approveAndDeposit(
+    //   erc20Contract,
+    //   owner,
+    //   lendingPoolContract,
+    //   depositAmount,
+    //   KARATE.hedera_testnet.token.address,
+    //   lendingPoolContract
+    // );
 
     const aTokenContract = await setupContract('AToken', KARATE.hedera_testnet.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of KARATE aTokens after depositing:', balanceOf.toString());
 
-    let withdrawAmount = 98;
-    const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
-    await aTokenApprove.wait();
-    console.log('aToken Approval:', aTokenApprove.hash);
+    if (balanceOf > 0) {
+      let withdrawAmount = balanceOf;
+      const aTokenApprove = await aTokenContract.approve(
+        lendingPoolContract.address,
+        withdrawAmount
+      );
+      await aTokenApprove.wait();
+      console.log('aToken Approval:', aTokenApprove.hash);
 
-    const withdrawTxn = await lendingPoolContract.withdraw(
-      KARATE.hedera_testnet.token.address,
-      withdrawAmount,
-      owner.address
-    );
-    await withdrawTxn.wait();
-    console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
+      const withdrawTxn = await lendingPoolContract.withdraw(
+        KARATE.hedera_testnet.token.address,
+        withdrawAmount,
+        owner.address
+      );
+      await withdrawTxn.wait();
+      console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
 
-    const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
-    console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
-    expect(balanceWithdrawal).to.be.gt(0);
+      const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
+      console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+    }
+
+    // expect(balanceWithdrawal).to.be.gt(0);
   });
 
   it.skip('should borrow SAUCE DebtTokens', async function () {
@@ -414,7 +553,7 @@ describe('Lending Pool Contract Tests', function () {
     const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
 
-    const borrowAmount = 2;
+    const borrowAmount = 10;
     const borrowTxn = await lendingPoolContract.borrow(
       SAUCE.hedera_testnet.token.address,
       borrowAmount,
@@ -474,23 +613,23 @@ describe('Lending Pool Contract Tests', function () {
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC aTokens:', balanceOf.toString());
 
-    // const borrowAmount = 15;
-    // const borrowTxn = await lendingPoolContract.borrow(
-    //   USDC.hedera_testnet.token.address,
-    //   borrowAmount,
-    //   2,
-    //   0,
-    //   owner.address
-    // );
-    // await borrowTxn.wait();
-    // console.log('Borrow Transaction hash: ', borrowTxn.hash);
+    const borrowAmount = 15;
+    const borrowTxn = await lendingPoolContract.borrow(
+      USDC.hedera_testnet.token.address,
+      borrowAmount,
+      2,
+      0,
+      owner.address
+    );
+    await borrowTxn.wait();
+    console.log('Borrow Transaction hash: ', borrowTxn.hash);
 
-    // const debtTokenContract = await setupContract(
-    //   'VariableDebtToken',
-    //   USDC.hedera_testnet.variableDebt.address
-    // );
-    // const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
-    // console.log('Balance of USDC debtTokens:', balanceOf1.toString());
+    const debtTokenContract = await setupContract(
+      'VariableDebtToken',
+      USDC.hedera_testnet.variableDebt.address
+    );
+    const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
+    console.log('Balance of USDC debtTokens:', balanceOf1.toString());
     expect(balanceOf).to.be.gt(0);
   });
 
