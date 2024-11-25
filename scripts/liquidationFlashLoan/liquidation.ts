@@ -46,16 +46,16 @@ if (chain_type === 'hedera_testnet') {
     operatorAccountId: AccountId.fromString(process.env.ACCOUNT_ID2!),
     providerUrl: 'https://testnet.hashio.io/api',
     ownerPrivateKey: process.env.PRIVATE_KEY2!,
-    liquidatorContract: '0xCa23b5bE0E8A99bd60fdB1bA8809daA2e2c9994B',
-    liquidatorContractId: '0.0.5157764',
+    liquidatorContract: '0x6465468ac43aAD50C322AcBf582eCFCB2222ea21',
+    liquidatorContractId: '0.0.5168494',
     routerContractId: '0.0.19264',
     tokenPath: [
-      '0x0000000000000000000000000000000000220ced',
+      '0x0000000000000000000000000000000000001549',
       '0x0000000000000000000000000000000000003aD2',
       '0x0000000000000000000000000000000000120f46',
     ],
     toAddress: '0xbe058ee0884696653e01cfc6f34678f2762d84db',
-    tokenId: '0.0.2231533',
+    tokenId: '0.0.5449',
     ownerAccountId: '0.0.3642525',
   };
 } else if (chain_type === 'hedera_mainnet') {
@@ -132,6 +132,7 @@ async function getHighestCollateralAndDebt(
     '0x000000000000000000000000000000000015a59b': { name: 'XSAUCE', decimals: 6 },
     '0x0000000000000000000000000000000000220ced': { name: 'HBARX', decimals: 8 },
     '0x0000000000000000000000000000000000120f46': { name: 'SAUCE', decimals: 6 },
+    '0x0000000000000000000000000000000000003ad2': { name: 'WHBAR', decimals: 8 },
   };
 
   let highestCollateral = { reserve: '', supplied: 0 };
@@ -169,7 +170,7 @@ async function getHighestCollateralAndDebt(
 
 // Function to perform liquidation
 async function liquidateWithScript() {
-  const user = liquidatables[3];
+  const user = liquidatables[2];
   const { collateralReserve, debtReserve, supplied, borrowed } = await getHighestCollateralAndDebt(
     user
   );
@@ -196,7 +197,7 @@ async function liquidateWithScript() {
 }
 
 async function liquidateWithContract() {
-  const user = liquidatables[3];
+  const user = liquidatables[2];
   const { collateralReserve, debtReserve, supplied, borrowed } = await getHighestCollateralAndDebt(
     user
   );
@@ -210,25 +211,39 @@ async function liquidateWithContract() {
   const approvalTxn = await debtTokenERC20.approve(chainData.liquidatorContract, 100000);
   await approvalTxn.wait();
   console.log('Approval successful');
-}
 
-async function testFlashLoan() {
-  const user = liquidatables[3];
-  const collateralReserve = '0x00000000000000000000000000000000004e891f';
-  const debtReserve = '0x00000000000000000000000000000000004e891f';
-  const supplied = 0;
-  const borrowed = 100;
-  console.log(`User: ${user}`);
-  console.log(`Collateral Reserve: ${collateralReserve}`);
-  console.log(`Debt Reserve: ${debtReserve}`);
-  console.log(`Supplied: ${supplied}`);
-  console.log(`Borrowed: ${borrowed}`);
-
-  const flashloanTxn = await liquidationContract.testFlashLoan(
+  const liquidationTxn = await liquidationContract.liquidateWithoutFlashloan(
     user,
     debtReserve,
     collateralReserve,
-    borrowed
+    100,
+    {
+      gasLimit: 13800000,
+    }
+  );
+  await liquidationTxn.wait();
+  console.log('Liquidation successful');
+}
+
+async function liquidate() {
+  const user = liquidatables[2];
+  const collateralReserve = '0x0000000000000000000000000000000000120f46';
+  const debtReserve = '0x0000000000000000000000000000000000003ad2';
+  const borrowed = 100;
+  console.log(`User: ${user}`);
+  console.log(`Caller address: ${owner.address}`);
+  console.log(`Collateral Reserve: ${collateralReserve}`);
+  console.log(`Debt Reserve: ${debtReserve}`);
+  console.log(`Borrowed: ${borrowed}`);
+
+  const flashloanTxn = await liquidationContract.liquidate(
+    user,
+    debtReserve,
+    collateralReserve,
+    borrowed,
+    {
+      gasLimit: 13800000,
+    }
   );
   await flashloanTxn.wait();
   console.log('Flash loan successful');
@@ -245,8 +260,9 @@ async function main() {
   supraOracleContract = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
   liquidationContract = await setupContract('Liquidator', chainData.liquidatorContract);
 
-  // await liquidateWithScript();
-  await testFlashLoan();
+  await liquidateWithScript();
+  // await liquidate();
+  // await liquidateWithContract();
 }
 
 // Execute the main function

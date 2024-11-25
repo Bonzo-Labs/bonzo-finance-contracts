@@ -38,16 +38,16 @@ if (chain_type === 'hedera_testnet') {
     operatorAccountId: AccountId.fromString(process.env.ACCOUNT_ID2!),
     providerUrl: 'https://testnet.hashio.io/api',
     ownerPrivateKey: process.env.PRIVATE_KEY2!,
-    liquidatorContract: '0xf21d4E0f45600A8F1B28d86596bB13C209eB0793',
-    liquidatorContractId: '0.0.5146544',
-    routerContractId: '0.0.19264',
+    liquidatorContract: '0x6465468ac43aAD50C322AcBf582eCFCB2222ea21',
+    liquidatorContractId: '0.0.5168494',
+    routerContractId: '0.0.5165264',
     tokenPath: [
-      '0x0000000000000000000000000000000000220ced',
+      '0x0000000000000000000000000000000000120f46',
       '0x0000000000000000000000000000000000003aD2',
       '0x0000000000000000000000000000000000120f46',
     ],
     toAddress: '0xbe058ee0884696653e01cfc6f34678f2762d84db',
-    tokenId: '0.0.2231533',
+    tokenId: '0.0.5449',
     ownerAccountId: '0.0.3642525',
   };
 } else if (chain_type === 'hedera_mainnet') {

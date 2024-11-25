@@ -25,6 +25,7 @@ contract Liquidator is FlashLoanReceiverBase {
   address constant hts = address(0x167); // The well-known address of the HTS precompile.
   int64 constant HAPI_SUCCESS = 22; // HTS success code.
   address WHBAR = address(0x0000000000000000000000000000000000003aD2);
+  address contractCreator;
 
   constructor(
     ILendingPoolAddressesProvider _addressProvider,
@@ -34,28 +35,10 @@ contract Liquidator is FlashLoanReceiverBase {
     _associateToken(0x00000000000000000000000000000000004e891f); // BSAUCE
     _associateToken(0x0000000000000000000000000000000000003aD2);
     _associateToken(0x00000000000000000000000000000000004d50Fe); // BSTEAM
-  }
+    _associateToken(0x0000000000000000000000000000000000001549); // USDC
+    _associateToken(0x0000000000000000000000000000000000120f46); // SAUCE
 
-  function liquidate(
-    address user,
-    address debtAsset,
-    address collateralAsset,
-    uint256 debtToCover,
-    uint256 maxCollateralToSwap
-  ) external {
-    address[] memory assets;
-    assets[0] = debtAsset;
-
-    uint256[] memory amounts;
-    amounts[0] = debtToCover;
-
-    uint256[] memory modes;
-    modes[0] = 0; // Flash loan mode
-
-    // Encode parameters for executeOperation
-    bytes memory params = abi.encode(user, debtAsset, collateralAsset, maxCollateralToSwap);
-
-    LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), params, 0);
+    contractCreator = msg.sender;
   }
 
   /**
@@ -68,15 +51,17 @@ contract Liquidator is FlashLoanReceiverBase {
     address initiator,
     bytes calldata params
   ) external override returns (bool) {
-    (address debtAsset, address collateralAsset, address user, uint256 debtToCover) = abi.decode(
-      params,
-      (address, address, address, uint256)
+    (address collateralAsset, address user) = abi.decode(params, (address, address));
+
+    // assets[0] => debtAsset
+    // amounts[0] => debtToCover
+    require(
+      IERC20(assets[0]).approve(address(LENDING_POOL), amounts[0]),
+      'Approval to Lending Pool failed'
     );
 
-    require(IERC20(debtAsset).approve(address(LENDING_POOL), debtToCover), 'Approval failed');
-
     // Liquidate the user's position
-    LENDING_POOL.liquidationCall(collateralAsset, debtAsset, user, debtToCover, false);
+    LENDING_POOL.liquidationCall(collateralAsset, assets[0], user, amounts[0], false);
 
     uint256 amountInContract = IERC20(collateralAsset).balanceOf(address(this));
     require(amountInContract > 0, 'No collateral received');
@@ -86,20 +71,20 @@ contract Liquidator is FlashLoanReceiverBase {
     address[] memory path;
     path[0] = collateralAsset;
     path[1] = WHBAR;
-    path[2] = debtAsset;
+    path[2] = assets[0];
 
-    uint256 amountOwed = debtToCover.add(premiums[0]);
+    uint256 amountOwed = amounts[0].add(premiums[0]);
 
     saucerswapRouter.swapTokensForExactTokens(
       amountInContract,
       amountOwed,
       path,
       address(this),
-      block.timestamp
+      block.timestamp + 1000
     );
 
     // Repay the flash loan
-    IERC20(debtAsset).approve(address(LENDING_POOL), amountOwed);
+    IERC20(assets[0]).approve(address(LENDING_POOL), amountOwed);
 
     return true;
   }
@@ -120,10 +105,6 @@ contract Liquidator is FlashLoanReceiverBase {
 
     // Liquidate the user's position
     LENDING_POOL.liquidationCall(collateralAsset, debtAsset, user, debtToCover, false);
-
-    // Send the collateral asset to the msg.sender
-    uint256 collateralAmount = IERC20(collateralAsset).balanceOf(address(this));
-    IERC20(collateralAsset).transfer(msg.sender, collateralAmount);
   }
 
   /**
@@ -137,8 +118,7 @@ contract Liquidator is FlashLoanReceiverBase {
     require(responseCode == HAPI_SUCCESS, 'Token association failed');
   }
 
-  // Helper function to test flash loan without liquidation
-  function testFlashLoan(
+  function liquidate(
     address user,
     address debtAsset,
     address collateralAsset,
@@ -157,7 +137,7 @@ contract Liquidator is FlashLoanReceiverBase {
     modes[0] = 0;
 
     address onBehalfOf = address(this);
-    bytes memory params = abi.encode(debtAsset, collateralAsset, user, debtToCover);
+    bytes memory params = abi.encode(collateralAsset, user);
     uint16 referralCode = 0;
 
     LENDING_POOL.flashLoan(
@@ -224,5 +204,9 @@ contract Liquidator is FlashLoanReceiverBase {
 
   function getWHBAR() external view returns (address) {
     return WHBAR;
+  }
+
+  function withdrawTokens(address token, uint256 amount) external {
+    require(IERC20(token).transfer(msg.sender, amount), 'Transfer failed');
   }
 }

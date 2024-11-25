@@ -1,4 +1,4 @@
-import { LendingPoolAddressesProvider } from '../outputReserveData.json';
+import { LendingPoolAddressesProvider } from '../outputReserveDataTestnet.json';
 
 async function main() {
   const provider = new hre.ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
