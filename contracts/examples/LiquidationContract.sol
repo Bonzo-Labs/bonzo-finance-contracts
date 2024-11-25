@@ -18,6 +18,7 @@ interface IUniswapV2Router01 {
   ) external returns (uint256[] memory amounts);
 }
 
+// Notice - The contract is for demonstration purposes only and has NOT been audited. It is provided on an as-is basis.
 contract Liquidator is FlashLoanReceiverBase {
   using SafeMath for uint256;
 
