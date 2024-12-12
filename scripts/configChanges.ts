@@ -8,7 +8,7 @@ import {
 import { SAUCE, HBARX, WHBAR } from './outputReserveData.json';
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_mainnet';
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
 let provider, owner, newOwner;
 if (chain_type === 'hedera_testnet') {
@@ -30,7 +30,7 @@ async function setupContract(artifactName, contractAddress, wallet) {
 async function printReserveData(assetName, assetAddress) {
   const dataProviderContract = await setupContract(
     'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_mainnet.address,
+    AaveProtocolDataProvider.hedera_testnet.address,
     owner
   );
 
@@ -44,36 +44,37 @@ async function configChanges() {
   // Load the contract artifacts
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address,
+    LendingPoolConfigurator.hedera_testnet.address,
     owner
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address,
+    LendingPoolAddressesProvider.hedera_testnet.address,
     owner
   );
   const addressesProviderContractNew = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address,
+    LendingPoolAddressesProvider.hedera_testnet.address,
     newOwner
   );
   const configuratorNew = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address,
+    LendingPoolConfigurator.hedera_testnet.address,
     newOwner
   );
 
-  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  // await printReserveData('HBARX', HBARX.hedera_testnet.token.address);
 
-  // Disable borrowing on the reserve
-  const disableBorrowingTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
-    HBARX.hedera_mainnet.token.address
-  );
-  await disableBorrowingTxn.wait();
-  console.log('Borrowing disabled for HBARX');
+  // // Disable borrowing on the reserve
+  // const disableBorrowingTxn = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
+  //   HBARX.hedera_testnet.token.address
+  // );
+  // await disableBorrowingTxn.wait();
+  // console.log('Borrowing disabled for HBARX');
 
-  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  // await printReserveData('HBARX', HBARX.hedera_testnet.token.address);
 
+  console.log('Current Owner:', await lendingPoolAddressesProviderContract.owner());
   console.log('Current Pool Admin', await lendingPoolAddressesProviderContract.getPoolAdmin());
   console.log(
     'Current Emergency Admin',
@@ -102,13 +103,13 @@ async function configChanges() {
 
   // Enable borrowing on the reserve
   const enableBorrowingTxn = await configuratorNew.enableBorrowingOnReserve(
-    HBARX.hedera_mainnet.token.address,
+    HBARX.hedera_testnet.token.address,
     false
   );
   await enableBorrowingTxn.wait();
   console.log('Borrowing enabled for HBARX');
 
-  await printReserveData('HBARX', HBARX.hedera_mainnet.token.address);
+  await printReserveData('HBARX', HBARX.hedera_testnet.token.address);
 
   // Change owner
   const transferOwnershipTxn = await lendingPoolAddressesProviderContract.transferOwnership(
@@ -127,7 +128,7 @@ async function configChanges() {
 
   try {
     const disableBorrowingTxn1 = await lendingPoolConfiguratorContract.disableBorrowingOnReserve(
-      HBARX.hedera_mainnet.token.address
+      HBARX.hedera_testnet.token.address
     );
     await disableBorrowingTxn1.wait();
   } catch (e) {
@@ -135,7 +136,7 @@ async function configChanges() {
   }
 
   const disableBorrowing1 = await configuratorNew.disableBorrowingOnReserve(
-    HBARX.hedera_mainnet.token.address
+    HBARX.hedera_testnet.token.address
   );
   await disableBorrowing1.wait();
   console.log('Disabled borrowing for HBARX');

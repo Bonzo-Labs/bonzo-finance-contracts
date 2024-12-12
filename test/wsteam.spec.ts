@@ -30,16 +30,29 @@ require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
-let provider, owner, contractAddress, spender, userAddress;
+let provider,
+  owner,
+  contractAddress,
+  spender,
+  userAddress,
+  wsteamContractAddress,
+  steamTokenAddress,
+  wsteamTokenAddress;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
   userAddress = new ethers.Wallet(process.env.PRIVATE_KEY3 || '', provider);
+  wsteamContractAddress = '0x06da3554b380de078027157C4DDcef5E2056D82D';
+  steamTokenAddress = '0x00000000000000000000000000000000004d50fe';
+  wsteamTokenAddress = '0x00000000000000000000000000000000004d6427';
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_PROXY || '', provider);
-  spender = '0x00000000000000000000000000000000005dbdc1'; // Bonzo spender wallet
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  userAddress = '0x00000000000000000000000000000000005dbdc1'; // Bonzo spender wallet
+  wsteamContractAddress = '0xED613fb9b890fd14024EaB338b7595B81Dd60aF9';
+  steamTokenAddress = '0x000000000000000000000000000000000030fb8b';
+  wsteamTokenAddress = '0x0000000000000000000000000000000000737a3F';
 }
 
 async function setupContract(artifactName, contractAddress) {
@@ -53,19 +66,13 @@ describe('WSTEAM Contract Tests', function () {
 
   before(async function () {
     console.log('Owner:', owner.address);
-    wsteamContract = await setupContract('WSTEAM', '0x06da3554b380de078027157C4DDcef5E2056D82D');
-    steamTokenContract = await setupContract(
-      'ERC20Wrapper',
-      '0x00000000000000000000000000000000004d50fe'
-    );
-    wsteamTokenContract = await setupContract(
-      'ERC20Wrapper',
-      '0x00000000000000000000000000000000004d6427'
-    );
+    wsteamContract = await setupContract('WSTEAM', wsteamContractAddress);
+    steamTokenContract = await setupContract('ERC20Wrapper', steamTokenAddress);
+    wsteamTokenContract = await setupContract('ERC20Wrapper', wsteamTokenAddress);
   });
 
   it('should get wsteam tokens after depositing steam to msg.sender', async function () {
-    const steamAmount = ethers.utils.parseUnits('21000000', 2); // 1 STEAM (2 decimals)
+    const steamAmount = ethers.utils.parseUnits('200000', 2); // 1 STEAM (2 decimals)
     const expectedWsteamAmount = steamAmount.mul(DECIMALS_CONVERSION); // Convert to 8 decimals
 
     // Get initial balances
@@ -103,7 +110,7 @@ describe('WSTEAM Contract Tests', function () {
   });
 
   it.skip('should burn wsteam tokens and get steam tokens after withdrawing to msg.sender', async function () {
-    const wsteamAmount = ethers.utils.parseUnits('10', 8); // 0.1 WSTEAM (8 decimals)
+    const wsteamAmount = ethers.utils.parseUnits('0.01', 8); // 0.1 WSTEAM (8 decimals)
     const expectedSteamAmount = wsteamAmount.div(DECIMALS_CONVERSION); // Convert to 2 decimals
 
     // Get initial balances
@@ -146,7 +153,7 @@ describe('WSTEAM Contract Tests', function () {
 
     // Get initial balances
     const initialSteamBalance = await steamTokenContract.balanceOf(owner.address);
-    const initialUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress.address);
+    const initialUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress);
     console.log(
       'Initial Steam Balance:',
       initialSteamBalance.toString(),
@@ -161,12 +168,12 @@ describe('WSTEAM Contract Tests', function () {
     }
 
     // Deposit STEAM tokens to userAddress
-    const depositTx = await wsteamContract.depositTo(userAddress.address, steamAmount);
+    const depositTx = await wsteamContract.depositTo(userAddress, steamAmount);
     await depositTx.wait();
 
     // Check final balances
     const finalSteamBalance = await steamTokenContract.balanceOf(owner.address);
-    const finalUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress.address);
+    const finalUserWsteamBalance = await wsteamTokenContract.balanceOf(userAddress);
     console.log(
       'Final Steam Balance:',
       finalSteamBalance.toString(),

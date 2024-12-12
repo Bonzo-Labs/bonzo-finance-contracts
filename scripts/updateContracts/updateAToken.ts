@@ -56,7 +56,7 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
     // @ts-ignore
     treasury: HederaConfig.ReserveFactorTreasuryAddress.hedera_testnet,
     // @ts-ignore
-    incentivesController: '0x63F0b101c3c6bd1234A8261C373E5425154052af',
+    incentivesController: '0x1B28BFeC5493B4d6419Faa5F4E2cA9d96548674e',
     name: `Bonzo aToken ${tokenName}`,
     symbol: `am${tokenName}`,
     implementation: aTokenImpl.address,
@@ -70,7 +70,7 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
 }
 
 async function main() {
-  await updateAToken('0x00000000000000000000000000000000003991ed', 'KARATE');
+  await updateAToken('0x0000000000000000000000000000000000120f46', 'SAUCE');
 }
 
 main()

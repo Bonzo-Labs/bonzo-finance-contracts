@@ -35,7 +35,7 @@ async function updateOracle(oracleAddress: string) {
 }
 
 async function main() {
-  await updateOracle('0xAe9706419E60B5c4E92D45f6ab79439D266F87eD');
+  await updateOracle('0xBb626B1fc8cBcdB24AAE0070691cecc26Ce59A8B');
 }
 
 main()

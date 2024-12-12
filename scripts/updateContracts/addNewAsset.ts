@@ -16,7 +16,7 @@ import {
 import HederaConfig from '../../markets/hedera/index';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -26,10 +26,83 @@ async function setupContract(artifactName: string, contractAddress: string) {
 }
 
 const assetConfigurations = {
-  '0x0000000000000000000000000000000000003ad2': {
+  '0x00000000000000000000000000000000004d50fe': {
+    underlyingAssetDecimals: 2,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BSTEAM',
+  },
+  '0x00000000000000000000000000000000004d50f2': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyStableThree.hedera_testnet.address,
-    underlyingAssetName: 'WHBAR',
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BKARATE',
+  },
+  '0x00000000000000000000000000000000004d6427': {
+    underlyingAssetDecimals: 8,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'WSTEAM',
+  },
+  '0x00000000000000000000000000000000004e891a': {
+    underlyingAssetDecimals: 6,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BUSDC',
+    supraIndex: 432,
+    ltv: 7500,
+    liquidationThreshold: 7800,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e891f': {
+    underlyingAssetDecimals: 6,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BSAUCE',
+    supraIndex: 425,
+    ltv: 7000,
+    liquidationThreshold: 7600,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e8924': {
+    underlyingAssetDecimals: 6,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BxSAUCE',
+    supraIndex: 426,
+    ltv: 7000,
+    liquidationThreshold: 7600,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e8929': {
+    underlyingAssetDecimals: 8,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BHBARX',
+    supraIndex: 427,
+    ltv: 7000,
+    liquidationThreshold: 7500,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e892f': {
+    underlyingAssetDecimals: 8,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BDOVU',
+    supraIndex: 429,
+    ltv: 5500,
+    liquidationThreshold: 6500,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e8931': {
+    underlyingAssetDecimals: 6,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BPACK',
+    supraIndex: 478,
+    ltv: 4500,
+    liquidationThreshold: 6000,
+    liquidationBonus: 10500,
+  },
+  '0x00000000000000000000000000000000004e8936': {
+    underlyingAssetDecimals: 8,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'BHST',
+    supraIndex: 478,
+    ltv: 4000,
+    liquidationThreshold: 5000,
+    liquidationBonus: 10500,
   },
 };
 
@@ -107,9 +180,16 @@ async function updateReserve(tokenAddress: string) {
 
 async function addNewAssetToOracle(tokenAddress: string) {
   const oracleContract = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
-  // const txn = await oracleContract.addNewAsset('WHBAR', tokenAddress, 427, 8);
-  // await txn.wait();
-  // console.log('Asset added to oracle');
+  const initReserveInput = assetConfigurations[tokenAddress];
+  console.log(initReserveInput);
+  const txn = await oracleContract.addNewAsset(
+    initReserveInput.underlyingAssetName,
+    tokenAddress,
+    initReserveInput.supraIndex,
+    initReserveInput.underlyingAssetDecimals
+  );
+  await txn.wait();
+  console.log('Asset added to oracle');
   const price = await oracleContract.getPriceFeed(tokenAddress);
   console.log(price);
 }
@@ -120,7 +200,7 @@ async function enableBorrowing(tokenAddress: string) {
     LendingPoolConfigurator.hedera_testnet.address
   );
 
-  const txn = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(tokenAddress, true);
+  const txn = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(tokenAddress, false);
   await txn.wait();
   console.log('Borrowing enabled');
 }
@@ -131,27 +211,41 @@ async function configureReserveAsCollateral(tokenAddress: string) {
     LendingPoolConfigurator.hedera_testnet.address
   );
 
+  const initReserveInput = assetConfigurations[tokenAddress];
   const txn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
     tokenAddress,
-    '5000',
-    '5001',
-    '10500'
+    initReserveInput.ltv,
+    initReserveInput.liquidationThreshold,
+    initReserveInput.liquidationBonus
   );
   await txn.wait();
   console.log('Reserve configured as collateral');
 }
 
+async function setReserveFactor(tokenAddress: string) {
+  const lendingPoolConfiguratorContract = await setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_testnet.address
+  );
+
+  const txn = await lendingPoolConfiguratorContract.setReserveFactor(tokenAddress, '1500');
+  await txn.wait();
+  console.log('Reserve factor set');
+}
+
 async function main() {
-  const newAsset = '0x0000000000000000000000000000000000003ad2';
-  // // Step 1: Update the reserve
-  // await updateReserve(newAsset);
+  const newAsset = '0x00000000000000000000000000000000004e8936';
+  // Step 0: Deploy a new interest rate strategy contract, if needed - use DefaultReserveInterestRateStrategy.sol
+  // Step 1: Update the reserve
+  await updateReserve(newAsset);
   // Step 2: Add the asset to the oracle
   // Note: If you can't add a new asset to the oracle, then update the oracle
   await addNewAssetToOracle(newAsset);
   // // Step 3: Enable borrowing
-  // await enableBorrowing(newAsset);
-  // // Step 4: configureReserveAsCollateral
-  // await configureReserveAsCollateral(newAsset);
+  await enableBorrowing(newAsset);
+  // // Step 4: configureReserveAsCollateral and set reserve factor
+  await configureReserveAsCollateral(newAsset);
+  await setReserveFactor(newAsset);
 }
 
 main()

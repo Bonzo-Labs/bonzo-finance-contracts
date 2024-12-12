@@ -17,7 +17,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_PROXY || '', provider);
   whbarTokenAddress = WHBAR.hedera_mainnet.token.address;
   whbarContractAddress = '0x0000000000000000000000000000000000163b59';
 }
@@ -118,7 +118,7 @@ describe('WHBAR Tests', function () {
   });
 
   it.skip('should repay native HBAR', async function () {
-    const amount = 4;
+    const amount = 2;
     const debtTokenContract = await setupContract(
       'VariableDebtToken',
       WHBAR.hedera_mainnet.variableDebt.address
@@ -130,11 +130,11 @@ describe('WHBAR Tests', function () {
     const repayTxn = await lendingPoolContract.repay(
       whbarTokenAddress,
       // @ts-ignore
-      4n,
+      2n,
       2,
       owner.address,
       // @ts-ignore
-      { value: 4n * 10_000_000_000n }
+      { value: 2n * 10_000_000_000n }
     );
     await repayTxn.wait();
     console.log('Repay Transaction hash:', repayTxn.hash);
