@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import './ISupraSValueFeed.sol';
 import {Ownable2Step} from '../../../dependencies/openzeppelin/contracts/Ownable2Step.sol';
+import {AggregatorV3Interface} from '@chainlink/contracts/src/v0.8/shared/interfaces/AggregatorV3Interface.sol';
 
 error InvalidAssetOrIndex();
 error UnsupportedAsset();
@@ -14,6 +15,8 @@ error AssetAlreadyExists();
 /// @dev This contract is designed to work with the SupraSValueFeed interface.
 contract SupraOracle is Ownable2Step {
   ISupraSValueFeed private sValueFeed;
+  AggregatorV3Interface internal HBAR_USD_dataFeed;
+  AggregatorV3Interface internal USDC_USD_dataFeed;
 
   mapping(address => uint16) private assetToPriceIndex;
   mapping(address => uint16) private assetToDecimals;
@@ -26,9 +29,16 @@ contract SupraOracle is Ownable2Step {
 
   /// @notice Constructor to initialize the contract with the SupraSValueFeed address.
   /// @param _sValueFeed The address of the SupraSValueFeed contract.
-  constructor(ISupraSValueFeed _sValueFeed) {
+  constructor(
+    ISupraSValueFeed _sValueFeed,
+    AggregatorV3Interface _HBAR_USD_dataFeed,
+    AggregatorV3Interface _USDC_USD_dataFeed
+  ) {
     sValueFeed = _sValueFeed;
+    HBAR_USD_dataFeed = _HBAR_USD_dataFeed;
+    USDC_USD_dataFeed = _USDC_USD_dataFeed;
 
+    // Mainnet addresses
     assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
     assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
     assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
@@ -37,7 +47,9 @@ contract SupraOracle is Ownable2Step {
     assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
     assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
     assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
+    assetToAddress['XPACK'] = 0x00000000000000000000000000000000006E86Ce;
 
+    // Testnet addresses
     // assetToAddress['KARATE'] = 0x00000000000000000000000000000000004D50f2;
     // assetToAddress['HBARX'] = 0x00000000000000000000000000000000004e8929;
     // assetToAddress['SAUCE'] = 0x00000000000000000000000000000000004e891f;
@@ -84,6 +96,23 @@ contract SupraOracle is Ownable2Step {
   /// @return The address of the current SupraSValueFeed contract.
   function getSupraSvalueFeed() external view returns (ISupraSValueFeed) {
     return sValueFeed;
+  }
+
+  function getUSDCPrice() public view returns (uint256) {
+    (, int priceUSDC, , , ) = USDC_USD_dataFeed.latestRoundData();
+    (, int priceHBAR, , , ) = HBAR_USD_dataFeed.latestRoundData();
+    if (priceUSDC <= 0 || priceHBAR <= 0) revert DivisionByZero();
+
+    // Get the decimals from each Chainlink feed.
+    uint8 usdcFeedDecimals = USDC_USD_dataFeed.decimals();
+    uint8 hbarFeedDecimals = HBAR_USD_dataFeed.decimals();
+
+    // Normalize the raw feed prices to 18 decimals.
+    uint256 normalizedUSDC = uint256(priceUSDC) * (10 ** (18 - usdcFeedDecimals));
+    uint256 normalizedHBAR = uint256(priceHBAR) * (10 ** (18 - hbarFeedDecimals));
+
+    // Multiply normalized USDC by 10^18 and divide by normalized HBAR to get a result in 18 decimals.
+    return (normalizedUSDC * (10 ** 18)) / normalizedHBAR;
   }
 
   /// @notice Adds a new asset to the oracle.
@@ -160,7 +189,7 @@ contract SupraOracle is Ownable2Step {
   /// @param _asset The address of the asset.
   /// @return The price of the asset in HBAR.
   /// @dev Reverts if the asset is unsupported or if there's a division by zero.
-  function getAssetPrice(address _asset) public view returns (uint256) {
+  function getAssetPriceLegacy(address _asset) public view returns (uint256) {
     uint16 priceIndex = assetToPriceIndex[_asset];
     if (priceIndex == 0) revert UnsupportedAsset();
 
@@ -180,6 +209,29 @@ contract SupraOracle is Ownable2Step {
     uint256 reciprocalPrice = (scalingFactor * scalingFactor) / priceFeed.price;
 
     return reciprocalPrice;
+  }
+
+  /// @notice Gets the price of an asset in HBAR.
+  /// @param _asset The address of the asset.
+  /// @return The price of the asset in HBAR.
+  /// @dev Reverts if the asset is unsupported or if there's a division by zero.
+  function getAssetPrice(address _asset) public view returns (uint256) {
+    uint16 priceIndex = assetToPriceIndex[_asset];
+    if (priceIndex == 0) revert UnsupportedAsset();
+
+    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+
+    // Early return for non-USDC assets
+    if (_asset != USDC) {
+      if (_asset == WHBAR) {
+        return (10 ** decimals());
+      } else {
+        return priceFeed.price;
+      }
+    } else {
+      // Return usdc price using chainlink feeds
+      return getUSDCPrice();
+    }
   }
 
   /// @notice Gets the price of an asset in USD.

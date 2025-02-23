@@ -32,7 +32,7 @@ const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
 const keys = process.env.PRIVATE_KEY2!;
-const keys_mainnet = process.env.PRIVATE_KEY_MAINNET!;
+const keys_mainnet = process.env.PRIVATE_KEY_MAINNET_ADMIN!;
 
 const api_key = process.env.QUICKNODE_API_KEY2;
 const quicknode_url = process.env.PROVIDER_URL_MAINNET;
@@ -123,7 +123,7 @@ const buidlerConfig: HardhatUserConfig = {
     username: process.env.TENDERLY_USERNAME || '',
     forkNetwork: '1', //Network id of the network we want to fork
   },
-  defaultNetwork: 'hedera_testnet',
+  defaultNetwork: 'hedera_mainnet',
   networks: {
     coverage: {
       url: 'http://localhost:8555',
