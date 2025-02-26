@@ -60,7 +60,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
   uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
 
-  uint256 public constant LENDINGPOOL_REVISION = 0x1;
+  uint256 public constant LENDINGPOOL_REVISION = 0x2;
 
   modifier whenNotPaused() {
     _whenNotPaused();
@@ -852,14 +852,14 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
 
     address oracle = _addressesProvider.getPriceOracle();
 
-    uint256 amountInETH;
-    if (vars.asset == address(_whbarToken)) {
-      amountInETH = vars.amount;
-    } else {
-      amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
-        10 ** reserve.configuration.getDecimals()
-      );
-    }
+    //  amountInETH;
+    // if (vars.asset == address(_whbarToken)) {
+    //   amountInETH = vars.amount;
+    // } else {
+    uint256 amountInETH = IPriceOracleGetter(oracle).getAssetPrice(vars.asset).mul(vars.amount).div(
+      10 ** reserve.configuration.getDecimals()
+    );
+    // }
 
     ValidationLogic.validateBorrow(
       vars.asset,

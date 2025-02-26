@@ -98,6 +98,8 @@ contract SupraOracle is Ownable2Step {
     return sValueFeed;
   }
 
+  /// @notice Gets the current USDC Price from Chainlink feed.
+  /// @return The current USDC price.
   function getUSDCPrice() public view returns (uint256) {
     (, int priceUSDC, , , ) = USDC_USD_dataFeed.latestRoundData();
     (, int priceHBAR, , , ) = HBAR_USD_dataFeed.latestRoundData();
@@ -232,32 +234,6 @@ contract SupraOracle is Ownable2Step {
       // Return usdc price using chainlink feeds
       return getUSDCPrice();
     }
-  }
-
-  /// @notice Gets the price of an asset in USD.
-  /// @param _asset The address of the asset.
-  /// @return The price of the asset in USD.
-  /// @dev Reverts if there's a division by zero.
-  function getAssetPriceInUSD(address _asset) public view returns (uint256) {
-    uint256 priceInHbar = getAssetPrice(_asset);
-    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
-
-    if (priceFeedUSD.price == 0) revert DivisionByZero();
-
-    uint256 priceInUSD = (priceInHbar * priceFeedUSD.price) / (10 ** decimals());
-
-    return priceInUSD;
-  }
-
-  /// @notice Converts an amount of HBAR to USD.
-  /// @param _amount The amount of HBAR.
-  /// @return priceInUSD The equivalent price in USD.
-  /// @dev Reverts if there's a division by zero.
-  function getHbarUSD(uint256 _amount) public view returns (uint256 priceInUSD) {
-    ISupraSValueFeed.priceFeed memory priceFeedUSD = sValueFeed.getSvalue(assetToPriceIndex[USDC]);
-    if (priceFeedUSD.price == 0) revert DivisionByZero();
-
-    priceInUSD = (_amount * priceFeedUSD.price) / (10 ** decimals());
   }
 
   /// @notice Gets the number of decimals used for prices.
