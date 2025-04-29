@@ -49,11 +49,11 @@ async function lendingPool() {
   // Load the contract artifacts
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_testnet.address
+    LendingPool.hedera_mainnet.address
   );
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
@@ -61,7 +61,8 @@ async function lendingPool() {
   );
   const dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 
-  // console.log('Pool admin = ', await lendingPoolAddressesProviderContract.getPoolAdmin());
+  console.log('Pool admin = ', await lendingPoolAddressesProviderContract.getPoolAdmin());
+  console.log('Emergency admin = ', await lendingPoolAddressesProviderContract.getEmergencyAdmin());
 
   // const sauceAToken = await setupContract('AToken', WHBAR.hedera_testnet.aToken.address);
 
@@ -86,7 +87,7 @@ async function lendingPool() {
   // console.log('Reserve frozen');
 
   // 0x103aADF590b249dFc2424c0d499bA406902EE60a
-  console.log('Old Oracle = ', await lendingPoolAddressesProviderContract.getPriceOracle());
+  // console.log('Old Oracle = ', await lendingPoolAddressesProviderContract.getPriceOracle());
   // const oracleUpdate = await lendingPoolAddressesProviderContract.setPriceOracle(
   //   '0x103aADF590b249dFc2424c0d499bA406902EE60a'
   // );
@@ -101,10 +102,10 @@ async function lendingPool() {
   // console.log('Position Manager:', positionManager);
 
   // // Step 1 - Need to unpause the contract
-  // console.log('Paused before:', await lendingPoolContract.paused());
-  // const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
-  // await txn.wait();
-  // console.log('Paused after:', await lendingPoolContract.paused());
+  console.log('Paused before:', await lendingPoolContract.paused());
+  const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
+  await txn.wait();
+  console.log('Paused after:', await lendingPoolContract.paused());
 
   // const configureTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
   //   BHST.hedera_testnet.token.address,

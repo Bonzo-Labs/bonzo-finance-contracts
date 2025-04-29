@@ -63,7 +63,12 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
       let fallbackOracle;
 
       if (!notFalsyOrZeroAddress(fallbackOracleAddress)) {
-        fallbackOracle = await deploySupraOracle(poolConfig.SupraPriceFeed, verify);
+        fallbackOracle = await deploySupraOracle(
+          poolConfig.SupraPriceFeed,
+          poolConfig.SupraPriceFeed,
+          poolConfig.SupraPriceFeed,
+          verify
+        );
         console.log('===== Deployed Fallback Oracle: %s', fallbackOracle.address);
       }
 

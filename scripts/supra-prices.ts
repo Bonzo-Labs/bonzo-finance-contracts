@@ -3,17 +3,15 @@ const hre = require('hardhat');
 import { LendingPool, AaveProtocolDataProvider, PriceOracle } from './outputReserveData.json';
 import {
   KARATE,
-  BSAUCE,
   SAUCE,
   WHBAR,
-  BSTEAM,
-  BPACK,
-  BDOVU,
-  BHST,
   DOVU,
   STEAM,
   USDC,
-  BKARATE,
+  BONZO,
+  KBL,
+  GRELF,
+  XPACK,
 } from './outputReserveData.json';
 const { BigNumber } = require('ethers');
 require('dotenv').config();
@@ -32,8 +30,8 @@ if (chain_type === 'hedera_testnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   // oracleAddress = PriceOracle.hedera_mainnet.address;
-  oracleAddress = '0x24D08A1b5902C4c5e42956F786D3582e732e9E8d';
-
+  // oracleAddress = '0x24D08A1b5902C4c5e42956F786D3582e732e9E8d';
+  oracleAddress = '0xA40a801E4F6Adc1Bb589ADc4f1999519C635dE50';
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 }
 async function setupContract(artifactName: string, contractAddress: string, owner: any) {
@@ -72,14 +70,14 @@ async function supraPrices() {
   // const saucePriceIndex = await supra.getPriceFeed(SAUCE.hedera_testnet.token.address);
   // console.log('SAUCE price index:', saucePriceIndex.toString());
 
-  const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_mainnet.token.address);
-  console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
+  // const assetPriceSAUCE = await supra.getAssetPrice(SAUCE.hedera_mainnet.token.address);
+  // console.log('SAUCE price = ', ethers.utils.formatUnits(assetPriceSAUCE, 18));
 
   // const assetPriceKARATE = await supra.getAssetPrice(KARATE.hedera_mainnet.token.address);
   // console.log('KARATE price = ', ethers.utils.formatUnits(assetPriceKARATE, 18));
 
-  const assetPriceUSDCSupra = await supra.getAssetPriceLegacy(USDC.hedera_mainnet.token.address);
-  console.log('USDC price from Supra = ', ethers.utils.formatUnits(assetPriceUSDCSupra, 18));
+  // const assetPriceUSDCSupra = await supra.getAssetPriceLegacy(USDC.hedera_mainnet.token.address);
+  // console.log('USDC price from Supra = ', ethers.utils.formatUnits(assetPriceUSDCSupra, 18));
 
   const assetPriceUSDCChainlink = await supra.getAssetPrice(USDC.hedera_mainnet.token.address);
   console.log(
@@ -96,11 +94,20 @@ async function supraPrices() {
   const assetPriceWSTEAM = await supra.getAssetPrice(STEAM.hedera_mainnet.token.address);
   console.log('WSTEAM price = ', ethers.utils.formatUnits(assetPriceWSTEAM, 18));
 
+  const assetPriceBONZO = await supra.getAssetPrice(BONZO.hedera_mainnet.token.address);
+  console.log('BONZO price = ', ethers.utils.formatUnits(assetPriceBONZO, 18));
+
+  const assetPriceKBL = await supra.getAssetPrice(KBL.hedera_mainnet.token.address);
+  console.log('KBL price = ', ethers.utils.formatUnits(assetPriceKBL, 18));
+
+  const assetPriceGRELF = await supra.getAssetPrice(GRELF.hedera_mainnet.token.address);
+  console.log('GRELF price = ', ethers.utils.formatUnits(assetPriceGRELF, 18));
+
   // const assetPriceSAUCEUSD = await supra.getAssetPriceInUSD(SAUCE.hedera_mainnet.token.address);
   // console.log('SAUCE price in USD = ', ethers.utils.formatUnits(assetPriceSAUCEUSD, 18));
 
-  const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.hedera_mainnet.token.address);
-  console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
+  // const assetPriceWHBAR = await supra.getAssetPrice(WHBAR.hedera_mainnet.token.address);
+  // console.log('WHBAR price = ', ethers.utils.formatUnits(assetPriceWHBAR, 18));
   // const assetPriceWHBARUSD = await supra.getAssetPriceInUSD(WHBAR.hedera_mainnet.token.address);
   // console.log('WHBAR price in USD = ', ethers.utils.formatUnits(assetPriceWHBARUSD, 18));
 

@@ -8,15 +8,8 @@ import {
   XSAUCE,
   KARATE,
   WHBAR,
-  BUSDC,
-  BDOVU,
-  BHBARX,
-  BHST,
-  BKARATE,
-  BPACK,
-  BSAUCE,
-  BSTEAM,
-  BxSAUCE,
+  GRELF,
+  KBL,
   DOVU,
   PACK,
   HST,
@@ -33,14 +26,19 @@ let provider, owner;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+  reserves = [WHBAR];
+  borrowCaps = [65424962];
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
-  reserves = [WHBAR, HBARX, USDC, SAUCE, XSAUCE, KARATE, DOVU, PACK, HST, STEAM];
-  borrowCaps = [
-    9268455, 14975362, 961042, 2455823, 13917964, 117808061, 89258923, 873709, 12065370, 5585154,
-  ];
+  // reserves = [WHBAR, HBARX, USDC, SAUCE, XSAUCE, KARATE, DOVU, PACK, HST, STEAM];
+  // borrowCaps = [
+  //   57034268, 9641854, 2272388, 4376629, 18755218, 950959650, 296716240, 1941454, 21932392,
+  //   19715165,
+  // ];
+  reserves = [KBL];
+  borrowCaps = [5000000];
 }
 
 async function setupContract(artifactName, contractAddress) {

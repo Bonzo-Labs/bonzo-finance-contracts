@@ -2,6 +2,9 @@ import { ethers } from 'hardhat';
 const hre = require('hardhat');
 require('dotenv').config();
 
+import { ContractCreateFlow, ContractFunctionParameters, Hbar } from '@hashgraph/sdk';
+const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
+
 import { LendingPoolAddressesProvider } from '../outputReserveData.json';
 import { rateStrategyVolatileThree } from '../../markets/hedera/rateStrategies';
 
@@ -72,9 +75,9 @@ if (chain_type === 'hedera_testnet') {
     // WHBAR.hedera_mainnet.token.address,
     // HBARX.hedera_mainnet.token.address,
     USDC.hedera_mainnet.token.address,
-    SAUCE.hedera_mainnet.token.address,
+    // SAUCE.hedera_mainnet.token.address,
     // XSAUCE.hedera_mainnet.token.address,
-    KARATE.hedera_mainnet.token.address,
+    // KARATE.hedera_mainnet.token.address,
     // DOVU.hedera_mainnet.token.address,
     // PACK.hedera_mainnet.token.address,
     // HST.hedera_mainnet.token.address,
@@ -159,11 +162,80 @@ async function deployNewStrategy(reserve: any, strategy: any) {
   console.log('Rate Strategy deployed to:', rateStrategy.address);
 }
 
+export async function deployNewStrategySDK(reserve: string, strategy: any) {
+  //     ILendingPoolAddressesProvider provider,
+  //     uint256 optimalUtilizationRate,
+  //     uint256 baseVariableBorrowRate,
+  //     uint256 variableRateSlope1,
+  //     uint256 variableRateSlope2,
+  //     uint256 stableRateSlope1,
+  //     uint256 stableRateSlope2
+  const deploymentArgs = {
+    provider: LendingPoolAddressesProvider.hedera_mainnet.address,
+    optimalUtilizationRate: strategy.optimalUtilizationRate,
+    baseVariableBorrowRate: strategy.baseVariableBorrowRate,
+    variableRateSlope1: strategy.variableRateSlope1,
+    variableRateSlope2: strategy.variableRateSlope2,
+    stableRateSlope1: strategy.stableRateSlope1,
+    stableRateSlope2: strategy.stableRateSlope2,
+  };
+
+  console.log('Hedera JS SDK deployment args: ', deploymentArgs);
+
+  // 1. Read the Hardhat artifact for DefaultReserveInterestRateStrategy
+  const artifact = await hre.artifacts.readArtifact('DefaultReserveInterestRateStrategy');
+  const bytecode = artifact.bytecode;
+
+  // 2. Build constructor parameters for Hedera
+  //    - The order must match the contract's constructor in solidity
+  const functionParameters = new ContractFunctionParameters()
+    .addAddress(deploymentArgs.provider)
+    .addUint256(deploymentArgs.optimalUtilizationRate)
+    .addUint256(deploymentArgs.baseVariableBorrowRate)
+    .addUint256(deploymentArgs.variableRateSlope1)
+    .addUint256(deploymentArgs.variableRateSlope2)
+    .addUint256(deploymentArgs.stableRateSlope1)
+    .addUint256(deploymentArgs.stableRateSlope2);
+
+  const client = Client.forMainnet();
+  const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_MAINNET_ADMIN!);
+  const operatorAccountId = AccountId.fromString(process.env.MAINNET_ADMIN_ACCOUNT_ID!);
+
+  client.setOperator(operatorAccountId, operatorPrKey);
+
+  const evmAddress = operatorAccountId.toSolidityAddress(); // 40-hex-character address without the '0x'
+  console.log(`EVM address of the deployer: 0x${evmAddress}`);
+
+  // 4. Create the contract on Hedera
+  console.log(`\nDeploying DefaultReserveInterestRateStrategy to Hedera for reserve: ${reserve}`);
+  const contractCreateTx = new ContractCreateFlow()
+    .setGas(2_000_000) // Adjust gas as needed
+    .setBytecode(bytecode)
+    .setConstructorParameters(functionParameters);
+
+  // 5. Execute the transaction and get the receipt
+  const contractCreateResponse = await contractCreateTx.execute(client);
+  const contractCreateReceipt = await contractCreateResponse.getReceipt(client);
+
+  // 6. Grab the new Contract ID
+  const newContractId = contractCreateReceipt.contractId;
+  if (!newContractId) {
+    throw new Error('Failed to retrieve new contract ID from receipt');
+  }
+
+  // 7. Log the new contract info
+  console.log(
+    `Successfully deployed DefaultReserveInterestRateStrategy for reserve ${reserve}.
+    Contract ID = ${newContractId.toString()}`
+  );
+}
+
 async function main() {
   console.log('Owner:', owner.address);
   for (const reserve of reserves) {
     const strategy = assetConfigurations[reserve].strategy;
-    await deployNewStrategy(reserve, strategy);
+    // await deployNewStrategy(reserve, strategy);
+    await deployNewStrategySDK(reserve, strategy);
   }
 }
 

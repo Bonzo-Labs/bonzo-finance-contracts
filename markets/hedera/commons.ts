@@ -22,8 +22,8 @@ export const CommonsConfig: ICommonConfiguration = {
   OracleQuoteCurrency: 'HBAR',
   // OracleQuoteUnit: '1000000000000000000',  //JSON-RPC relay msg.value returns 18 decimals and also gasPrice returns 18 decimals
   OracleQuoteUnit: '100000000',
-  SupraPriceFeed: '0xD02cc7a670047b6b012556A88e275c685d25e0c9', // Mainnet
-  // SupraPriceFeed: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917', // Testnet
+  // SupraPriceFeed: '0xD02cc7a670047b6b012556A88e275c685d25e0c9', // Mainnet
+  SupraPriceFeed: '0x6Cd59830AAD978446e6cc7f6cc173aF7656Fb917', // Testnet
   ProtocolGlobalParams: {
     TokenDistributorPercentageBase: '10000',
     MockUsdPriceInWei: '5848466240000000',
@@ -159,7 +159,7 @@ export const CommonsConfig: ICommonConfiguration = {
     [eHederaNetwork.hedera_mainnet]: '0x00000000000000000000000000000000005dc4d4',
   },
   IncentivesController: {
-    [eHederaNetwork.hedera_testnet]: '0xdfd4F6434B94f4A82eac64Ba9fdC61D896cbb760',
+    [eHederaNetwork.hedera_testnet]: '0x40f1f4247972952ab1D276Cf552070d2E9880DA6',
     [eHederaNetwork.hedera_mainnet]: '0x0f3950d2fCbf62a2D79880E4fc251E4CB6625FBC',
   },
 };

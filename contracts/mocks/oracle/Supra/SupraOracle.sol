@@ -22,8 +22,11 @@ contract SupraOracle is Ownable2Step {
   mapping(address => uint16) private assetToDecimals;
   mapping(string => address) private assetToAddress;
 
+  // Mainnet addresses
   address private constant USDC = 0x000000000000000000000000000000000006f89a;
   address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
+
+  // Testnet addresses
   // address private constant USDC = 0x0000000000000000000000000000000000001549;
   // address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
 
@@ -38,7 +41,7 @@ contract SupraOracle is Ownable2Step {
     HBAR_USD_dataFeed = _HBAR_USD_dataFeed;
     USDC_USD_dataFeed = _USDC_USD_dataFeed;
 
-    // Mainnet addresses
+    // // Mainnet addresses
     assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
     assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
     assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
@@ -48,6 +51,9 @@ contract SupraOracle is Ownable2Step {
     assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
     assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
     assetToAddress['XPACK'] = 0x00000000000000000000000000000000006E86Ce;
+    assetToAddress['GRELF'] = 0x000000000000000000000000000000000011afa2;
+    assetToAddress['KBL'] = 0x00000000000000000000000000000000005B665A;
+    assetToAddress['BONZO'] = 0x00000000000000000000000000000000007e545e;
 
     // Testnet addresses
     // assetToAddress['KARATE'] = 0x00000000000000000000000000000000004D50f2;
@@ -72,7 +78,11 @@ contract SupraOracle is Ownable2Step {
     assetToPriceIndex[assetToAddress['HST']] = 428;
     assetToPriceIndex[assetToAddress['STEAM']] = 479;
     assetToPriceIndex[assetToAddress['USDC']] = 505;
-    assetToPriceIndex[assetToAddress['WHBAR']] = 428; // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
+    assetToPriceIndex[assetToAddress['WHBAR']] = 471; // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
+    assetToPriceIndex[assetToAddress['GRELF']] = 527;
+    assetToPriceIndex[assetToAddress['KBL']] = 526;
+    assetToPriceIndex[assetToAddress['XPACK']] = 513; // This is XPACK/PACK
+    assetToPriceIndex[assetToAddress['BONZO']] = 532;
 
     assetToDecimals[assetToAddress['KARATE']] = 8;
     assetToDecimals[assetToAddress['HBARX']] = 8;
@@ -84,6 +94,10 @@ contract SupraOracle is Ownable2Step {
     assetToDecimals[assetToAddress['STEAM']] = 2;
     assetToDecimals[assetToAddress['USDC']] = 6;
     assetToDecimals[assetToAddress['WHBAR']] = 8;
+    assetToDecimals[assetToAddress['GRELF']] = 8;
+    assetToDecimals[assetToAddress['KBL']] = 6;
+    assetToDecimals[assetToAddress['XPACK']] = 6;
+    assetToDecimals[assetToAddress['BONZO']] = 8;
   }
 
   /// @notice Updates the SupraSValueFeed contract address.
@@ -187,30 +201,24 @@ contract SupraOracle is Ownable2Step {
     amountInEth = (price * amount) / (10 ** assetToDecimals[asset]);
   }
 
-  /// @notice Gets the price of an asset in HBAR.
-  /// @param _asset The address of the asset.
-  /// @return The price of the asset in HBAR.
-  /// @dev Reverts if the asset is unsupported or if there's a division by zero.
-  function getAssetPriceLegacy(address _asset) public view returns (uint256) {
-    uint16 priceIndex = assetToPriceIndex[_asset];
-    if (priceIndex == 0) revert UnsupportedAsset();
+  /// @notice Calculates the price of XPACK in terms of WHBAR
+  /// @dev This function calculates XPACK/WHBAR by multiplying:
+  ///      - XPACK/PACK price from Supra feed (index 513)
+  ///      - PACK/WHBAR price from Supra feed (index 478)
+  ///      The result is normalized to 18 decimals to match the contract's decimal standard.
+  /// @return The price of XPACK in WHBAR (18 decimals)
+  /// @custom:revert UnsupportedAsset if either PACK or XPACK price feeds are not configured
+  function getXPackPrice() public view returns (uint256) {
+    uint16 packPriceIndex = assetToPriceIndex[assetToAddress['PACK']];
+    uint16 xPackPriceIndex = assetToPriceIndex[assetToAddress['XPACK']];
+    if (packPriceIndex == 0 || xPackPriceIndex == 0) revert UnsupportedAsset();
 
-    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+    ISupraSValueFeed.priceFeed memory packPriceFeed = sValueFeed.getSvalue(packPriceIndex);
+    ISupraSValueFeed.priceFeed memory xPackPriceFeed = sValueFeed.getSvalue(xPackPriceIndex);
 
-    // Early return for non-USDC assets
-    if (_asset != USDC) {
-      if (_asset == WHBAR) {
-        return (10 ** decimals());
-      } else {
-        return priceFeed.price;
-      }
-    }
-
-    if (priceFeed.price == 0) revert DivisionByZero();
-    uint256 scalingFactor = 10 ** decimals();
-    uint256 reciprocalPrice = (scalingFactor * scalingFactor) / priceFeed.price;
-
-    return reciprocalPrice;
+    // Both prices are already in 18 decimals from Supra feed
+    // Multiplying them gives us XPACK/WHBAR in 18 decimals
+    return (xPackPriceFeed.price * packPriceFeed.price) / (10 ** decimals());
   }
 
   /// @notice Gets the price of an asset in HBAR.
@@ -221,19 +229,23 @@ contract SupraOracle is Ownable2Step {
     uint16 priceIndex = assetToPriceIndex[_asset];
     if (priceIndex == 0) revert UnsupportedAsset();
 
-    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+    // Early return for special cases
+    if (_asset == WHBAR) {
+      return (10 ** decimals());
+    }
 
-    // Early return for non-USDC assets
-    if (_asset != USDC) {
-      if (_asset == WHBAR) {
-        return (10 ** decimals());
-      } else {
-        return priceFeed.price;
-      }
-    } else {
-      // Return usdc price using chainlink feeds
+    if (_asset == USDC) {
       return getUSDCPrice();
     }
+
+    // For XPACK, we need to calculate the ratio directly from the price feeds
+    if (_asset == assetToAddress['XPACK']) {
+      return getXPackPrice();
+    }
+
+    // For all other assets, return the price directly from the feed
+    ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+    return priceFeed.price;
   }
 
   /// @notice Gets the number of decimals used for prices.

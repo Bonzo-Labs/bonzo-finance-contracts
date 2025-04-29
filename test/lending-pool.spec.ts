@@ -2,8 +2,8 @@ import exp from 'constants';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
 import deployedContracts from '../deployed-contracts.json';
-import outputReserveData from '../scripts/outputReserveData.json';
 // import outputReserveData from '../scripts/outputReserveDataTestnet.json';
+import outputReserveData from '../scripts/outputReserveData.json';
 import {
   AccountId,
   PrivateKey,
@@ -18,17 +18,11 @@ const {
   SAUCE,
   USDC,
   XSAUCE,
-  WSTEAM,
-  BSTEAM,
-  BKARATE,
   KARATE,
-  BSAUCE,
-  BxSAUCE,
-  BHBARX,
-  BHST,
-  BDOVU,
-  BPACK,
-  BUSDC,
+  BONZO,
+  KBL,
+  XPACK,
+  GRELF,
   HBARX,
   WHBAR,
   LendingPool,
@@ -48,7 +42,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_PROXY || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_LIQUIDATIONS || '', provider);
   spender = '0x00000000000000000000000000000000005dbdc1'; // Bonzo spender wallet
 }
 
@@ -121,12 +115,10 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should deposit assets into the user account', async function () {
-    // const assets = [BKARATE, BPACK, BDOVU, BHST];
-    const assets = [HBARX];
-    // const amounts = [269653548, 4817581, 401899014, 40245636];
-    const amounts = [0.001];
-    // const decimals = [8, 2, 6, 8, 6];
-    const decimals = [8];
+    const assets = [KBL];
+    const amounts = [100000];
+    const decimals = [6];
+
     console.log('In the test, owner:', owner.address);
 
     for (const [index, asset] of assets.entries()) {
@@ -158,12 +150,12 @@ describe('Lending Pool Contract Tests', function () {
 
   it('should borrow, repay and withdraw assets from the user account', async function () {
     // const assets = [BHBARX, BUSDC, BSAUCE, BxSAUCE, BPACK, BKARATE, BDOVU, BHST, BSTEAM];
-    const assets = [SAUCE, XSAUCE];
+    const assets = [KBL];
     // const decimals = [8, 6, 6, 6, 6, 8, 8, 8, 2];
-    const decimals = [6, 6];
+    const decimals = [6];
     console.log('In the test, owner:', owner.address);
     for (const asset of assets) {
-      console.log('Dealing with asset - ', asset.hedera_mainnet.token.address);
+      console.log('Dealing with asset - ', asset);
       const erc20Contract = await setupContract('ERC20Wrapper', asset.hedera_mainnet.token.address);
       const aTokenContract = await setupContract('AToken', asset.hedera_mainnet.aToken.address);
       const debtTokenContract = await setupContract(
@@ -171,7 +163,7 @@ describe('Lending Pool Contract Tests', function () {
         asset.hedera_mainnet.variableDebt.address
       );
 
-      const borrowAmount = ethers.utils.parseUnits('1', decimals[assets.indexOf(asset)]);
+      const borrowAmount = ethers.utils.parseUnits('100', decimals[assets.indexOf(asset)]);
       console.log('Borrow Amount:', borrowAmount.toString());
 
       const borrowTxn = await lendingPoolContract.borrow(
