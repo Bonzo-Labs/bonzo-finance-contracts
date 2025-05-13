@@ -112,10 +112,10 @@ export const strategyDOVU: IReserveParams = {
 
 export const strategyBONZO: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '1',
-  liquidationThreshold: '2',
+  baseLTVAsCollateral: '5000',
+  liquidationThreshold: '5700',
   liquidationBonus: '10666',
-  borrowingEnabled: false,
+  borrowingEnabled: true,
   stableBorrowRateEnabled: false,
   reserveDecimals: '8',
   aTokenImpl: eContractid.AToken,

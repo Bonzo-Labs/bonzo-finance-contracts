@@ -30,9 +30,9 @@ const assetConfigurations = {
     underlyingAssetDecimals: 8,
     interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
     underlyingAssetName: 'BONZO',
-    supraIndex: 432,
-    ltv: 1,
-    liquidationThreshold: 2,
+    supraIndex: 532,
+    ltv: 5000,
+    liquidationThreshold: 5700,
     liquidationBonus: 10666,
   },
   '0x000000000000000000000000000000000011afa2': {
@@ -205,7 +205,7 @@ async function setReserveFactor(tokenAddress: string) {
 }
 
 async function main() {
-  const newAsset = '0x00000000000000000000000000000000005b665a';
+  const newAsset = '0x00000000000000000000000000000000007e545e';
   // Step 0: Deploy a new interest rate strategy contract, if needed - use DefaultReserveInterestRateStrategy.sol
   // Step 1: Update the reserve
   // await updateReserve(newAsset);

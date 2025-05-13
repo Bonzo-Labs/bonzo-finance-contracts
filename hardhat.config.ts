@@ -174,8 +174,8 @@ const buidlerConfig: HardhatUserConfig = {
       },
     },
     hedera_testnet: {
-      // url: 'https://testnet.hedera.validationcloud.io/v1/ViRFHy6Qx3lJYrY5NI76S8oHwMcRiQxnJBQ_5g-C25A',
-      url: 'https://testnet.hashio.io/api',
+      url: 'https://testnet.hedera.validationcloud.io/v1/ViRFHy6Qx3lJYrY5NI76S8oHwMcRiQxnJBQ_5g-C25A',
+      // url: 'https://testnet.hashio.io/api',
       chainId: 296,
       accounts: [keys],
       timeout: 0,

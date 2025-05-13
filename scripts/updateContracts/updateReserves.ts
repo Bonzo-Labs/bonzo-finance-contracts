@@ -8,9 +8,6 @@ import {
   AaveProtocolDataProvider,
 } from '../outputReserveData.json';
 import {
-  BKARATE,
-  BDOVU,
-  BPACK,
   WHBAR,
   HBARX,
   SAUCE,
@@ -50,11 +47,6 @@ let provider, owner;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
-  reserves = [
-    BKARATE.hedera_testnet.token.address,
-    BDOVU.hedera_testnet.token.address,
-    BPACK.hedera_testnet.token.address,
-  ];
 
   assetConfigurations = {
     '0x00000000000000000000000000000000004d50f2': {
@@ -76,15 +68,15 @@ if (chain_type === 'hedera_testnet') {
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
   reserves = [
     // WHBAR.hedera_mainnet.token.address,
-    // HBARX.hedera_mainnet.token.address,
+    HBARX.hedera_mainnet.token.address,
     USDC.hedera_mainnet.token.address,
-    SAUCE.hedera_mainnet.token.address,
-    // XSAUCE.hedera_mainnet.token.address,
+    // SAUCE.hedera_mainnet.token.address,
+    XSAUCE.hedera_mainnet.token.address,
     KARATE.hedera_mainnet.token.address,
-    // DOVU.hedera_mainnet.token.address,
-    // PACK.hedera_mainnet.token.address,
-    // HST.hedera_mainnet.token.address,
-    // STEAM.hedera_mainnet.token.address,
+    DOVU.hedera_mainnet.token.address,
+    PACK.hedera_mainnet.token.address,
+    HST.hedera_mainnet.token.address,
+    STEAM.hedera_mainnet.token.address,
   ];
 
   assetConfigurations = {
@@ -98,7 +90,7 @@ if (chain_type === 'hedera_testnet') {
     },
     '0x000000000000000000000000000000000006f89a': {
       strategy: strategyUSDC,
-      rateStrategyAddress: '0x10753aD937e2f16daB73230fE5e5d8ace807C666',
+      rateStrategyAddress: '0x00000000000000000000000000000000007b041d',
     },
     '0x00000000000000000000000000000000000b2ad5': {
       strategy: strategySAUCE,
@@ -136,25 +128,28 @@ if (chain_type === 'hedera_testnet') {
 }
 
 async function updateReserveFactor(tokenAddress: string) {
-  console.log('Owner:', owner.address);
+  console.log('\nOwner:', owner.address);
+  console.log('Token address:', tokenAddress);
 
-  const strategy = assetConfigurations[tokenAddress].strategy;
-  const updateTxn = await lendingPoolConfiguratorContract.setReserveFactor(
-    tokenAddress,
-    strategy.reserveFactor
-  );
-  await updateTxn.wait();
-  console.log('Reserve factor updated');
+  // const strategy = assetConfigurations[tokenAddress].strategy;
+  // console.log('Strategy:', strategy);
+  // const updateTxn = await lendingPoolConfiguratorContract.setReserveFactor(
+  //   tokenAddress,
+  //   strategy.reserveFactor
+  // );
+  // await updateTxn.wait();
+  // console.log('=== Reserve factor updated ===');
 
-  // const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
-  // console.log('Reserve data:', reserveData);
+  const reserveData = await dataProviderContract.getReserveConfigurationData(tokenAddress);
+  console.log('Reserve data:', reserveData);
 }
 
 async function updateLTVs(tokenAddress: string) {
-  console.log('Owner:', owner.address);
+  console.log('\nOwner:', owner.address);
   console.log('Token address:', tokenAddress);
 
   const strategy = assetConfigurations[tokenAddress].strategy;
+  console.log('Strategy:', strategy);
   const updateTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
     tokenAddress,
     strategy.baseLTVAsCollateral,
@@ -162,7 +157,7 @@ async function updateLTVs(tokenAddress: string) {
     strategy.liquidationBonus
   );
   await updateTxn.wait();
-  console.log('LTVs updated');
+  console.log('=== LTVs updated ===');
 
   // const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
   // console.log('Reserve data:', reserveData);
@@ -208,9 +203,9 @@ async function main() {
   dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 
   for (const reserve of reserves) {
-    // await updateReserveFactor(reserve);
+    await updateReserveFactor(reserve);
     // await updateLTVs(reserve);
-    await updateRateStrategy(reserve, assetConfigurations[reserve].rateStrategyAddress);
+    // await updateRateStrategy(reserve, assetConfigurations[reserve].rateStrategyAddress);
   }
 }
 

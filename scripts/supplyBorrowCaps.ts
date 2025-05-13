@@ -9,6 +9,7 @@ import {
   KARATE,
   WHBAR,
   GRELF,
+  BONZO,
   KBL,
   DOVU,
   PACK,
@@ -37,8 +38,8 @@ if (chain_type === 'hedera_testnet') {
   //   57034268, 9641854, 2272388, 4376629, 18755218, 950959650, 296716240, 1941454, 21932392,
   //   19715165,
   // ];
-  reserves = [KBL];
-  borrowCaps = [5000000];
+  reserves = [BONZO];
+  borrowCaps = [3500000];
 }
 
 async function setupContract(artifactName, contractAddress) {

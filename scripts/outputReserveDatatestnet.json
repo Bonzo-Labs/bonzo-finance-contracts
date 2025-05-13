@@ -107,6 +107,24 @@
       "accountId": "0.0.6382769e7b762cf69ddfe28364674905e2edef23"
     }
   },
+  "BONZO": {
+    "token": {
+      "address": "0x000000000000000000000000000000000052367e",
+      "accountId": ""
+    },
+    "aToken": {
+      "address": "0xe96Dce90621010343c48b3702f6eCb96E0e89C4d",
+      "accountId": ""
+    },
+    "stableDebt": {
+      "address": "",
+      "accountId": ""
+    },
+    "variableDebt": {
+      "address": "0x6382769e7b762cF69ddFE28364674905e2Edef23",
+      "accountId": ""
+    }
+  },
   "LendingPoolAddressesProviderRegistry": {
     "hedera_testnet": {
       "address": "0x713F65034B7133C0D015e1C7e1d34c0a5381fb84",

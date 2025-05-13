@@ -19,6 +19,7 @@ import {
   BSTEAM,
   BHST,
   HST,
+  BONZO,
 } from './outputReserveData.json';
 
 require('dotenv').config();
@@ -102,10 +103,10 @@ async function lendingPool() {
   // console.log('Position Manager:', positionManager);
 
   // // Step 1 - Need to unpause the contract
-  console.log('Paused before:', await lendingPoolContract.paused());
-  const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
-  await txn.wait();
-  console.log('Paused after:', await lendingPoolContract.paused());
+  // console.log('Paused before:', await lendingPoolContract.paused());
+  // const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
+  // await txn.wait();
+  // console.log('Paused after:', await lendingPoolContract.paused());
 
   // const configureTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
   //   BHST.hedera_testnet.token.address,
@@ -140,9 +141,11 @@ async function lendingPool() {
   // console.log('Collateral disabled');
 
   // const reserveData = await dataProviderContract.getReserveConfigurationData(
-  //   HST.hedera_mainnet.token.address
+  //   BONZO.hedera_mainnet.token.address
   // );
-  // console.log('BHST Reserve Data:', reserveData);
+  // console.log('BONZO Reserve Data:', reserveData);
+  const allReserveTokens = await dataProviderContract.getAllReservesTokens();
+  console.log('All Reserve Tokens:', allReserveTokens);
   // const userReserveData1 = await dataProviderContract.getUserReserveData(
   //   PACK.hedera_mainnet.token.address,
   //   '0x00000000000000000000000000000000000a0af0'

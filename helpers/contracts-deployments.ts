@@ -264,9 +264,14 @@ export const deployPriceOracle = async (verify?: boolean) =>
     verify
   );
 
-export const deploySupraOracle = async (valueFeed: string, verify?: boolean) =>
+export const deploySupraOracle = async (
+  valueFeed: string,
+  valueFeed2: string,
+  valueFeed3: string,
+  verify?: boolean
+) =>
   withSaveAndVerify(
-    await new SupraOracleFactory(await getFirstSigner()).deploy(valueFeed),
+    await new SupraOracleFactory(await getFirstSigner()).deploy(valueFeed, valueFeed2, valueFeed3),
     eContractid.PriceOracle,
     [],
     verify

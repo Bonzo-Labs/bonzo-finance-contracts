@@ -15,7 +15,7 @@ const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 let provider, owner;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY3 || '', provider);
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
@@ -56,7 +56,7 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
     // @ts-ignore
     treasury: HederaConfig.ReserveFactorTreasuryAddress.hedera_testnet,
     // @ts-ignore
-    incentivesController: '0x1B28BFeC5493B4d6419Faa5F4E2cA9d96548674e',
+    incentivesController: '0x39b98c21d9B4821d775Ab5c1F0F7a9cBA279f9Bc',
     name: `Bonzo aToken ${tokenName}`,
     symbol: `am${tokenName}`,
     implementation: aTokenImpl.address,
@@ -70,7 +70,7 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
 }
 
 async function main() {
-  await updateAToken('0x0000000000000000000000000000000000120f46', 'SAUCE');
+  await updateAToken('0x000000000000000000000000000000000052367e', 'BONZO');
 }
 
 main()
