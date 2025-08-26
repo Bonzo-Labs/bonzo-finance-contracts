@@ -18,6 +18,9 @@ import {
   KARATE,
   PACK,
   STEAM,
+  GRELF,
+  BONZO,
+  KBL,
 } from '../outputReserveData.json';
 import {
   strategyKARATE,
@@ -30,6 +33,9 @@ import {
   strategyPACK,
   strategySTEAM,
   strategyWHBAR,
+  strategyGRELF,
+  strategyBONZO,
+  strategyKBL,
 } from '../../markets/hedera/reservesConfigs';
 
 async function setupContract(artifactName: string, contractAddress: string) {
@@ -66,18 +72,6 @@ if (chain_type === 'hedera_testnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
-  reserves = [
-    // WHBAR.hedera_mainnet.token.address,
-    HBARX.hedera_mainnet.token.address,
-    USDC.hedera_mainnet.token.address,
-    // SAUCE.hedera_mainnet.token.address,
-    XSAUCE.hedera_mainnet.token.address,
-    KARATE.hedera_mainnet.token.address,
-    DOVU.hedera_mainnet.token.address,
-    PACK.hedera_mainnet.token.address,
-    HST.hedera_mainnet.token.address,
-    STEAM.hedera_mainnet.token.address,
-  ];
 
   assetConfigurations = {
     '0x0000000000000000000000000000000000163b5a': {
@@ -90,15 +84,31 @@ if (chain_type === 'hedera_testnet') {
     },
     '0x000000000000000000000000000000000006f89a': {
       strategy: strategyUSDC,
-      rateStrategyAddress: '0x00000000000000000000000000000000007b041d',
+      // rateStrategyAddress: '0x00000000000000000000000000000000007b041d', // Old strategy - before 29 July 2025
+      rateStrategyAddress: '0x0000000000000000000000000000000000928b25',
+    },
+    '0x000000000000000000000000000000000011afa2': {
+      strategy: strategyGRELF,
+      rateStrategyAddress: '',
+    },
+    '0x00000000000000000000000000000000007e545e': {
+      strategy: strategyBONZO,
+      rateStrategyAddress: '',
     },
     '0x00000000000000000000000000000000000b2ad5': {
       strategy: strategySAUCE,
-      rateStrategyAddress: '0xf38e204b948Db78Ca5D51cCEd7ccEe182Fe4bcA8',
+      // rateStrategyAddress: '0xf38e204b948Db78Ca5D51cCEd7ccEe182Fe4bcA8',
+      rateStrategyAddress: '',
+    },
+    '0x0000000000000000000000000000000000492a28': {
+      strategy: strategyPACK,
+      // rateStrategyAddress: '0xf38e204b948Db78Ca5D51cCEd7ccEe182Fe4bcA8',
+      rateStrategyAddress: '',
     },
     '0x00000000000000000000000000000000001647e8': {
       strategy: strategyXSAUCE,
-      rateStrategyAddress: '0x998A60b83617F05c1Dcd4b3f5D37a2265d6a674D',
+      // rateStrategyAddress: '0x998A60b83617F05c1Dcd4b3f5D37a2265d6a674D',
+      rateStrategyAddress: '',
     },
     '0x000000000000000000000000000000000022d6de': {
       strategy: strategyKARATE,
@@ -106,25 +116,69 @@ if (chain_type === 'hedera_testnet') {
     },
     '0x000000000000000000000000000000000038b3db': {
       strategy: strategyDOVU,
-      rateStrategyAddress: '0xC8C0c05683474a7B4c8DdaD69D0D546A841Be5D4',
+      // rateStrategyAddress: '0xC8C0c05683474a7B4c8DdaD69D0D546A841Be5D4',
+      rateStrategyAddress: '',
     },
-    '0x0000000000000000000000000000000000492a28': {
-      strategy: strategyPACK,
-      rateStrategyAddress: '0x4DF846F81135d9e63834AD4C7865F1C1983F767a',
+    '0x00000000000000000000000000000000005b665a': {
+      strategy: strategyKBL,
+      // rateStrategyAddress: '0xC8C0c05683474a7B4c8DdaD69D0D546A841Be5D4',
+      rateStrategyAddress: '',
     },
     '0x00000000000000000000000000000000000ec585': {
       strategy: strategyHST,
-      rateStrategyAddress: '0x6886E0eD3Cb5dcE6f8e50dCb692a142AE8a14775',
+      // rateStrategyAddress: '0x6886E0eD3Cb5dcE6f8e50dCb692a142AE8a14775',
+      rateStrategyAddress: '',
     },
     '0x000000000000000000000000000000000030fb8b': {
       strategy: strategySTEAM,
-      rateStrategyAddress: '0xA3E524FE431011dc6d050c32E92Acc38D2f50cB4',
+      // rateStrategyAddress: '0xA3E524FE431011dc6d050c32E92Acc38D2f50cB4',
+      rateStrategyAddress: '',
     },
   };
+
+  reserves = [
+    // WHBAR.hedera_mainnet.token.address,
+    // HBARX.hedera_mainnet.token.address,
+    USDC.hedera_mainnet.token.address,
+    // SAUCE.hedera_mainnet.token.address,
+    // XSAUCE.hedera_mainnet.token.address,
+    // KARATE.hedera_mainnet.token.address,
+    // DOVU.hedera_mainnet.token.address,
+    // PACK.hedera_mainnet.token.address,
+    // HST.hedera_mainnet.token.address,
+    // STEAM.hedera_mainnet.token.address,
+    // GRELF.hedera_mainnet.token.address,
+    // BONZO.hedera_mainnet.token.address,
+    // KBL.hedera_mainnet.token.address,
+  ];
 
   lendingPoolAddress = LendingPool.hedera_mainnet.address;
   lendingPoolConfiguratorAddress = LendingPoolConfigurator.hedera_mainnet.address;
   dataProviderAddress = AaveProtocolDataProvider.hedera_mainnet.address;
+}
+
+async function updateLTVs(tokenAddress: string) {
+  console.log('\nOwner:', owner.address);
+  console.log('Token address:', tokenAddress);
+
+  const strategy = assetConfigurations[tokenAddress].strategy;
+  console.log('Strategy:', strategy);
+
+  const updateTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
+    tokenAddress,
+    strategy.baseLTVAsCollateral,
+    strategy.liquidationThreshold,
+    strategy.liquidationBonus
+  );
+  await updateTxn.wait();
+  console.log('=== LTVs updated ===');
+
+  const reserveData = await dataProviderContract.getReserveConfigurationData(tokenAddress);
+
+  // console.log('Reserve data:', reserveData);
+  console.log('LTV:', reserveData.ltv.toString());
+  console.log('Liquidation Threshold:', reserveData.liquidationThreshold.toString());
+  console.log('Liquidation Bonus:', reserveData.liquidationBonus.toString());
 }
 
 async function updateReserveFactor(tokenAddress: string) {
@@ -144,40 +198,16 @@ async function updateReserveFactor(tokenAddress: string) {
   console.log('Reserve data:', reserveData);
 }
 
-async function updateLTVs(tokenAddress: string) {
-  console.log('\nOwner:', owner.address);
-  console.log('Token address:', tokenAddress);
-
-  const strategy = assetConfigurations[tokenAddress].strategy;
-  console.log('Strategy:', strategy);
-  const updateTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
-    tokenAddress,
-    strategy.baseLTVAsCollateral,
-    strategy.liquidationThreshold,
-    strategy.liquidationBonus
-  );
-  await updateTxn.wait();
-  console.log('=== LTVs updated ===');
-
-  // const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
-  // console.log('Reserve data:', reserveData);
-}
-
 async function updateRateStrategy(tokenAddress: string, rateStrategyAddress: any) {
-  // console.log('Owner:', owner.address);
-  // const updateTxn = await lendingPoolConfiguratorContract.setReserveInterestRateStrategyAddress(
-  //   tokenAddress,
-  //   rateStrategyAddress
-  // );
-  // await updateTxn.wait();
-  // console.log(`Rate strategy updated for token ${tokenAddress}`);
-
   const reserveData = await lendingPoolContract.getReserveData(tokenAddress);
-  const updatedRateStrategyAddress = reserveData.interestRateStrategyAddress;
-  console.log(`Updated rate strategy address: ${updatedRateStrategyAddress}`);
+  // console.log('Reserve data:', reserveData);
+  console.log(`Token address: ${tokenAddress}===`);
+
+  const currentRateStrategyAddress = reserveData.interestRateStrategyAddress;
+  console.log(`Current rate strategy address: ${currentRateStrategyAddress}`);
   const rateStrategy = await setupContract(
     'DefaultReserveInterestRateStrategy',
-    updatedRateStrategyAddress
+    currentRateStrategyAddress
   );
   const RAY = 1e27;
   const slope1Raw = await rateStrategy.variableRateSlope1();
@@ -188,10 +218,37 @@ async function updateRateStrategy(tokenAddress: string, rateStrategyAddress: any
   const slope2Percentage = (parseFloat(slope2Raw.toString()) / RAY) * 100;
   const optimalUtilizationRatePercentage =
     (parseFloat(optimalUtilizationRateRaw.toString()) / RAY) * 100;
-  console.log(`Token address: ${tokenAddress}===`);
+
   console.log(`Slope1: ${slope1Percentage}%`);
   console.log(`Slope2: ${slope2Percentage}%`);
   console.log(`Optimal Utilization Rate: ${optimalUtilizationRatePercentage}%`);
+
+  console.log('Admin:', owner.address);
+  console.log('Updating Rate strategy address to:', rateStrategyAddress);
+  const updateTxn = await lendingPoolConfiguratorContract.setReserveInterestRateStrategyAddress(
+    tokenAddress,
+    rateStrategyAddress
+  );
+  await updateTxn.wait();
+  console.log(`Rate strategy updated for token ${tokenAddress}`);
+
+  const newReserveData = await lendingPoolContract.getReserveData(tokenAddress);
+  const newRateStrategyAddress = newReserveData.interestRateStrategyAddress;
+  const newRateStrategy = await setupContract(
+    'DefaultReserveInterestRateStrategy',
+    newRateStrategyAddress
+  );
+  const newSlope1Raw = await newRateStrategy.variableRateSlope1();
+  const newSlope2Raw = await newRateStrategy.variableRateSlope2();
+  const newOptimalUtilizationRateRaw = await newRateStrategy.OPTIMAL_UTILIZATION_RATE();
+  const newSlope1Percentage = (parseFloat(newSlope1Raw.toString()) / RAY) * 100;
+  const newSlope2Percentage = (parseFloat(newSlope2Raw.toString()) / RAY) * 100;
+  const newOptimalUtilizationRatePercentage =
+    (parseFloat(newOptimalUtilizationRateRaw.toString()) / RAY) * 100;
+  console.log(`New rate strategy address: ${rateStrategyAddress}`);
+  console.log(`New slope1: ${newSlope1Percentage}%`);
+  console.log(`New slope2: ${newSlope2Percentage}%`);
+  console.log(`New optimal utilization rate: ${newOptimalUtilizationRatePercentage}%`);
 }
 
 async function main() {
@@ -203,9 +260,9 @@ async function main() {
   dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 
   for (const reserve of reserves) {
-    await updateReserveFactor(reserve);
+    // await updateReserveFactor(reserve);
     // await updateLTVs(reserve);
-    // await updateRateStrategy(reserve, assetConfigurations[reserve].rateStrategyAddress);
+    await updateRateStrategy(reserve, assetConfigurations[reserve].rateStrategyAddress);
   }
 }
 

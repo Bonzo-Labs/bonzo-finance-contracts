@@ -14,7 +14,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 }
 
 async function setupContract(artifactName: string, contractAddress: string) {
@@ -28,18 +28,19 @@ async function updateOracle(oracleAddress: string) {
     LendingPoolAddressesProvider.hedera_mainnet.address
   );
 
-  const contractOwner = await lendingPoolAddressesProviderContract.owner();
-  console.log('Lending Pool Addresses Provider Owner:', contractOwner);
-  console.log('Signer:', owner.address);
+  // const contractOwner = await lendingPoolAddressesProviderContract.owner();
+  // console.log('Lending Pool Addresses Provider Owner:', contractOwner);
+  // console.log('Signer:', owner.address);
 
+  // 0x24D08A1b5902C4c5e42956F786D3582e732e9E8d
   console.log('Oracle before = ', await lendingPoolAddressesProviderContract.getPriceOracle());
 
-  await lendingPoolAddressesProviderContract.setPriceOracle(oracleAddress);
-  console.log('Oracle after = ', await lendingPoolAddressesProviderContract.getPriceOracle());
+  // await lendingPoolAddressesProviderContract.setPriceOracle(oracleAddress);
+  // console.log('Oracle after = ', await lendingPoolAddressesProviderContract.getPriceOracle());
 }
 
 async function main() {
-  await updateOracle('0x24D08A1b5902C4c5e42956F786D3582e732e9E8d');
+  await updateOracle('0x0f9e7Ea62AeD13Bc39C62ABB663E66Cd44fFe0DB');
 }
 
 main()

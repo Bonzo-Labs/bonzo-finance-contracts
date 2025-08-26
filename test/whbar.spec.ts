@@ -27,7 +27,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_LIQUIDATIONS || '', provider);
   whbarTokenAddress = WHBAR.token.address;
   whbarContractAddress = '0x0000000000000000000000000000000000163b59';
   whbarContractId = '0.0.1456985';
@@ -101,10 +101,11 @@ describe('WHBAR Tests', function () {
     await checkBalance(debtTokenContract, owner.address, 'WHBAR debtToken');
   }
 
-  it('should send HBAR to WHBAR contract and get WHBAR tokens', async function () {
+  it.skip('should send HBAR to WHBAR contract and get WHBAR tokens', async function () {
     console.log('Owner address:', owner.address);
     console.log('WHBAR contract address:', whbarContract.address);
     console.log('WHBAR token address:', whbarTokenContract.address);
+    console.log('Lending pool address:', lendingPoolContract.address);
 
     const client = Client.forMainnet();
     const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_MAINNET!);
@@ -115,7 +116,7 @@ describe('WHBAR Tests', function () {
     const depositTx = await new ContractExecuteTransaction()
       .setContractId(whbarContractId)
       .setGas(300000)
-      .setPayableAmount(new Hbar(80000))
+      .setPayableAmount(new Hbar(10000))
       .setFunction('deposit')
       .freezeWith(client)
       .signWithOperator(client);
@@ -126,14 +127,14 @@ describe('WHBAR Tests', function () {
     console.log(`- Deposit Receipt ${depositReceipt.status.toString()}`);
   });
 
-  it.skip('should send WHBAR to WHBAR contract and get native HBAR', async function () {
+  it('should send WHBAR to WHBAR contract and get native HBAR', async function () {
     console.log('Owner address:', owner.address);
     console.log('WHBAR contract address:', whbarContract.address);
     console.log('WHBAR token address:', whbarTokenContract.address);
 
     const client = Client.forMainnet();
-    const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_MAINNET!);
-    const operatorAccountId = AccountId.fromString(process.env.MAINNET_ACCOUNT_ID!);
+    const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_LIQUIDATIONS!);
+    const operatorAccountId = AccountId.fromString(process.env.LIQUIDATIONS_ACCOUNT_ID!);
 
     client.setOperator(operatorAccountId, operatorPrKey);
 
@@ -142,7 +143,7 @@ describe('WHBAR Tests', function () {
         tokenId,
         operatorAccountId,
         AccountId.fromString(whbarContractId),
-        300000
+        588186000000
       )
       .freezeWith(client)
       .signWithOperator(client);
@@ -153,7 +154,7 @@ describe('WHBAR Tests', function () {
     const burnTx = await new ContractExecuteTransaction()
       .setContractId(whbarContractId)
       .setGas(300000)
-      .setFunction('withdraw', new ContractFunctionParameters().addUint256(300000))
+      .setFunction('withdraw', new ContractFunctionParameters().addUint256(588185000000))
       .freezeWith(client)
       .signWithOperator(client);
 
@@ -169,12 +170,12 @@ describe('WHBAR Tests', function () {
     const txn = await lendingPoolContract.deposit(
       whbarTokenAddress,
       // @ts-ignore
-      103n,
+      11n,
       owner.address,
       0,
       {
         // @ts-ignore
-        value: 103n * 10_000_000_000n,
+        value: 11n * 10_000_000_000n,
       }
     );
     await txn.wait();

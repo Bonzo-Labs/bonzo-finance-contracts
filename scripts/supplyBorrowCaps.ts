@@ -16,6 +16,7 @@ import {
   HST,
   STEAM,
 } from './outputReserveData.json';
+import { ST } from 'next/dist/shared/lib/utils';
 
 require('dotenv').config();
 
@@ -38,8 +39,8 @@ if (chain_type === 'hedera_testnet') {
   //   57034268, 9641854, 2272388, 4376629, 18755218, 950959650, 296716240, 1941454, 21932392,
   //   19715165,
   // ];
-  reserves = [BONZO];
-  borrowCaps = [3500000];
+  reserves = [PACK, STEAM, HST, KBL];
+  borrowCaps = [1, 1, 1, 1];
 }
 
 async function setupContract(artifactName, contractAddress) {
@@ -49,29 +50,23 @@ async function setupContract(artifactName, contractAddress) {
 
 const MAX_VALID_SUPPLY_CAP = 68719476735;
 
-async function setSupplyAndBorrowCaps() {
+async function supplyCap() {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
     LendingPoolConfigurator[chain_type].address
   );
   console.log('Owner:', owner.address);
 
-  const reserveAssets =
-    chain_type === 'hedera_testnet'
-      ? [BUSDC, BDOVU, BHBARX, BHST, BKARATE, BPACK, BSAUCE, BSTEAM, BxSAUCE]
-      : [BUSDC, BDOVU, BHBARX, BHST, BKARATE, BPACK, BSAUCE, BSTEAM, BxSAUCE];
-
-  for (let i = 0; i < reserveAssets.length; i++) {
-    const asset = reserveAssets[i];
+  for (let i = 0; i < reserves.length; i++) {
+    const asset = reserves[i];
     const assetAddress = asset[chain_type].token.address;
     const supplyCap = supplyCaps[i];
-    const borrowCap = borrowCaps[i];
 
-    console.log(`Setting caps for ${Object.keys(reserveAssets)[i]}:`);
+    console.log(`Setting supply cap of ${supplyCaps[i]} for ${assetAddress}:`);
 
-    // Set and get Supply Cap
+    // Set and get Borrow Cap
     const currentSupplyCap = await lendingPoolConfiguratorContract.getSupplyCap(assetAddress);
-    console.log('Current Supply Cap:', currentSupplyCap.toString());
+    console.log('Current supply Cap:', currentSupplyCap.toString());
 
     const setSupplyCapTxn = await lendingPoolConfiguratorContract.setSupplyCap(
       assetAddress,
@@ -80,55 +75,7 @@ async function setSupplyAndBorrowCaps() {
     await setSupplyCapTxn.wait();
 
     const newSupplyCap = await lendingPoolConfiguratorContract.getSupplyCap(assetAddress);
-    console.log('New Supply Cap:', newSupplyCap.toString());
-
-    // Set and get Borrow Cap
-    const currentBorrowCap = await lendingPoolConfiguratorContract.getBorrowCap(assetAddress);
-    console.log('Current Borrow Cap:', currentBorrowCap.toString());
-
-    const setBorrowCapTxn = await lendingPoolConfiguratorContract.setBorrowCap(
-      assetAddress,
-      borrowCap
-    );
-    await setBorrowCapTxn.wait();
-
-    const newBorrowCap = await lendingPoolConfiguratorContract.getBorrowCap(assetAddress);
-    console.log('New Borrow Cap:', newBorrowCap.toString());
-
-    console.log('---');
-    // Sleep for 30 sec
-    await new Promise((resolve) => setTimeout(resolve, 10000));
-  }
-}
-
-async function supplyCap() {
-  const lendingPoolConfiguratorContract = await setupContract(
-    'LendingPoolConfigurator',
-    LendingPoolConfigurator[chain_type].address
-  );
-  console.log('Owner:', owner.address);
-
-  const reserveAssets = [BHBARX];
-
-  for (let i = 0; i < reserveAssets.length; i++) {
-    const asset = reserveAssets[i];
-    const assetAddress = asset[chain_type].token.address;
-    const supplyCap = supplyCaps[i];
-
-    console.log(`Setting caps for ${Object.keys(reserveAssets)[i]}:`);
-
-    // Set and get Supply Cap
-    const currentSupplyCap = await lendingPoolConfiguratorContract.getSupplyCap(assetAddress);
-    console.log('Current Supply Cap:', currentSupplyCap.toString());
-
-    const setSupplyCapTxn = await lendingPoolConfiguratorContract.setSupplyCap(
-      assetAddress,
-      MAX_VALID_SUPPLY_CAP
-    );
-    await setSupplyCapTxn.wait();
-
-    const newSupplyCap = await lendingPoolConfiguratorContract.getSupplyCap(assetAddress);
-    console.log('New Supply Cap:', newSupplyCap.toString());
+    console.log('New supply Cap:', newSupplyCap.toString());
   }
 }
 

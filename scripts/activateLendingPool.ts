@@ -102,11 +102,11 @@ async function lendingPool() {
   // const positionManager = await lendingPoolContract.getPositionManager();
   // console.log('Position Manager:', positionManager);
 
-  // // Step 1 - Need to unpause the contract
-  // console.log('Paused before:', await lendingPoolContract.paused());
-  // const txn = await lendingPoolConfiguratorContract.setPoolPause(false);
-  // await txn.wait();
-  // console.log('Paused after:', await lendingPoolContract.paused());
+  // Step 1 - Need to unpause the contract
+  console.log('Paused before:', await lendingPoolContract.paused());
+  const txn = await lendingPoolConfiguratorContract.setPoolPause(true);
+  await txn.wait();
+  console.log('Paused after:', await lendingPoolContract.paused());
 
   // const configureTxn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
   //   BHST.hedera_testnet.token.address,
@@ -144,13 +144,30 @@ async function lendingPool() {
   //   BONZO.hedera_mainnet.token.address
   // );
   // console.log('BONZO Reserve Data:', reserveData);
-  const allReserveTokens = await dataProviderContract.getAllReservesTokens();
-  console.log('All Reserve Tokens:', allReserveTokens);
-  // const userReserveData1 = await dataProviderContract.getUserReserveData(
-  //   PACK.hedera_mainnet.token.address,
-  //   '0x00000000000000000000000000000000000a0af0'
+  // const allReserveTokens = await dataProviderContract.getAllReservesTokens();
+  // console.log('All Reserve Tokens:', allReserveTokens);
+
+  // // Get the Bonzo asset reserve data
+  // const bonzoReserveData = await dataProviderContract.getReserveData(
+  //   BONZO.hedera_mainnet.token.address
   // );
-  // console.log('Collateral after:', userReserveData1.usageAsCollateralEnabled);
+  // console.log('Bonzo Reserve Data:', bonzoReserveData);
+  // console.log(
+  //   'Bonzo Total Debt:',
+  //   ethers.utils.formatUnits(bonzoReserveData.totalVariableDebt.toString(), 8)
+  // );
+
+  // // Get the total supply of the Bonzo variable debt token directly
+  // const variableDebtTokenContract = await setupContract(
+  //   'VariableDebtToken',
+  //   BONZO.hedera_mainnet.variableDebt.address
+  // );
+
+  // const totalSupply = await variableDebtTokenContract.totalSupply();
+  // console.log(
+  //   'Bonzo Variable Debt Token Total Supply:',
+  //   ethers.utils.formatUnits(totalSupply.toString(), 8)
+  // );
 }
 
 async function main() {

@@ -1,7 +1,11 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
-import { LendingPoolAddressesProvider, LendingPoolConfigurator } from '../outputReserveData.json';
+import {
+  LendingPoolAddressesProvider,
+  LendingPoolConfigurator,
+  LendingPool,
+} from '../outputReserveData.json';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
 const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
@@ -15,7 +19,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateConfiguratorImpl() {
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
+    LendingPoolAddressesProvider.hedera_mainnet.address
   );
 
   // Deploy the new LendingPoolConfigurator implementation
@@ -39,7 +43,7 @@ async function updateConfiguratorImpl() {
 async function updateDecimals(newDecimals) {
   const lendingPoolConfigurator = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
 
   const currentDecimals = await lendingPoolConfigurator.getDecimals(
@@ -62,7 +66,7 @@ async function updateDecimals(newDecimals) {
 async function updateReserveFactor() {
   const lendingPoolConfigurator = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
 
   const reserveFactorTxn = await lendingPoolConfigurator.setReserveFactor(
@@ -79,23 +83,37 @@ async function updateReserveFactor() {
 }
 
 async function updateReserveStrategyAddress() {
-  const lendingPoolConfigurator = await setupContract(
-    'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+  const lendingPoolContract = await setupContract(
+    'LendingPool',
+    LendingPool.hedera_mainnet.address
   );
+  const reserveData = await lendingPoolContract.getReserveData(
+    '0x000000000000000000000000000000000006f89a'
+  );
+  console.log('Current Reserve data:', reserveData);
 
-  const txn = await lendingPoolConfigurator.setReserveInterestRateStrategyAddress(
-    '0x0000000000000000000000000000000000003ad2',
-    '0x901B7458A3F0039b51A0A603Ac1867aE1745FE0f'
-  );
-  await txn.wait();
-  console.log('Reserve strategy address updated');
+  // const lendingPoolConfigurator = await setupContract(
+  //   'LendingPoolConfigurator',
+  //   LendingPoolConfigurator.hedera_mainnet.address
+  // );
+
+  // const txn = await lendingPoolConfigurator.setReserveInterestRateStrategyAddress(
+  //   '0x000000000000000000000000000000000006f89a',
+  //   '0x0000000000000000000000000000000000928b25'
+  // );
+  // await txn.wait();
+  // console.log('Reserve strategy address updated');
+
+  // const newReserveData = await lendingPoolContract.getReserveData(
+  //   '0x000000000000000000000000000000000006f89a'
+  // );
+  // console.log('New Reserve data:', newReserveData);
 }
 
 async function main() {
   // await updateConfiguratorImpl();
   // await updateDecimals(6);
-  await updateReserveFactor();
+  // await updateReserveFactor();
   await updateReserveStrategyAddress();
 }
 

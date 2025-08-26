@@ -32,7 +32,7 @@ const MNEMONIC_PATH = "m/44'/60'/0'/0";
 const MNEMONIC = process.env.MNEMONIC || '';
 const UNLIMITED_BYTECODE_SIZE = process.env.UNLIMITED_BYTECODE_SIZE === 'true';
 const keys = process.env.PRIVATE_KEY2!;
-const keys_mainnet = process.env.PRIVATE_KEY_MAINNET_ADMIN!;
+const keys_mainnet = process.env.PRIVATE_KEY_MAINNET!;
 
 const api_key = process.env.QUICKNODE_API_KEY2;
 const quicknode_url = process.env.PROVIDER_URL_MAINNET;
@@ -174,8 +174,8 @@ const buidlerConfig: HardhatUserConfig = {
       },
     },
     hedera_testnet: {
-      url: 'https://testnet.hedera.validationcloud.io/v1/ViRFHy6Qx3lJYrY5NI76S8oHwMcRiQxnJBQ_5g-C25A',
-      // url: 'https://testnet.hashio.io/api',
+      // url: 'https://testnet.hedera.validationcloud.io/v1/ViRFHy6Qx3lJYrY5NI76S8oHwMcRiQxnJBQ_5g-C25A',
+      url: 'https://testnet.hashio.io/api',
       chainId: 296,
       accounts: [keys],
       timeout: 0,

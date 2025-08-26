@@ -22,13 +22,13 @@ contract SupraOracle is Ownable2Step {
   mapping(address => uint16) private assetToDecimals;
   mapping(string => address) private assetToAddress;
 
-  // Mainnet addresses
-  address private constant USDC = 0x000000000000000000000000000000000006f89a;
-  address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
+  // // Mainnet addresses
+  // address private constant USDC = 0x000000000000000000000000000000000006f89a;
+  // address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
 
   // Testnet addresses
-  // address private constant USDC = 0x0000000000000000000000000000000000001549;
-  // address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
+  address private constant USDC = 0x0000000000000000000000000000000000001549;
+  address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
 
   /// @notice Constructor to initialize the contract with the SupraSValueFeed address.
   /// @param _sValueFeed The address of the SupraSValueFeed contract.
@@ -41,30 +41,25 @@ contract SupraOracle is Ownable2Step {
     HBAR_USD_dataFeed = _HBAR_USD_dataFeed;
     USDC_USD_dataFeed = _USDC_USD_dataFeed;
 
-    // // Mainnet addresses
-    assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
-    assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
-    assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
-    assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
-    assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
-    assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
-    assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
-    assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
-    assetToAddress['XPACK'] = 0x00000000000000000000000000000000006E86Ce;
-    assetToAddress['GRELF'] = 0x000000000000000000000000000000000011afa2;
-    assetToAddress['KBL'] = 0x00000000000000000000000000000000005B665A;
-    assetToAddress['BONZO'] = 0x00000000000000000000000000000000007e545e;
+    // // // Mainnet addresses
+    // assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
+    // assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
+    // assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
+    // assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
+    // assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
+    // assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
+    // assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
+    // assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
+    // assetToAddress['XPACK'] = 0x00000000000000000000000000000000006E86Ce;
+    // assetToAddress['GRELF'] = 0x000000000000000000000000000000000011afa2;
+    // assetToAddress['KBL'] = 0x00000000000000000000000000000000005B665A;
+    // assetToAddress['BONZO'] = 0x00000000000000000000000000000000007e545e;
 
     // Testnet addresses
-    // assetToAddress['KARATE'] = 0x00000000000000000000000000000000004D50f2;
-    // assetToAddress['HBARX'] = 0x00000000000000000000000000000000004e8929;
-    // assetToAddress['SAUCE'] = 0x00000000000000000000000000000000004e891f;
-    // assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000004E8924;
-    // assetToAddress['STEAM'] = 0x00000000000000000000000000000000004d6427;
-    // assetToAddress['DOVU'] = 0x00000000000000000000000000000000004E892f;
-    // assetToAddress['HST'] = 0x00000000000000000000000000000000004E8936;
-    // assetToAddress['PACK'] = 0x00000000000000000000000000000000004E8931;
-    // assetToAddress['STEAM'] = 0x00000000000000000000000000000000004d50Fe;
+    assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
+    assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
+    assetToAddress['SAUCE'] = 0x0000000000000000000000000000000000120f46;
+    assetToAddress['XSAUCE'] = 0x000000000000000000000000000000000015a59b;
 
     assetToAddress['USDC'] = USDC;
     assetToAddress['WHBAR'] = WHBAR;
@@ -73,31 +68,31 @@ contract SupraOracle is Ownable2Step {
     assetToPriceIndex[assetToAddress['HBARX']] = 427;
     assetToPriceIndex[assetToAddress['SAUCE']] = 425;
     assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
-    assetToPriceIndex[assetToAddress['DOVU']] = 429;
-    assetToPriceIndex[assetToAddress['PACK']] = 478;
-    assetToPriceIndex[assetToAddress['HST']] = 428;
-    assetToPriceIndex[assetToAddress['STEAM']] = 479;
     assetToPriceIndex[assetToAddress['USDC']] = 505;
     assetToPriceIndex[assetToAddress['WHBAR']] = 471; // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
-    assetToPriceIndex[assetToAddress['GRELF']] = 527;
-    assetToPriceIndex[assetToAddress['KBL']] = 526;
-    assetToPriceIndex[assetToAddress['XPACK']] = 513; // This is XPACK/PACK
-    assetToPriceIndex[assetToAddress['BONZO']] = 532;
+    // assetToPriceIndex[assetToAddress['STEAM']] = 479;
+    // assetToPriceIndex[assetToAddress['DOVU']] = 429;
+    // assetToPriceIndex[assetToAddress['PACK']] = 478;
+    // assetToPriceIndex[assetToAddress['HST']] = 428;
+    // assetToPriceIndex[assetToAddress['GRELF']] = 527;
+    // assetToPriceIndex[assetToAddress['KBL']] = 526;
+    // assetToPriceIndex[assetToAddress['XPACK']] = 513; // This is XPACK/PACK
+    // assetToPriceIndex[assetToAddress['BONZO']] = 532;
 
     assetToDecimals[assetToAddress['KARATE']] = 8;
     assetToDecimals[assetToAddress['HBARX']] = 8;
     assetToDecimals[assetToAddress['SAUCE']] = 6;
     assetToDecimals[assetToAddress['XSAUCE']] = 6;
-    assetToDecimals[assetToAddress['DOVU']] = 8;
-    assetToDecimals[assetToAddress['PACK']] = 6;
-    assetToDecimals[assetToAddress['HST']] = 8;
-    assetToDecimals[assetToAddress['STEAM']] = 2;
     assetToDecimals[assetToAddress['USDC']] = 6;
     assetToDecimals[assetToAddress['WHBAR']] = 8;
-    assetToDecimals[assetToAddress['GRELF']] = 8;
-    assetToDecimals[assetToAddress['KBL']] = 6;
-    assetToDecimals[assetToAddress['XPACK']] = 6;
-    assetToDecimals[assetToAddress['BONZO']] = 8;
+    // assetToDecimals[assetToAddress['DOVU']] = 8;
+    // assetToDecimals[assetToAddress['PACK']] = 6;
+    // assetToDecimals[assetToAddress['HST']] = 8;
+    // assetToDecimals[assetToAddress['STEAM']] = 2;
+    // assetToDecimals[assetToAddress['GRELF']] = 8;
+    // assetToDecimals[assetToAddress['KBL']] = 6;
+    // assetToDecimals[assetToAddress['XPACK']] = 6;
+    // assetToDecimals[assetToAddress['BONZO']] = 8;
   }
 
   /// @notice Updates the SupraSValueFeed contract address.

@@ -6,13 +6,8 @@ import { ContractCreateFlow, ContractFunctionParameters, Hbar } from '@hashgraph
 const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
 
 import { LendingPoolAddressesProvider } from '../outputReserveData.json';
-import { rateStrategyVolatileThree } from '../../markets/hedera/rateStrategies';
-
 import { LendingPool, LendingPoolConfigurator } from '../outputReserveData.json';
 import {
-  BKARATE,
-  BDOVU,
-  BPACK,
   WHBAR,
   HBARX,
   SAUCE,
@@ -35,6 +30,7 @@ import {
   rateStrategyXSAUCE,
   rateStrategySTEAM,
   rateStrategyUSDC,
+  rateStrategyUSDCNew,
 } from '../../markets/hedera/rateStrategies';
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
@@ -47,11 +43,11 @@ let provider, owner;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
-  reserves = [
-    BKARATE.hedera_testnet.token.address,
-    BDOVU.hedera_testnet.token.address,
-    BPACK.hedera_testnet.token.address,
-  ];
+  // reserves = [
+  //   BKARATE.hedera_testnet.token.address,
+  //   BDOVU.hedera_testnet.token.address,
+  //   BPACK.hedera_testnet.token.address,
+  // ];
 
   // assetConfigurations = {
   //   '0x00000000000000000000000000000000004d50f2': {
@@ -71,18 +67,6 @@ if (chain_type === 'hedera_testnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
-  reserves = [
-    // WHBAR.hedera_mainnet.token.address,
-    // HBARX.hedera_mainnet.token.address,
-    USDC.hedera_mainnet.token.address,
-    // SAUCE.hedera_mainnet.token.address,
-    // XSAUCE.hedera_mainnet.token.address,
-    // KARATE.hedera_mainnet.token.address,
-    // DOVU.hedera_mainnet.token.address,
-    // PACK.hedera_mainnet.token.address,
-    // HST.hedera_mainnet.token.address,
-    // STEAM.hedera_mainnet.token.address,
-  ];
 
   assetConfigurations = {
     '0x0000000000000000000000000000000000163b5a': {
@@ -92,7 +76,7 @@ if (chain_type === 'hedera_testnet') {
       strategy: rateStrategyHBARX,
     },
     '0x000000000000000000000000000000000006f89a': {
-      strategy: rateStrategyUSDC,
+      strategy: rateStrategyUSDCNew,
     },
     '0x00000000000000000000000000000000000b2ad5': {
       strategy: rateStrategySAUCE,
@@ -119,47 +103,19 @@ if (chain_type === 'hedera_testnet') {
 
   lendingPoolAddress = LendingPool.hedera_mainnet.address;
   lendingPoolConfiguratorAddress = LendingPoolConfigurator.hedera_mainnet.address;
-}
 
-async function setupContract(artifactName: string, contractAddress: string) {
-  const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, owner);
-}
-
-async function deployNewStrategy(reserve: any, strategy: any) {
-  //     ILendingPoolAddressesProvider provider,
-  //     uint256 optimalUtilizationRate,
-  //     uint256 baseVariableBorrowRate,
-  //     uint256 variableRateSlope1,
-  //     uint256 variableRateSlope2,
-  //     uint256 stableRateSlope1,
-  //     uint256 stableRateSlope2
-  const deploymentArgs = {
-    provider: LendingPoolAddressesProvider.hedera_mainnet.address,
-    optimalUtilizationRate: strategy.optimalUtilizationRate,
-    baseVariableBorrowRate: strategy.baseVariableBorrowRate,
-    variableRateSlope1: strategy.variableRateSlope1,
-    variableRateSlope2: strategy.variableRateSlope2,
-    stableRateSlope1: strategy.stableRateSlope1,
-    stableRateSlope2: strategy.stableRateSlope2,
-  };
-  console.log('Deployment args = ', deploymentArgs);
-
-  const rateStrategyContract = await hre.ethers.getContractFactory(
-    'DefaultReserveInterestRateStrategy'
-  );
-  const rateStrategy = await rateStrategyContract.deploy(
-    deploymentArgs.provider,
-    deploymentArgs.optimalUtilizationRate,
-    deploymentArgs.baseVariableBorrowRate,
-    deploymentArgs.variableRateSlope1,
-    deploymentArgs.variableRateSlope2,
-    deploymentArgs.stableRateSlope1,
-    deploymentArgs.stableRateSlope2
-  );
-  await rateStrategy.deployed();
-  console.log(`Deployed strategy for reserve = ${reserve}`);
-  console.log('Rate Strategy deployed to:', rateStrategy.address);
+  reserves = [
+    // WHBAR.hedera_mainnet.token.address,
+    // HBARX.hedera_mainnet.token.address,
+    USDC.hedera_mainnet.token.address,
+    // SAUCE.hedera_mainnet.token.address,
+    // XSAUCE.hedera_mainnet.token.address,
+    // KARATE.hedera_mainnet.token.address,
+    // DOVU.hedera_mainnet.token.address,
+    // PACK.hedera_mainnet.token.address,
+    // HST.hedera_mainnet.token.address,
+    // STEAM.hedera_mainnet.token.address,
+  ];
 }
 
 export async function deployNewStrategySDK(reserve: string, strategy: any) {
@@ -228,6 +184,47 @@ export async function deployNewStrategySDK(reserve: string, strategy: any) {
     `Successfully deployed DefaultReserveInterestRateStrategy for reserve ${reserve}.
     Contract ID = ${newContractId.toString()}`
   );
+}
+
+async function setupContract(artifactName: string, contractAddress: string) {
+  const artifact = await hre.artifacts.readArtifact(artifactName);
+  return new ethers.Contract(contractAddress, artifact.abi, owner);
+}
+
+async function deployNewStrategy(reserve: any, strategy: any) {
+  //     ILendingPoolAddressesProvider provider,
+  //     uint256 optimalUtilizationRate,
+  //     uint256 baseVariableBorrowRate,
+  //     uint256 variableRateSlope1,
+  //     uint256 variableRateSlope2,
+  //     uint256 stableRateSlope1,
+  //     uint256 stableRateSlope2
+  const deploymentArgs = {
+    provider: LendingPoolAddressesProvider.hedera_mainnet.address,
+    optimalUtilizationRate: strategy.optimalUtilizationRate,
+    baseVariableBorrowRate: strategy.baseVariableBorrowRate,
+    variableRateSlope1: strategy.variableRateSlope1,
+    variableRateSlope2: strategy.variableRateSlope2,
+    stableRateSlope1: strategy.stableRateSlope1,
+    stableRateSlope2: strategy.stableRateSlope2,
+  };
+  console.log('Deployment args = ', deploymentArgs);
+
+  const rateStrategyContract = await hre.ethers.getContractFactory(
+    'DefaultReserveInterestRateStrategy'
+  );
+  const rateStrategy = await rateStrategyContract.deploy(
+    deploymentArgs.provider,
+    deploymentArgs.optimalUtilizationRate,
+    deploymentArgs.baseVariableBorrowRate,
+    deploymentArgs.variableRateSlope1,
+    deploymentArgs.variableRateSlope2,
+    deploymentArgs.stableRateSlope1,
+    deploymentArgs.stableRateSlope2
+  );
+  await rateStrategy.deployed();
+  console.log(`Deployed strategy for reserve = ${reserve}`);
+  console.log('Rate Strategy deployed to:', rateStrategy.address);
 }
 
 async function main() {

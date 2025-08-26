@@ -12,6 +12,16 @@ export const rateStrategyUSDC: IInterestRateStrategyParams = {
   stableRateSlope2: new BigNumber(0.02).multipliedBy(oneRay).toFixed(),
 };
 
+export const rateStrategyUSDCNew: IInterestRateStrategyParams = {
+  name: 'rateStrategyUSDCNew',
+  optimalUtilizationRate: new BigNumber(0.85).multipliedBy(oneRay).toFixed(),
+  baseVariableBorrowRate: new BigNumber(0.02).multipliedBy(oneRay).toFixed(),
+  variableRateSlope1: new BigNumber(0.13).multipliedBy(oneRay).toFixed(),
+  variableRateSlope2: new BigNumber(0.5).multipliedBy(oneRay).toFixed(),
+  stableRateSlope1: new BigNumber(0.02).multipliedBy(oneRay).toFixed(),
+  stableRateSlope2: new BigNumber(0.02).multipliedBy(oneRay).toFixed(),
+};
+
 export const rateStrategyHBAR: IInterestRateStrategyParams = {
   name: 'rateStrategyHBAR',
   optimalUtilizationRate: new BigNumber(0.55).multipliedBy(oneRay).toFixed(),

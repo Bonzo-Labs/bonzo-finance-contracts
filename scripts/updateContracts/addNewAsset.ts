@@ -32,7 +32,7 @@ const assetConfigurations = {
     underlyingAssetName: 'BONZO',
     supraIndex: 532,
     ltv: 5000,
-    liquidationThreshold: 5700,
+    liquidationThreshold: 5900,
     liquidationBonus: 10666,
   },
   '0x000000000000000000000000000000000011afa2': {
@@ -40,22 +40,53 @@ const assetConfigurations = {
     interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
     underlyingAssetName: 'GRELF',
     supraIndex: 527,
-    ltv: 3000,
-    liquidationThreshold: 4300,
+    ltv: 5000,
+    liquidationThreshold: 5900,
     liquidationBonus: 10666,
   },
-  '0x00000000000000000000000000000000004d6427': {
+  '0x000000000000000000000000000000000030fb8b': {
     underlyingAssetDecimals: 8,
     interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
-    underlyingAssetName: 'WSTEAM',
+    underlyingAssetName: 'STEAM',
+    supraIndex: 528,
+    ltv: 5000,
+    liquidationThreshold: 5700,
+    liquidationBonus: 10814,
   },
-  '0x00000000000000000000000000000000005b665a': {
+  '0x00000000000000000000000000000000005B665A': {
     underlyingAssetDecimals: 6,
     interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
     underlyingAssetName: 'KBL',
     supraIndex: 526,
-    ltv: 3000,
-    liquidationThreshold: 4300,
+    ltv: 5000,
+    liquidationThreshold: 5700,
+    liquidationBonus: 10666,
+  },
+  '0x0000000000000000000000000000000000492a28': {
+    underlyingAssetDecimals: 6,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    underlyingAssetName: 'PACK',
+    supraIndex: 525,
+    ltv: 5000,
+    liquidationThreshold: 5700,
+    liquidationBonus: 10691,
+  },
+  '0x000000000000000000000000000000000022D6de': {
+    underlyingAssetDecimals: 8,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    underlyingAssetName: 'KARATE',
+    supraIndex: 524,
+    ltv: 5000,
+    liquidationThreshold: 5700,
+    liquidationBonus: 10346,
+  },
+  '0x000000000000000000000000000000000038b3db': {
+    underlyingAssetDecimals: 18,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    underlyingAssetName: 'DOVU',
+    supraIndex: 523,
+    ltv: 5000,
+    liquidationThreshold: 5900,
     liquidationBonus: 10666,
   },
 };
@@ -183,6 +214,7 @@ async function configureReserveAsCollateral(tokenAddress: string) {
   );
 
   const initReserveInput = assetConfigurations[tokenAddress];
+  console.log(initReserveInput);
   const txn = await lendingPoolConfiguratorContract.configureReserveAsCollateral(
     tokenAddress,
     initReserveInput.ltv,
@@ -205,7 +237,7 @@ async function setReserveFactor(tokenAddress: string) {
 }
 
 async function main() {
-  const newAsset = '0x00000000000000000000000000000000007e545e';
+  const newAsset = '0x000000000000000000000000000000000038b3db';
   // Step 0: Deploy a new interest rate strategy contract, if needed - use DefaultReserveInterestRateStrategy.sol
   // Step 1: Update the reserve
   // await updateReserve(newAsset);
@@ -214,8 +246,8 @@ async function main() {
   // await addNewAssetToOracle(newAsset);
   // // // Step 3: Enable borrowing
   // await enableBorrowing(newAsset);
-  // // // Step 4: configureReserveAsCollateral and set reserve factor
-  // await configureReserveAsCollateral(newAsset);
+  // // Step 4: configureReserveAsCollateral and set reserve factor
+  await configureReserveAsCollateral(newAsset);
   // await setReserveFactor(newAsset);
   // Step 5 - Configure the aToken and variableDebtToken in incentives controller
   // Step 6: Update the scripts - getUpdatedMetrics, cronJob, processPoints

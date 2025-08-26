@@ -23,7 +23,6 @@ async function main() {
   }
 
   console.log('Owner:', owner.address);
-  console.log('Provider = ', provider);
   console.log('Supra Feed = ', supraFeed);
   // Deploy Event contract
   const Supra = await hre.ethers.getContractFactory('SupraOracle');

@@ -8,13 +8,14 @@ import {
   rateStrategySAUCE,
   rateStrategyHBARX,
   rateStrategyVolatileTwo,
+  rateStrategyUSDCNew,
 } from './rateStrategies';
 
 // Reference - https://docs.aave.com/risk/v/aave-v2/liquidity-risk/borrow-interest-rate for the rate strategies
 
 export const strategyXSAUCE: IReserveParams = {
   strategy: rateStrategySAUCE,
-  baseLTVAsCollateral: '6183',
+  baseLTVAsCollateral: '4000',
   liquidationThreshold: '6759',
   liquidationBonus: '10395',
   borrowingEnabled: true,
@@ -28,8 +29,8 @@ export const strategyXSAUCE: IReserveParams = {
 
 export const strategyKARATE: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '4500',
-  liquidationThreshold: '5200',
+  baseLTVAsCollateral: '2000',
+  liquidationThreshold: '6500',
   liquidationBonus: '10346',
   borrowingEnabled: false,
   stableBorrowRateEnabled: false,
@@ -70,7 +71,7 @@ export const strategyHBARX: IReserveParams = {
 
 export const strategySAUCE: IReserveParams = {
   strategy: rateStrategySAUCE,
-  baseLTVAsCollateral: '6241',
+  baseLTVAsCollateral: '4000',
   liquidationThreshold: '6804',
   liquidationBonus: '10395',
   borrowingEnabled: true,
@@ -83,7 +84,7 @@ export const strategySAUCE: IReserveParams = {
 };
 
 export const strategyUSDC: IReserveParams = {
-  strategy: rateStrategyUSDC,
+  strategy: rateStrategyUSDCNew,
   baseLTVAsCollateral: '8045',
   liquidationThreshold: '8350',
   liquidationBonus: '10740',
@@ -98,8 +99,8 @@ export const strategyUSDC: IReserveParams = {
 
 export const strategyDOVU: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '4500',
-  liquidationThreshold: '5200',
+  baseLTVAsCollateral: '2000',
+  liquidationThreshold: '5900',
   liquidationBonus: '10666',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
@@ -112,8 +113,8 @@ export const strategyDOVU: IReserveParams = {
 
 export const strategyBONZO: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '5000',
-  liquidationThreshold: '5700',
+  baseLTVAsCollateral: '4000',
+  liquidationThreshold: '5900',
   liquidationBonus: '10666',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
@@ -126,8 +127,8 @@ export const strategyBONZO: IReserveParams = {
 
 export const strategyGRELF: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '3000',
-  liquidationThreshold: '4350',
+  baseLTVAsCollateral: '2000',
+  liquidationThreshold: '5700',
   liquidationBonus: '10666',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
@@ -140,8 +141,8 @@ export const strategyGRELF: IReserveParams = {
 
 export const strategyKBL: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '3000',
-  liquidationThreshold: '4300',
+  baseLTVAsCollateral: '1000',
+  liquidationThreshold: '5700',
   liquidationBonus: '10666',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
@@ -168,7 +169,7 @@ export const strategyXPACK: IReserveParams = {
 
 export const strategyHST: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '4500',
+  baseLTVAsCollateral: '1000',
   liquidationThreshold: '5200',
   liquidationBonus: '10617',
   borrowingEnabled: true,
@@ -182,7 +183,7 @@ export const strategyHST: IReserveParams = {
 
 export const strategyPACK: IReserveParams = {
   strategy: rateStrategyVolatileOne,
-  baseLTVAsCollateral: '5000',
+  baseLTVAsCollateral: '1000',
   liquidationThreshold: '5700',
   liquidationBonus: '10691',
   borrowingEnabled: true,
@@ -196,8 +197,8 @@ export const strategyPACK: IReserveParams = {
 
 export const strategySTEAM: IReserveParams = {
   strategy: rateStrategyVolatileTwo,
-  baseLTVAsCollateral: '4500',
-  liquidationThreshold: '5200',
+  baseLTVAsCollateral: '1000',
+  liquidationThreshold: '5700',
   liquidationBonus: '10814',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
