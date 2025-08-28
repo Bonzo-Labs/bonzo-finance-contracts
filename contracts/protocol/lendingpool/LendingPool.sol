@@ -27,7 +27,6 @@ import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
 import {IHederaTokenService} from '../../interfaces/IHederaTokenService.sol';
 import {IWHBAR} from '../../interfaces/IWHBAR.sol';
-import {IWhbarHelper} from '../../interfaces/IWhbarHelper.sol';
 import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
 /**
