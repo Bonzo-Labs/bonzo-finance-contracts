@@ -128,8 +128,9 @@ contract AToken is
       abi.encodeWithSelector(IHederaTokenService.associateToken.selector, address(this), _asset)
     );
     int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
+    // For pure ERC20 tokens, association is not applicable; ignore failure.
     if (responseCode != HAPI_SUCCESS) {
-      revert('Failed to associate token with HTS');
+      return;
     }
   }
 

@@ -25,8 +25,6 @@ import {ReserveConfiguration} from '../libraries/configuration/ReserveConfigurat
 import {UserConfiguration} from '../libraries/configuration/UserConfiguration.sol';
 import {DataTypes} from '../libraries/types/DataTypes.sol';
 import {LendingPoolStorage} from './LendingPoolStorage.sol';
-import {IHederaTokenService} from '../../interfaces/IHederaTokenService.sol';
-import {IWHBAR} from '../../interfaces/IWHBAR.sol';
 import {IERC20} from '../../dependencies/openzeppelin/contracts/IERC20.sol';
 
 /**
@@ -52,10 +50,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   using WadRayMath for uint256;
   using PercentageMath for uint256;
   using SafeERC20 for IERC20;
-
-  address constant hts = address(0x167); // The well known address of the native HTS precompiled contract.
-  int64 constant HAPI_SUCCESS = 22; // HTS Response code indicating success.
-  int64 constant PRECOMPILE_BIND_ERROR = -1; // HTS Precompile (.call) Failed before the HAPI response code could be retrieved.
 
   uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
   uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
@@ -100,10 +94,6 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     _maxStableRateBorrowSizePercent = 2500;
     _flashLoanPremiumTotal = 9;
     _maxNumberOfReserves = 128;
-    _whbarContract = IWHBAR(0x0000000000000000000000000000000000163B59);
-    _whbarToken = IERC20(0x0000000000000000000000000000000000163B5a);
-    // _whbarContract = IWHBAR(0x0000000000000000000000000000000000003aD1);
-    // _whbarToken = IERC20(0x0000000000000000000000000000000000003aD2);
   }
 
   /**
@@ -133,26 +123,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     reserve.updateState();
     reserve.updateInterestRates(asset, aToken, amount, 0);
 
-    if (asset == address(_whbarToken)) {
-      require(msg.value == amount, 'Invalid amount of HBAR sent');
-      // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
-      IWHBAR(_whbarContract).deposit{value: amount}(msg.sender, aToken);
-    } else {
-      // Note - we are natively calling the HTS to transfer the tokens to the aToken contract because we had given the approval natively.
-      (bool success, bytes memory result) = hts.call(
-        abi.encodeWithSelector(
-          IHederaTokenService.transferFrom.selector,
-          asset,
-          msg.sender,
-          aToken,
-          amount
-        )
-      );
-      int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
-      if (responseCode != HAPI_SUCCESS) {
-        revert('Failed to send tokens to the aToken contract');
-      }
-    }
+    IERC20(asset).safeTransferFrom(msg.sender, aToken, amount);
 
     bool isFirstDeposit = IAToken(aToken).mint(onBehalfOf, amount, reserve.liquidityIndex);
 
@@ -213,14 +184,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       emit ReserveUsedAsCollateralDisabled(asset, msg.sender);
     }
 
-    // Note - we are withdrawing the user's _whbarToken tokens and send them HBAR
-    if (asset == address(_whbarToken)) {
-      // In case of _whbarToken, the aWhbar are burnt and msg.sender gets _whbarToken tokens.
-      IAToken(aToken).burn(msg.sender, msg.sender, amountToWithdraw, reserve.liquidityIndex);
-      IWHBAR(_whbarContract).withdraw(msg.sender, to, amountToWithdraw);
-    } else {
-      IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
-    }
+    IAToken(aToken).burn(msg.sender, to, amountToWithdraw, reserve.liquidityIndex);
 
     emit Withdraw(asset, msg.sender, to, amountToWithdraw);
 
@@ -329,13 +293,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
       _usersConfig[onBehalfOf].setBorrowing(reserve.id, false);
     }
 
-    if (asset == address(_whbarToken)) {
-      require(msg.value == paybackAmount, 'Invalid amount of HBAR sent');
-      // Note - we are depositing the user's HBAR into the _whbarContract contract and transferring the corresponding _whbarToken tokens to the aToken contract.
-      IWHBAR(_whbarContract).deposit{value: paybackAmount}(msg.sender, aToken);
-    } else {
-      IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
-    }
+    IERC20(asset).safeTransferFrom(msg.sender, aToken, paybackAmount);
 
     IAToken(aToken).handleRepayment(msg.sender, paybackAmount);
 
@@ -900,14 +858,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     );
 
     if (vars.releaseUnderlying) {
-      // Withdrawing hbar tokens from the _whbarContract contract and sending them to the user.
-      if (vars.asset == address(_whbarToken)) {
-        // In case of _whbarToken, the user gets _whbarToken tokens.
-        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
-        IWHBAR(_whbarContract).withdraw(vars.user, vars.user, vars.amount);
-      } else {
-        IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
-      }
+      IAToken(vars.aTokenAddress).transferUnderlyingTo(vars.user, vars.amount);
     }
 
     emit Borrow(
