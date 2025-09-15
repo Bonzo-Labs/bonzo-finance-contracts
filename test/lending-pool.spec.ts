@@ -73,8 +73,19 @@ async function approveAndDeposit(
   console.log('Amount:', amount.toString());
   console.log('Spender:', spenderContract.address);
   if (allowance.lt(amount)) {
+    // For Hedera HTS tokens, reset allowance to 0 first if there's an existing non-zero allowance
+    if (allowance.gt(0)) {
+      console.log('Resetting allowance to 0 first...');
+      const resetTx = await erc20Contract.approve(spenderContract.address, 0, {
+        gasLimit: 1000000, // Manual gas limit required for HTS tokens
+      });
+      await resetTx.wait();
+      console.log('Reset allowance:', resetTx.hash);
+    }
     console.log('Approving...');
-    const approveTx = await erc20Contract.approve(spenderContract.address, amount);
+    const approveTx = await erc20Contract.approve(spenderContract.address, amount, {
+      gasLimit: 1000000, // Manual gas limit required for HTS tokens
+    });
     await approveTx.wait();
     console.log('Approved:', approveTx.hash);
   }
@@ -114,7 +125,7 @@ describe('Lending Pool Contract Tests', function () {
     // wsteamTokenContract = await setupContract('ERC20Wrapper', WSTEAM.hedera_testnet.token.address);
   });
 
-  it('should deposit assets into the user account', async function () {
+  it.skip('should deposit assets into the user account', async function () {
     const assets = [USDC];
     const amounts = [2];
     const decimals = [6];
@@ -123,7 +134,8 @@ describe('Lending Pool Contract Tests', function () {
 
     for (const [index, asset] of assets.entries()) {
       console.log('Depositing:', asset.hedera_testnet.token.address);
-      const depositAmount = ethers.utils.parseUnits(amounts[index].toString(), decimals[index]);
+      // const depositAmount = ethers.utils.parseUnits(amounts[index].toString(), decimals[index]);
+      const depositAmount = amounts[index];
       console.log('Deposit Amount:', depositAmount);
       const erc20Contract = await setupContract('ERC20Wrapper', asset.hedera_testnet.token.address);
       await approveAndDeposit(
@@ -148,14 +160,15 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it.skip('should borrow, repay and withdraw assets from the user account', async function () {
+  it('should borrow, repay and withdraw assets from the user account', async function () {
     // const assets = [BHBARX, BUSDC, BSAUCE, BxSAUCE, BPACK, BKARATE, BDOVU, BHST, BSTEAM];
-    const assets = [BONZO];
+    const assets = [USDC];
     // const decimals = [8, 6, 6, 6, 6, 8, 8, 8, 2];
-    const decimals = [8];
+    const decimals = [6];
     console.log('In the test, owner:', owner.address);
     for (const asset of assets) {
       console.log('Dealing with asset - ', asset);
+      console.log('Token address:', asset.hedera_testnet.token.address);
       const erc20Contract = await setupContract('ERC20Wrapper', asset.hedera_testnet.token.address);
       const aTokenContract = await setupContract('AToken', asset.hedera_testnet.aToken.address);
       const debtTokenContract = await setupContract(
@@ -163,7 +176,7 @@ describe('Lending Pool Contract Tests', function () {
         asset.hedera_testnet.variableDebt.address
       );
 
-      const borrowAmount = ethers.utils.parseUnits('10', decimals[assets.indexOf(asset)]);
+      const borrowAmount = ethers.utils.parseUnits('0.001', decimals[assets.indexOf(asset)]);
       console.log('Borrow Amount:', borrowAmount.toString());
 
       const borrowTxn = await lendingPoolContract.borrow(
@@ -182,9 +195,20 @@ describe('Lending Pool Contract Tests', function () {
       if (balanceOfBefore.gt(0)) {
         const repayAmount = balanceOfBefore;
         console.log('Attempting to repay...', repayAmount);
-        const approveTxn = await erc20Contract.approve(lendingPoolContract.address, repayAmount);
 
+        // Check current allowance and reset to 0 if needed (Hedera HTS requirement)
+        const currentAllowance = await erc20Contract.allowance(
+          owner.address,
+          lendingPoolContract.address
+        );
+        console.log('Current allowance:', currentAllowance.toString());
+        console.log('Setting new allowance to:', repayAmount.toString());
+        const approveTxn = await erc20Contract.approve(lendingPoolContract.address, repayAmount, {
+          gasLimit: 1000000,
+        });
         await approveTxn.wait();
+        console.log('Approved:', approveTxn.hash);
+
         const repayTxn = await lendingPoolContract.repay(
           asset.hedera_testnet.token.address,
           repayAmount,

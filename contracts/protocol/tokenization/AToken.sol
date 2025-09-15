@@ -124,13 +124,26 @@ contract AToken is
    * with the collateral token so that it may receive and hold it.
    */
   function _associate(address _asset) private {
+    // Detect if the asset is an HTS token. If yes, require association success.
+    bool isHtsToken = false;
+    {
+      (bool tokenCheckOk, bytes memory tokenCheckRes) = hts.call(
+        abi.encodeWithSelector(IHederaTokenService.isToken.selector, _asset)
+      );
+      if (tokenCheckOk) {
+        (int64 rc, bool tokenFlag) = abi.decode(tokenCheckRes, (int64, bool));
+        isHtsToken = (rc == HAPI_SUCCESS && tokenFlag);
+      }
+    }
+
     (bool success, bytes memory result) = hts.call(
       abi.encodeWithSelector(IHederaTokenService.associateToken.selector, address(this), _asset)
     );
     int64 responseCode = success ? abi.decode(result, (int64)) : PRECOMPILE_BIND_ERROR;
+
     // For pure ERC20 tokens, association is not applicable; ignore failure.
-    if (responseCode != HAPI_SUCCESS) {
-      return;
+    if (isHtsToken) {
+      require(responseCode == HAPI_SUCCESS, 'ATOKEN_HTS_ASSOCIATE_FAILED');
     }
   }
 

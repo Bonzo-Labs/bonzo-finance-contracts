@@ -179,6 +179,36 @@
       }
     }
   },
+  "WHBARE": {
+    "hedera_testnet": {
+      "token": {
+        "address": "0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed"
+      },
+      "aToken": {
+        "address": "0x6be239228eECa014Bd8E3BAf30B4C9aa1fc627a3"
+      },
+      "stableDebt": {
+        "address": "0x4A55a311931cF8415Cf2bae83731674c4dE151d9"
+      },
+      "variableDebt": {
+        "address": "0xacE6c84d8737e377c1f85BE5f7BC82E4fF3248E6"
+      }
+    },
+    "hedera_mainnet": {
+      "token": {
+        "address": ""
+      },
+      "aToken": {
+        "address": ""
+      },
+      "stableDebt": {
+        "address": ""
+      },
+      "variableDebt": {
+        "address": ""
+      }
+    }
+  },
   "GRELF": {
     "hedera_testnet": {
       "token": {
@@ -493,7 +523,7 @@
   },
   "AToken": {
     "hedera_testnet": {
-      "address": "0xe97f8ED6eeE331954ADA0F8056412262Aa7fa975",
+      "address": "0xaf2240dE23D3243adeE41E0d45E08FB9B32A38E5",
       "deployer": "0xbe058ee0884696653E01cfC6F34678f2762d84db"
     },
     "hedera_mainnet": {

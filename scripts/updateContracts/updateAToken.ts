@@ -41,36 +41,37 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
   console.log('AToken implementation deployed to:', aTokenImpl.address);
   // const aTokenImpl = AToken.hedera_testnet.address;
 
-  type ATokenInput = {
-    asset: string;
-    treasury: string;
-    incentivesController: string;
-    name: string;
-    symbol: string;
-    implementation: string;
-    params: string;
-  };
+  // type ATokenInput = {
+  //   asset: string;
+  //   treasury: string;
+  //   incentivesController: string;
+  //   name: string;
+  //   symbol: string;
+  //   implementation: string;
+  //   params: string;
+  // };
 
-  const aTokenInput: ATokenInput = {
-    asset: tokenAddress,
-    // @ts-ignore
-    treasury: HederaConfig.ReserveFactorTreasuryAddress.hedera_testnet,
-    // @ts-ignore
-    incentivesController: '0x39b98c21d9B4821d775Ab5c1F0F7a9cBA279f9Bc',
-    name: `Bonzo aToken ${tokenName}`,
-    symbol: `am${tokenName}`,
-    implementation: aTokenImpl.address,
-    params: '0x',
-  };
+  // const aTokenInput: ATokenInput = {
+  //   asset: tokenAddress,
+  //   // @ts-ignore
+  //   treasury: HederaConfig.ReserveFactorTreasuryAddress.hedera_testnet,
+  //   // @ts-ignore
+  //   incentivesController: '0x39b98c21d9B4821d775Ab5c1F0F7a9cBA279f9Bc',
+  //   name: `Bonzo aToken ${tokenName}`,
+  //   symbol: `am${tokenName}`,
+  //   implementation: aTokenImpl.address,
+  //   params: '0x',
+  // };
 
-  console.log('Updating aToken Input -', aTokenInput);
-  const txn = await lendingPoolConfiguratorContract.updateAToken(aTokenInput);
-  await txn.wait();
-  console.log('aToken updated successfully');
+  // console.log('Updating aToken Input -', aTokenInput);
+  // const txn = await lendingPoolConfiguratorContract.updateAToken(aTokenInput);
+  // await txn.wait();
+  // console.log('aToken updated successfully');
 }
 
 async function main() {
-  await updateAToken('0x000000000000000000000000000000000052367e', 'BONZO');
+  // "address": "0xe97f8ED6eeE331954ADA0F8056412262Aa7fa975", - Old testnet atoken impl
+  await updateAToken('0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed', 'WHBARE');
 }
 
 main()

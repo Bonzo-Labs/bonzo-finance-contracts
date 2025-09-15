@@ -11,7 +11,7 @@ import {
 import HederaConfig from '../../markets/hedera/index';
 
 const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -23,7 +23,6 @@ async function updateLendingPool() {
     'LendingPoolAddressesProvider',
     LendingPoolAddressesProvider.hedera_testnet.address
   );
-  console.log('Owner:', owner.address);
 
   const LendingPoolFactory = await ethers.getContractFactory('LendingPool', {
     libraries: {
@@ -34,6 +33,13 @@ async function updateLendingPool() {
   const lendingPoolImpl = await LendingPoolFactory.deploy();
   await lendingPoolImpl.deployed();
   console.log('Lending pool implementation deployed to:', lendingPoolImpl.address);
+
+  const currentLendingPool = await lendingPoolAddressesProviderContract.getLendingPool();
+  console.log('Current lending pool:', currentLendingPool);
+  const IMPL_SLOT = '0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc';
+  const raw = await ethers.provider.getStorageAt(currentLendingPool, IMPL_SLOT);
+  const currentLendingPoolImpl = ethers.utils.getAddress('0x' + raw.slice(-40));
+  console.log('Current lending pool implementation:', currentLendingPoolImpl);
 
   console.log('Updating Lending pool');
   // Set the new implementation and initialize it

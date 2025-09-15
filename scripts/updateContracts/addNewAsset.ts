@@ -15,8 +15,9 @@ import {
 } from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
 
-const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
+// const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
+const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -28,7 +29,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 const assetConfigurations = {
   '0x00000000000000000000000000000000007e545e': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'BONZO',
     supraIndex: 532,
     ltv: 5000,
@@ -37,25 +38,25 @@ const assetConfigurations = {
   },
   '0x000000000000000000000000000000000011afa2': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'GRELF',
     supraIndex: 527,
     ltv: 5000,
     liquidationThreshold: 5900,
     liquidationBonus: 10666,
   },
-  '0x000000000000000000000000000000000030fb8b': {
+  '0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
-    underlyingAssetName: 'STEAM',
-    supraIndex: 528,
-    ltv: 5000,
-    liquidationThreshold: 5700,
-    liquidationBonus: 10814,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
+    underlyingAssetName: 'WHBARE',
+    supraIndex: 471,
+    ltv: 6272,
+    liquidationThreshold: 6798,
+    liquidationBonus: 10198,
   },
   '0x00000000000000000000000000000000005B665A': {
     underlyingAssetDecimals: 6,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'KBL',
     supraIndex: 526,
     ltv: 5000,
@@ -64,7 +65,7 @@ const assetConfigurations = {
   },
   '0x0000000000000000000000000000000000492a28': {
     underlyingAssetDecimals: 6,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'PACK',
     supraIndex: 525,
     ltv: 5000,
@@ -73,7 +74,7 @@ const assetConfigurations = {
   },
   '0x000000000000000000000000000000000022D6de': {
     underlyingAssetDecimals: 8,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'KARATE',
     supraIndex: 524,
     ltv: 5000,
@@ -82,7 +83,7 @@ const assetConfigurations = {
   },
   '0x000000000000000000000000000000000038b3db': {
     underlyingAssetDecimals: 18,
-    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_mainnet.address,
+    interestRateStrategyAddress: rateStrategyVolatileOne.hedera_testnet.address,
     underlyingAssetName: 'DOVU',
     supraIndex: 523,
     ltv: 5000,
@@ -119,17 +120,17 @@ async function updateReserve(tokenAddress: string) {
 
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_mainnet.address
+    LendingPool.hedera_testnet.address
   );
 
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator.hedera_testnet.address
   );
 
   const addressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address
+    LendingPoolAddressesProvider.hedera_testnet.address
   );
 
   console.log('Signer:', owner.address);
@@ -141,14 +142,14 @@ async function updateReserve(tokenAddress: string) {
   const initReserveInput = assetConfigurations[tokenAddress];
 
   const reserveParams: ReserveParams = {
-    aTokenImpl: AToken.hedera_mainnet.address,
-    stableDebtTokenImpl: StableDebtToken.hedera_mainnet.address,
-    variableDebtTokenImpl: VariableDebtToken.hedera_mainnet.address,
+    aTokenImpl: AToken.hedera_testnet.address,
+    stableDebtTokenImpl: StableDebtToken.hedera_testnet.address,
+    variableDebtTokenImpl: VariableDebtToken.hedera_testnet.address,
     underlyingAssetDecimals: initReserveInput.underlyingAssetDecimals,
     interestRateStrategyAddress: initReserveInput.interestRateStrategyAddress,
     underlyingAsset: tokenAddress,
     treasury: deployer.address,
-    incentivesController: HederaConfig.IncentivesController.hedera_mainnet,
+    incentivesController: HederaConfig.IncentivesController.hedera_testnet,
     underlyingAssetName: initReserveInput.underlyingAssetName,
     aTokenName: `${HederaConfig.ATokenNamePrefix}${initReserveInput.underlyingAssetName}`,
     aTokenSymbol: `a${initReserveInput.underlyingAssetName}`,
@@ -173,32 +174,32 @@ async function updateReserve(tokenAddress: string) {
 async function addNewAssetToOracle(tokenAddress: string) {
   const addressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address
+    LendingPoolAddressesProvider.hedera_testnet.address
   );
   const oracleAddress = await addressesProviderContract.getPriceOracle();
   console.log('Oracle address = ', oracleAddress);
 
-  // const oracleContract = await setupContract('SupraOracle', oracleAddress);
-  // console.log('Oracle owner = ', await oracleContract.owner());
+  const oracleContract = await setupContract('SupraOracle', oracleAddress);
+  console.log('Oracle owner = ', await oracleContract.owner());
 
-  // const initReserveInput = assetConfigurations[tokenAddress];
-  // console.log(initReserveInput);
-  // const txn = await oracleContract.addNewAsset(
-  //   initReserveInput.underlyingAssetName,
-  //   tokenAddress,
-  //   initReserveInput.supraIndex,
-  //   initReserveInput.underlyingAssetDecimals
-  // );
-  // await txn.wait();
-  // console.log('Asset added to oracle');
-  // const price = await oracleContract.getPriceFeed(tokenAddress);
-  // console.log(price);
+  const initReserveInput = assetConfigurations[tokenAddress];
+  console.log(initReserveInput);
+  const txn = await oracleContract.addNewAsset(
+    initReserveInput.underlyingAssetName,
+    tokenAddress,
+    initReserveInput.supraIndex,
+    initReserveInput.underlyingAssetDecimals
+  );
+  await txn.wait();
+  console.log('Asset added to oracle');
+  const price = await oracleContract.getPriceFeed(tokenAddress);
+  console.log(price);
 }
 
 async function enableBorrowing(tokenAddress: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator.hedera_testnet.address
   );
 
   const txn = await lendingPoolConfiguratorContract.enableBorrowingOnReserve(tokenAddress, false);
@@ -210,7 +211,7 @@ async function enableBorrowing(tokenAddress: string) {
 async function configureReserveAsCollateral(tokenAddress: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator.hedera_testnet.address
   );
 
   const initReserveInput = assetConfigurations[tokenAddress];
@@ -228,7 +229,7 @@ async function configureReserveAsCollateral(tokenAddress: string) {
 async function setReserveFactor(tokenAddress: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator.hedera_testnet.address
   );
 
   const txn = await lendingPoolConfiguratorContract.setReserveFactor(tokenAddress, '1725');
@@ -237,18 +238,19 @@ async function setReserveFactor(tokenAddress: string) {
 }
 
 async function main() {
-  const newAsset = '0x000000000000000000000000000000000038b3db';
+  const newAsset = '0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed';
   // Step 0: Deploy a new interest rate strategy contract, if needed - use DefaultReserveInterestRateStrategy.sol
+  // Step 0: Deploy new aToken implementation contract, if needed - use AToken.sol
   // Step 1: Update the reserve
   // await updateReserve(newAsset);
   // Step 2: Add the asset to the oracle
   // Note: If you can't add a new asset to the oracle, then update the oracle
   // await addNewAssetToOracle(newAsset);
   // // // Step 3: Enable borrowing
-  // await enableBorrowing(newAsset);
+  await enableBorrowing(newAsset);
   // // Step 4: configureReserveAsCollateral and set reserve factor
   await configureReserveAsCollateral(newAsset);
-  // await setReserveFactor(newAsset);
+  await setReserveFactor(newAsset);
   // Step 5 - Configure the aToken and variableDebtToken in incentives controller
   // Step 6: Update the scripts - getUpdatedMetrics, cronJob, processPoints
   // Step 7: Set borrow cap
