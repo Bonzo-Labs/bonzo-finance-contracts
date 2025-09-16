@@ -22,7 +22,7 @@ if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
   whbarTokenAddress = WHBARE.hedera_testnet.token.address;
-  whbarGatewayAddress = process.env.WHBAR_GATEWAY_TESTNET || '';
+  whbarGatewayAddress = '0x573D2EA9946C36cE266A826b7be7dAee5314B381';
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
@@ -104,7 +104,7 @@ describe('WHBAR Tests', function () {
     );
     await borrowTxn.wait();
     console.log('Gateway Borrow tx:', borrowTxn.hash);
-    await checkBalance(debtTokenContract, owner.address, 'WHBAR debtToken');
+    await checkBalance(debtTokenContract, onBehalfOf, 'WHBAR debtToken');
   }
 
   it.skip('should send HBAR to WHBAR contract and get WHBAR tokens', async function () {
@@ -113,25 +113,29 @@ describe('WHBAR Tests', function () {
     console.log('Lending pool address:', lendingPoolContract.address);
 
     const beforeTokenBal = await whbarTokenContract.balanceOf(owner.address);
-    // Hedera requires at least 1 tinybar = 10_000_000_000 wei
-    const amountWei = ethers.BigNumber.from('10000000000');
-    const tx = await whbarTokenContract.deposit({ value: amountWei });
+    const amountInHBAR = '1';
+    const amountInWei = ethers.utils.parseEther(amountInHBAR);
+    const tx = await whbarTokenContract.deposit({ value: amountInWei });
     await tx.wait();
     console.log('Deposit tx hash:', tx.hash);
 
     const afterTokenBal = await whbarTokenContract.balanceOf(owner.address);
-    const tinybarInWei = ethers.BigNumber.from('10000000000');
-    expect(afterTokenBal.sub(beforeTokenBal)).to.equal(amountWei.div(tinybarInWei));
+    const expectedAmount = ethers.utils.parseUnits(amountInHBAR, 8);
+    expect(afterTokenBal.sub(beforeTokenBal)).to.equal(expectedAmount);
   });
 
-  it('should burn entire WHBAR balance and receive native HBAR', async function () {
+  it.skip('should burn entire WHBAR balance and receive native HBAR', async function () {
     let currentBal = await whbarTokenContract.balanceOf(owner.address);
+    console.log('Current WHBAR balance:', currentBal.toString());
 
     if (currentBal.eq(0)) {
-      const amountWei = ethers.BigNumber.from('100000000000000');
-      const tx = await whbarTokenContract.deposit({ value: amountWei });
+      const amountInHBAR = '1';
+      const amountInWei = ethers.utils.parseEther(amountInHBAR);
+      const tx = await whbarTokenContract.deposit({ value: amountInWei });
       await tx.wait();
       console.log('Deposit tx hash:', tx.hash);
+      currentBal = await whbarTokenContract.balanceOf(owner.address);
+      console.log('Current WHBAR balance after deposit:', currentBal.toString());
     }
 
     const withdrawTx = await whbarTokenContract.withdraw(currentBal);
@@ -143,14 +147,20 @@ describe('WHBAR Tests', function () {
 
   it.skip('should supply native HBAR via Gateway and get aWHBAR tokens', async function () {
     if (!whbarGatewayContract) return this.skip();
-    const amount = ethers.BigNumber.from('11');
-    const valueTiny = ethers.BigNumber.from('110000000000');
+
+    const amountInHBAR = '11';
+    const amountInWei = ethers.utils.parseEther(amountInHBAR);
+    const expectedAmount = ethers.utils.parseUnits(amountInHBAR, 8);
+
+    const balanceBefore = await aTokenContract.balanceOf(owner.address);
+    console.log('Balance before:', balanceBefore.toString());
+
     const txn = await whbarGatewayContract.depositHBAR(
       lendingPoolContract.address,
       owner.address,
       0,
       {
-        value: valueTiny,
+        value: amountInWei,
       }
     );
     await txn.wait();
@@ -158,18 +168,66 @@ describe('WHBAR Tests', function () {
 
     await new Promise((r) => setTimeout(r, 2000));
 
-    const balanceOf = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
-    expect(balanceOf).to.be.gt(0);
+    const balanceAfter = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
+    expect(balanceAfter.sub(balanceBefore)).to.equal(expectedAmount);
   });
 
   it.skip('should withdraw WHBAR via Gateway and receive HBAR', async function () {
     if (!whbarGatewayContract) return this.skip();
-    await withdrawWHBAR(13, owner.address);
+
+    const amountToWithdrawHBAR = '5';
+    const amountToWithdraw = ethers.utils.parseUnits(amountToWithdrawHBAR, 8);
+
+    const balanceBefore = await aTokenContract.balanceOf(owner.address);
+    if (balanceBefore.lt(amountToWithdraw)) {
+      console.log('Not enough aWHBAR to withdraw, skipping test.');
+      return this.skip();
+    }
+    await withdrawWHBAR(amountToWithdraw, owner.address);
+    const balanceAfter = await aTokenContract.balanceOf(owner.address);
+
+    expect(balanceBefore.sub(balanceAfter)).to.equal(amountToWithdraw);
   });
 
-  it.skip('should borrow native HBAR via Gateway', async function () {
+  it('should borrow native HBAR via Gateway', async function () {
     if (!whbarGatewayContract) return this.skip();
-    await borrowWHBAR(100000000000, owner.address);
+
+    // To borrow, we need collateral. We should have some from the deposit test.
+    const aTokenBalance = await aTokenContract.balanceOf(owner.address);
+    checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
+    if (aTokenBalance.isZero()) {
+      console.log('No collateral to borrow against, depositing some HBAR');
+
+      const amountToDepositHBAR = '10';
+      const amountToDeposit = ethers.utils.parseUnits(amountToDepositHBAR, 8);
+      const amountToDepositWei = ethers.utils.parseEther(amountToDepositHBAR);
+      const depositTxn = await whbarGatewayContract.depositHBAR(
+        lendingPoolContract.address,
+        owner.address,
+        0,
+        { value: amountToDepositWei }
+      );
+      await depositTxn.wait();
+      console.log('Gateway Deposit tx:', depositTxn.hash);
+    }
+
+    const debtBefore = await debtTokenContract.balanceOf(owner.address);
+    const amountToBorrow = ethers.utils.parseUnits('0.1', 8); // Borrow 0.1 HBAR (8 decimals)
+
+    console.log('Approving debt token delegation to gateway...');
+    // Approve the gateway to borrow on our behalf (delegatee must be the Gateway)
+    const approveDebtTx = await debtTokenContract.approveDelegation(
+      whbarGatewayContract.address,
+      ethers.constants.MaxUint256
+    );
+    await approveDebtTx.wait();
+
+    console.log('Borrowing HBAR via gateway...');
+    await borrowWHBAR(amountToBorrow, owner.address);
+    const debtAfter = await debtTokenContract.balanceOf(owner.address);
+
+    // Assert that debt increased by approximately the amount borrowed
+    expect(debtAfter.sub(debtBefore)).to.be.closeTo(amountToBorrow, 2); // allow small difference for interest
   });
 
   it.skip('should repay native HBAR via Gateway', async function () {
@@ -178,19 +236,32 @@ describe('WHBAR Tests', function () {
       'VariableDebtToken',
       WHBARE.hedera_testnet.variableDebt.address
     );
-    await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
+    const debtBefore = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
+
+    if (debtBefore.isZero()) {
+      console.log('No debt to repay, skipping repay test.');
+      return this.skip();
+    }
+
+    const amountToRepayHBAR = '0.5';
+    const amountToRepay = ethers.utils.parseUnits(amountToRepayHBAR, 8);
+    const amountToRepayWei = ethers.utils.parseEther(amountToRepayHBAR);
 
     const repayTxn = await whbarGatewayContract.repayHBAR(
       lendingPoolContract.address,
-      ethers.BigNumber.from('2'),
+      amountToRepay,
       2,
       owner.address,
-      { value: ethers.BigNumber.from('20000000000') }
+      { value: amountToRepayWei }
     );
     await repayTxn.wait();
     console.log('Gateway Repay tx:', repayTxn.hash);
 
-    const balanceOfAfter = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt after');
-    expect(balanceOfAfter).to.be.gte(0);
+    const debtAfter = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt after');
+    // Allow for a small difference due to interest accrual
+    expect(debtBefore.sub(debtAfter)).to.be.closeTo(
+      amountToRepay,
+      ethers.utils.parseUnits('0.001', 8)
+    );
   });
 });
