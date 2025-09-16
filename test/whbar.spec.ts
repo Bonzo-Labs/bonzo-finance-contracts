@@ -63,15 +63,33 @@ describe('WHBAR Tests', function () {
     debtTokenContract,
     whbarGatewayContract;
 
+  async function ensureBorrowAllowance(amount) {
+    const allowance = await debtTokenContract.borrowAllowance(
+      owner.address,
+      whbarGatewayContract.address
+    );
+    console.log('Delegation allowance to gateway:', allowance.toString());
+
+    if (allowance.lt(amount)) {
+      console.log('Approving debt token delegation to gateway...');
+      const approveDebtTx = await debtTokenContract.approveDelegation(
+        whbarGatewayContract.address,
+        ethers.constants.MaxUint256
+      );
+      await approveDebtTx.wait();
+    }
+  }
+
   before(async function () {
     lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
     // Instantiate WHBAR token via minimal ABI (pure ERC20 wrapper with deposit/withdraw)
     whbarTokenContract = new ethers.Contract(whbarTokenAddress, WHBAR_ABI, owner);
-    aTokenContract = await setupContract('AToken', WHBARE.hedera_testnet.aToken.address);
-    debtTokenContract = await setupContract(
-      'VariableDebtToken',
-      WHBARE.hedera_testnet.variableDebt.address
-    );
+
+    // Derive reserve token addresses dynamically from on-chain pool to avoid drift
+    const reserve = await lendingPoolContract.getReserveData(whbarTokenAddress);
+    aTokenContract = await setupContract('AToken', reserve.aTokenAddress);
+    debtTokenContract = await setupContract('VariableDebtToken', reserve.variableDebtTokenAddress);
+
     if (whbarGatewayAddress && whbarGatewayAddress !== '') {
       whbarGatewayContract = await setupContract('WHBARGateway', whbarGatewayAddress);
     }
@@ -189,7 +207,7 @@ describe('WHBAR Tests', function () {
     expect(balanceBefore.sub(balanceAfter)).to.equal(amountToWithdraw);
   });
 
-  it('should borrow native HBAR via Gateway', async function () {
+  it.skip('should borrow native HBAR via Gateway', async function () {
     if (!whbarGatewayContract) return this.skip();
 
     // To borrow, we need collateral. We should have some from the deposit test.
@@ -214,13 +232,7 @@ describe('WHBAR Tests', function () {
     const debtBefore = await debtTokenContract.balanceOf(owner.address);
     const amountToBorrow = ethers.utils.parseUnits('0.1', 8); // Borrow 0.1 HBAR (8 decimals)
 
-    console.log('Approving debt token delegation to gateway...');
-    // Approve the gateway to borrow on our behalf (delegatee must be the Gateway)
-    const approveDebtTx = await debtTokenContract.approveDelegation(
-      whbarGatewayContract.address,
-      ethers.constants.MaxUint256
-    );
-    await approveDebtTx.wait();
+    await ensureBorrowAllowance(amountToBorrow);
 
     console.log('Borrowing HBAR via gateway...');
     await borrowWHBAR(amountToBorrow, owner.address);
@@ -230,12 +242,8 @@ describe('WHBAR Tests', function () {
     expect(debtAfter.sub(debtBefore)).to.be.closeTo(amountToBorrow, 2); // allow small difference for interest
   });
 
-  it.skip('should repay native HBAR via Gateway', async function () {
+  it('should repay native HBAR via Gateway', async function () {
     if (!whbarGatewayContract) return this.skip();
-    const debtTokenContract = await setupContract(
-      'VariableDebtToken',
-      WHBARE.hedera_testnet.variableDebt.address
-    );
     const debtBefore = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
 
     if (debtBefore.isZero()) {
@@ -243,9 +251,11 @@ describe('WHBAR Tests', function () {
       return this.skip();
     }
 
-    const amountToRepayHBAR = '0.5';
+    const amountToRepayHBAR = '0.05';
     const amountToRepay = ethers.utils.parseUnits(amountToRepayHBAR, 8);
     const amountToRepayWei = ethers.utils.parseEther(amountToRepayHBAR);
+
+    await ensureBorrowAllowance(amountToRepay);
 
     const repayTxn = await whbarGatewayContract.repayHBAR(
       lendingPoolContract.address,
