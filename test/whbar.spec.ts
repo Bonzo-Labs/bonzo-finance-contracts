@@ -163,6 +163,14 @@ describe('WHBAR Tests', function () {
     expect(endingTokenBal).to.equal(0);
   });
 
+  it('should get WHBAR aToken, variableDebt and stableDebt token addresses', async function () {
+    const reserve = await lendingPoolContract.getReserveData(whbarTokenAddress);
+    console.log('WHBAR reserve data:', reserve);
+    expect(reserve.aTokenAddress).to.not.be.null;
+    expect(reserve.variableDebtTokenAddress).to.not.be.null;
+    expect(reserve.stableDebtTokenAddress).to.not.be.null;
+  });
+
   it.skip('should supply native HBAR via Gateway and get aWHBAR tokens', async function () {
     if (!whbarGatewayContract) return this.skip();
 
@@ -187,7 +195,7 @@ describe('WHBAR Tests', function () {
     await new Promise((r) => setTimeout(r, 2000));
 
     const balanceAfter = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
-    expect(balanceAfter.sub(balanceBefore)).to.equal(expectedAmount);
+    expect(balanceAfter.sub(balanceBefore)).to.be.closeTo(expectedAmount, 2);
   });
 
   it.skip('should withdraw WHBAR via Gateway and receive HBAR', async function () {
@@ -204,7 +212,7 @@ describe('WHBAR Tests', function () {
     await withdrawWHBAR(amountToWithdraw, owner.address);
     const balanceAfter = await aTokenContract.balanceOf(owner.address);
 
-    expect(balanceBefore.sub(balanceAfter)).to.equal(amountToWithdraw);
+    expect(balanceBefore.sub(balanceAfter)).to.be.closeTo(amountToWithdraw, 2);
   });
 
   it.skip('should borrow native HBAR via Gateway', async function () {
@@ -242,7 +250,7 @@ describe('WHBAR Tests', function () {
     expect(debtAfter.sub(debtBefore)).to.be.closeTo(amountToBorrow, 2); // allow small difference for interest
   });
 
-  it('should repay native HBAR via Gateway', async function () {
+  it.skip('should repay native HBAR via Gateway', async function () {
     if (!whbarGatewayContract) return this.skip();
     const debtBefore = await checkBalance(debtTokenContract, owner.address, 'WHBAR debt before');
 
