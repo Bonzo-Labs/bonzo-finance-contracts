@@ -282,4 +282,96 @@ describe('WHBAR Tests', function () {
       ethers.utils.parseUnits('0.001', 8)
     );
   });
+
+  // Negative and edge-case tests
+  it('should revert depositHBAR with zero value', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      whbarGatewayContract.depositHBAR(lendingPoolContract.address, owner.address, 0, {
+        value: 0,
+      })
+    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+  });
+
+  it('should revert borrowHBAR with zero amount', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      whbarGatewayContract.borrowHBAR(lendingPoolContract.address, 0, 2, 0)
+    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+  });
+
+  it('should revert borrowHBAR with stable rate mode (disabled)', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    const amt = ethers.utils.parseUnits('1', 8);
+    await expect(
+      whbarGatewayContract.borrowHBAR(lendingPoolContract.address, amt, 1, 0)
+    ).to.be.revertedWith('101'); // STABLE_DEBT_DISABLED
+  });
+
+  it('should revert borrowHBAR with invalid interest rate mode', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    const amt = ethers.utils.parseUnits('1', 8);
+    await expect(
+      whbarGatewayContract.borrowHBAR(lendingPoolContract.address, amt, 3, 0)
+    ).to.be.revertedWith('8'); // VL_INVALID_INTEREST_RATE_MODE_SELECTED
+  });
+
+  it('should revert repayHBAR with zero msg.value', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      whbarGatewayContract.repayHBAR(lendingPoolContract.address, 0, 2, owner.address, {
+        value: 0,
+      })
+    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+  });
+
+  it('should revert repayHBAR when no variable debt exists', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    // Send a minimal amount just to pass the gateway msg.value > 0 path; pool should revert with no debt
+    await expect(
+      whbarGatewayContract.repayHBAR(
+        lendingPoolContract.address,
+        ethers.utils.parseUnits('1', 8),
+        2,
+        owner.address,
+        { value: 1 }
+      )
+    ).to.be.revertedWith('15'); // VL_NO_DEBT_OF_SELECTED_TYPE
+  });
+
+  it('should revert withdrawHBAR when user has insufficient aWHBAR balance', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    const amt = ethers.utils.parseUnits('1', 8);
+    await expect(
+      whbarGatewayContract.withdrawHBAR(lendingPoolContract.address, amt, owner.address)
+    ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+  });
+
+  it('should revert withdrawHBAR with zero amount', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      whbarGatewayContract.withdrawHBAR(
+        lendingPoolContract.address,
+        ethers.constants.Zero,
+        owner.address
+      )
+    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+  });
+
+  it('should reject direct HBAR transfers via receive()', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      owner.sendTransaction({
+        to: whbarGatewayContract.address,
+        value: ethers.utils.parseEther('0.001'),
+      })
+    ).to.be.revertedWith('Receive not allowed');
+  });
+
+  it('should reject unknown calls via fallback()', async function () {
+    if (!whbarGatewayContract) return this.skip();
+    await expect(
+      owner.sendTransaction({ to: whbarGatewayContract.address, data: '0x12345678', value: 0 })
+    ).to.be.revertedWith('Fallback not allowed');
+  });
 });

@@ -188,10 +188,10 @@
         "address": "0x6be239228eECa014Bd8E3BAf30B4C9aa1fc627a3"
       },
       "stableDebt": {
-        "address": "0x4A55a311931cF8415Cf2bae83731674c4dE151d9"
+        "address": "0x4d8B06E704cBdD2C1DbDb87C7457E8851C335183"
       },
       "variableDebt": {
-        "address": "0xacE6c84d8737e377c1f85BE5f7BC82E4fF3248E6"
+        "address": "0x4A55a311931cF8415Cf2bae83731674c4dE151d9"
       }
     },
     "hedera_mainnet": {

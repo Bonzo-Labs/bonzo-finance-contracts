@@ -126,8 +126,8 @@ describe('Lending Pool Contract Tests', function () {
   });
 
   it.skip('should deposit assets into the user account', async function () {
-    const assets = [USDC];
-    const amounts = [2];
+    const assets = [XSAUCE];
+    const amounts = [22];
     const decimals = [6];
 
     console.log('In the test, owner:', owner.address);
@@ -162,7 +162,7 @@ describe('Lending Pool Contract Tests', function () {
 
   it('should borrow, repay and withdraw assets from the user account', async function () {
     // const assets = [BHBARX, BUSDC, BSAUCE, BxSAUCE, BPACK, BKARATE, BDOVU, BHST, BSTEAM];
-    const assets = [USDC];
+    const assets = [XSAUCE];
     // const decimals = [8, 6, 6, 6, 6, 8, 8, 8, 2];
     const decimals = [6];
     console.log('In the test, owner:', owner.address);
