@@ -54,7 +54,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
   uint256 constant DECIMALS_MASK = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF00FFFFFFFFFFFF; // prettier-ignore
   uint256 constant RESERVE_DECIMALS_START_BIT_POSITION = 48;
 
-  uint256 public constant LENDINGPOOL_REVISION = 0x3;
+  uint256 public constant LENDINGPOOL_REVISION = 0x4;
 
   modifier whenNotPaused() {
     _whenNotPaused();
@@ -113,7 +113,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     address onBehalfOf,
     uint16 referralCode
-  ) external payable override whenNotPaused {
+  ) external override whenNotPaused {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     // Validate the deposit action
@@ -248,7 +248,7 @@ contract LendingPool is VersionedInitializable, ILendingPool, LendingPoolStorage
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
-  ) external payable override whenNotPaused returns (uint256) {
+  ) external override whenNotPaused returns (uint256) {
     DataTypes.ReserveData storage reserve = _reserves[asset];
 
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebt(onBehalfOf, reserve);

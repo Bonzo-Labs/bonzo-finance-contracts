@@ -471,7 +471,7 @@
   },
   "LendingPoolImpl": {
     "hedera_testnet": {
-      "address": "0x48562B7452e462C061237372F8E376690E7d995a"
+      "address": "0xE7A67CD99e92550168497441c7F035D1115145a1"
     },
     "hedera_mainnet": {
       "address": "0x5290b075d737606fccccA2f745D7337E0fCe633B"

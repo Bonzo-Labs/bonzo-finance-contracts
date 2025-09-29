@@ -40,7 +40,7 @@ contract LendingPoolPeriphery {
    * @dev Wrapper function to atomically initialize and deposit
    * @param initParams The struct containing initialization and deposit parameters
    */
-  function initializeAndDeposit(InitDepositParams calldata initParams) external payable {
+  function initializeAndDeposit(InitDepositParams calldata initParams) external {
     // Initialize the aToken
     IAToken aToken = IAToken(initParams.aTokenAddress);
     aToken.initialize(
@@ -58,7 +58,7 @@ contract LendingPoolPeriphery {
     IERC20(initParams.asset).safeApprove(address(lendingPool), initParams.amount);
 
     // Deposit the underlying asset into the LendingPool
-    lendingPool.deposit{value: msg.value}(
+    lendingPool.deposit(
       initParams.asset,
       initParams.amount,
       initParams.onBehalfOf,

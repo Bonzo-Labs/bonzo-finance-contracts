@@ -4,6 +4,7 @@ pragma experimental ABIEncoderV2;
 
 import {Ownable} from '../dependencies/openzeppelin/contracts/Ownable.sol';
 import {IERC20} from '../dependencies/openzeppelin/contracts/IERC20.sol';
+import {SafeERC20} from '../dependencies/openzeppelin/contracts/SafeERC20.sol';
 import {IWETH} from './interfaces/IWETH.sol';
 import {ILendingPool} from '../interfaces/ILendingPool.sol';
 import {IAToken} from '../interfaces/IAToken.sol';
@@ -16,6 +17,7 @@ import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
  * Mirrors WETHGateway behavior but targets WHBAR instead of WETH.
  */
 contract WHBARGateway is Ownable {
+  using SafeERC20 for IERC20;
   IWETH internal immutable WHBAR;
 
   constructor(address whbar) public {
@@ -36,6 +38,7 @@ contract WHBARGateway is Ownable {
   }
 
   function withdrawHBAR(address lendingPool, uint256 amount, address to) external {
+    require(to != address(0), 'INVALID_RECIPIENT');
     IAToken aWHBAR = IAToken(
       ILendingPool(lendingPool).getReserveData(address(WHBAR)).aTokenAddress
     );
@@ -100,6 +103,16 @@ contract WHBARGateway is Ownable {
 
   function getWHBARAddress() external view returns (address) {
     return address(WHBAR);
+  }
+
+  function recoverERC20(address token, uint256 amount, address recipient) external onlyOwner {
+    require(recipient != address(0), 'INVALID_RECIPIENT');
+    IERC20(token).safeTransfer(recipient, amount);
+  }
+
+  function recoverNative(address recipient, uint256 amount) external onlyOwner {
+    require(recipient != address(0), 'INVALID_RECIPIENT');
+    _safeTransferHBAR(recipient, amount);
   }
 
   function _safeTransferHBAR(address to, uint256 value) internal {

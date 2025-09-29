@@ -134,8 +134,8 @@ describe('Lending Pool Contract Tests', function () {
 
     for (const [index, asset] of assets.entries()) {
       console.log('Depositing:', asset.hedera_testnet.token.address);
-      // const depositAmount = ethers.utils.parseUnits(amounts[index].toString(), decimals[index]);
-      const depositAmount = amounts[index];
+      const depositAmount = ethers.utils.parseUnits(amounts[index].toString(), decimals[index]);
+      // const depositAmount = amounts[index];
       console.log('Deposit Amount:', depositAmount);
       const erc20Contract = await setupContract('ERC20Wrapper', asset.hedera_testnet.token.address);
       await approveAndDeposit(
