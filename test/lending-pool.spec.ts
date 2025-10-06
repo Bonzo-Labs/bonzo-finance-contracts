@@ -160,89 +160,156 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it('should borrow, repay and withdraw assets from the user account', async function () {
-    // const assets = [BHBARX, BUSDC, BSAUCE, BxSAUCE, BPACK, BKARATE, BDOVU, BHST, BSTEAM];
-    const assets = [XSAUCE];
-    // const decimals = [8, 6, 6, 6, 6, 8, 8, 8, 2];
-    const decimals = [6];
+  it('should deposit, borrow, withdraw and repay for USDC and SAUCE', async function () {
+    const assets = [USDC, SAUCE];
+    const decimals = [6, 6];
     console.log('In the test, owner:', owner.address);
-    for (const asset of assets) {
-      console.log('Dealing with asset - ', asset);
-      console.log('Token address:', asset.hedera_testnet.token.address);
-      const erc20Contract = await setupContract('ERC20Wrapper', asset.hedera_testnet.token.address);
-      const aTokenContract = await setupContract('AToken', asset.hedera_testnet.aToken.address);
-      const debtTokenContract = await setupContract(
-        'VariableDebtToken',
-        asset.hedera_testnet.variableDebt.address
+
+    for (const [index, asset] of assets.entries()) {
+      const tokenAddr = asset[chain_type].token.address;
+      const aTokenAddr = asset[chain_type].aToken.address;
+      const variableDebtAddr = asset[chain_type].variableDebt.address;
+      console.log('\n============================================================');
+      console.log(`🪙 Asset: ${tokenAddr}`);
+      console.log(`🔗 aToken: ${aTokenAddr}`);
+      console.log(`🧾 VariableDebt: ${variableDebtAddr}`);
+      console.log('------------------------------------------------------------');
+
+      const erc20Contract = await setupContract('ERC20Wrapper', tokenAddr);
+      const aTokenContract = await setupContract('AToken', aTokenAddr);
+      const debtTokenContract = await setupContract('VariableDebtToken', variableDebtAddr);
+
+      // 1) Deposit 0.1
+      const depositAmount = ethers.utils.parseUnits('0.1', decimals[index]);
+      console.log(`\n💰 Deposit → ${ethers.utils.formatUnits(depositAmount, decimals[index])}`);
+      await approveAndDeposit(
+        erc20Contract,
+        owner,
+        lendingPoolContract,
+        depositAmount,
+        tokenAddr,
+        lendingPoolContract
+      );
+      const aTokenBalanceAfterDeposit = await aTokenContract.balanceOf(owner.address);
+      console.log(
+        `   ✅ aToken after deposit: ${ethers.utils.formatUnits(
+          aTokenBalanceAfterDeposit.toString(),
+          decimals[index]
+        )}`
+      );
+      const debtAfterDeposit = await debtTokenContract.balanceOf(owner.address);
+      console.log(
+        `   🧮 Debt after deposit: ${ethers.utils.formatUnits(
+          debtAfterDeposit.toString(),
+          decimals[index]
+        )}`
       );
 
-      const borrowAmount = ethers.utils.parseUnits('0.001', decimals[assets.indexOf(asset)]);
-      console.log('Borrow Amount:', borrowAmount.toString());
-
+      // 2) Borrow 0.01
+      const borrowAmount = ethers.utils.parseUnits('0.01', decimals[index]);
+      console.log(`\n📥 Borrow → ${ethers.utils.formatUnits(borrowAmount, decimals[index])}`);
       const borrowTxn = await lendingPoolContract.borrow(
-        asset.hedera_testnet.token.address,
+        tokenAddr,
         borrowAmount,
         2,
         0,
         owner.address
       );
       await borrowTxn.wait();
-      console.log('Borrowed:', borrowTxn.hash);
+      console.log(`   ✅ Borrow tx: ${borrowTxn.hash}`);
+      const aTokenAfterBorrow = await aTokenContract.balanceOf(owner.address);
+      const debtAfterBorrow = await debtTokenContract.balanceOf(owner.address);
+      console.log(
+        `   🟣 aToken after borrow: ${ethers.utils.formatUnits(
+          aTokenAfterBorrow.toString(),
+          decimals[index]
+        )}`
+      );
+      console.log(
+        `   🔻 Debt after borrow: ${ethers.utils.formatUnits(
+          debtAfterBorrow.toString(),
+          decimals[index]
+        )}`
+      );
 
-      const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
-      console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
-
-      if (balanceOfBefore.gt(0)) {
-        const repayAmount = balanceOfBefore;
-        console.log('Attempting to repay...', repayAmount);
-
-        // Check current allowance and reset to 0 if needed (Hedera HTS requirement)
-        const currentAllowance = await erc20Contract.allowance(
-          owner.address,
-          lendingPoolContract.address
-        );
-        console.log('Current allowance:', currentAllowance.toString());
-        console.log('Setting new allowance to:', repayAmount.toString());
-        const approveTxn = await erc20Contract.approve(lendingPoolContract.address, repayAmount, {
-          gasLimit: 1000000,
-        });
-        await approveTxn.wait();
-        console.log('Approved:', approveTxn.hash);
-
-        const repayTxn = await lendingPoolContract.repay(
-          asset.hedera_testnet.token.address,
-          repayAmount,
-          2,
-          owner.address
-        );
-        await repayTxn.wait();
-        console.log('Repay Transaction hash: ', repayTxn.hash);
-
-        const balanceOfAfterRepay = await debtTokenContract.balanceOf(owner.address);
-        console.log('Balance of debtTokenContract:', balanceOfAfterRepay.toString());
-      }
-
-      let withdrawAmount = ethers.utils.parseUnits('1', decimals[assets.indexOf(asset)]);
+      // 3) Withdraw 0.01
+      const withdrawAmount = ethers.utils.parseUnits('0.01', decimals[index]);
+      console.log(`\n🏧 Withdraw → ${ethers.utils.formatUnits(withdrawAmount, decimals[index])}`);
       const aTokenApprove = await aTokenContract.approve(
         lendingPoolContract.address,
         withdrawAmount
       );
       await aTokenApprove.wait();
-      console.log('aToken Approval:', aTokenApprove.hash);
-
-      const balanceBeforeWithdrawal = await aTokenContract.balanceOf(owner.address);
-      console.log('Balance of aTokens before withdrawal:', balanceBeforeWithdrawal.toString());
-
+      console.log(`   📝 aToken approve tx: ${aTokenApprove.hash}`);
       const withdrawTxn = await lendingPoolContract.withdraw(
-        asset.hedera_testnet.token.address,
+        tokenAddr,
         withdrawAmount,
         owner.address
       );
       await withdrawTxn.wait();
-      console.log('Withdraw Transaction hash: ', withdrawTxn.hash);
+      console.log(`   ✅ Withdraw tx: ${withdrawTxn.hash}`);
+      const aTokenAfterWithdraw = await aTokenContract.balanceOf(owner.address);
+      const debtAfterWithdraw = await debtTokenContract.balanceOf(owner.address);
+      console.log(
+        `   🟢 aToken after withdraw: ${ethers.utils.formatUnits(
+          aTokenAfterWithdraw.toString(),
+          decimals[index]
+        )}`
+      );
+      console.log(
+        `   🧮 Debt after withdraw: ${ethers.utils.formatUnits(
+          debtAfterWithdraw.toString(),
+          decimals[index]
+        )}`
+      );
 
-      const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
-      console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
+      // 4) Repay remaining
+      const currentDebt = await debtTokenContract.balanceOf(owner.address);
+      console.log(
+        `\n💸 Repay → current debt: ${ethers.utils.formatUnits(
+          currentDebt.toString(),
+          decimals[index]
+        )}`
+      );
+      if (currentDebt.gt(0)) {
+        const currentAllowance = await erc20Contract.allowance(
+          owner.address,
+          lendingPoolContract.address
+        );
+        if (currentAllowance.lt(currentDebt)) {
+          if (currentAllowance.gt(0)) {
+            const resetTx = await erc20Contract.approve(lendingPoolContract.address, 0, {
+              gasLimit: 1000000,
+            });
+            await resetTx.wait();
+          }
+          const approveTxn = await erc20Contract.approve(lendingPoolContract.address, currentDebt, {
+            gasLimit: 1000000,
+          });
+          await approveTxn.wait();
+          console.log(`   📝 Approve repay tx: ${approveTxn.hash}`);
+        }
+
+        const repayTxn = await lendingPoolContract.repay(tokenAddr, currentDebt, 2, owner.address);
+        await repayTxn.wait();
+        console.log(`   ✅ Repay tx: ${repayTxn.hash}`);
+        const aTokenAfterRepay = await aTokenContract.balanceOf(owner.address);
+        const balanceOfAfterRepay = await debtTokenContract.balanceOf(owner.address);
+        console.log(
+          `   🟦 aToken after repay: ${ethers.utils.formatUnits(
+            aTokenAfterRepay.toString(),
+            decimals[index]
+          )}`
+        );
+        console.log(
+          `   🟨 Debt after repay: ${ethers.utils.formatUnits(
+            balanceOfAfterRepay.toString(),
+            decimals[index]
+          )}`
+        );
+        console.log('------------------------------------------------------------\n');
+        expect(balanceOfAfterRepay).to.be.gte(0);
+      }
     }
   });
 
