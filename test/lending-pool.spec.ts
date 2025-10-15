@@ -1,6 +1,7 @@
 import exp from 'constants';
 import { expect } from 'chai';
 import { ethers } from 'hardhat';
+import hre from 'hardhat';
 import deployedContracts from '../deployed-contracts.json';
 // import outputReserveData from '../scripts/outputReserveDataTestnet.json';
 import outputReserveData from '../scripts/outputReserveData.json';
