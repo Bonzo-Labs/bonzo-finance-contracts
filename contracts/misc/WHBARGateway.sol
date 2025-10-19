@@ -120,6 +120,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     }
 
     require(amountToWithdraw > 0, 'INVALID_AMOUNT');
+    require(amountToWithdraw <= userBalance, 'INSUFFICIENT_BALANCE');
 
     aToken.transferFrom(msg.sender, address(this), amountToWithdraw);
     ILendingPool(lendingPool).withdraw(address(whbarToken), amountToWithdraw, address(this));
@@ -141,11 +142,8 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
       onBehalfOf,
       ILendingPool(lendingPool).getReserveData(address(whbarToken))
     );
-
-    uint256 paybackAmount = DataTypes.InterestRateMode(rateMode) ==
-      DataTypes.InterestRateMode.STABLE
-      ? stableDebt
-      : variableDebt;
+    // Default to variable debt; stable debt is disabled
+    uint256 paybackAmount = variableDebt;
 
     if (amount < paybackAmount) {
       paybackAmount = amount;
@@ -157,10 +155,13 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     _ensureWhbarAssociation();
     whbarHelper.deposit{value: paybackAmount}();
     _approveLendingPool(lendingPool, paybackAmount);
-    ILendingPool(lendingPool).repay(address(whbarToken), paybackAmount, rateMode, onBehalfOf);
+    // Always repay variable debt (rateMode = 2)
+    ILendingPool(lendingPool).repay(address(whbarToken), paybackAmount, 2, onBehalfOf);
 
-    if (msg.value > paybackAmount) {
-      _safeTransferHBAR(msg.sender, msg.value - paybackAmount);
+    // Compute refund safely without underflow
+    uint256 refund = msg.value > paybackAmount ? (msg.value - paybackAmount) : 0;
+    if (refund > 0) {
+      _safeTransferHBAR(msg.sender, refund);
     }
 
     return paybackAmount;

@@ -13,7 +13,7 @@ const networkConfigs: Record<string, NetworkConfig> = {
   hedera_testnet: {
     providerUrl: 'https://testnet.hashio.io/api',
     ownerKey: process.env.PRIVATE_KEY2 || '',
-    oracleAddress: '0x0f9e7Ea62AeD13Bc39C62ABB663E66Cd44fFe0DB',
+    oracleAddress: '0x16e55AF5576502e05ed18fD265F8dF7fC6f8ACbd',
   },
   hedera_mainnet: {
     providerUrl: process.env.PROVIDER_URL_MAINNET || '',
@@ -103,7 +103,7 @@ const checkSaucePriceIndex = async () => {
 
 const main = async () => {
   await checkSupraPrices();
-  await checkSaucePriceIndex();
+  // await checkSaucePriceIndex();
 };
 
 main()

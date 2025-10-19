@@ -40,6 +40,7 @@ async function updateLendingPool() {
   const raw = await ethers.provider.getStorageAt(currentLendingPool, IMPL_SLOT);
   const currentLendingPoolImpl = ethers.utils.getAddress('0x' + raw.slice(-40));
   console.log('Current lending pool implementation:', currentLendingPoolImpl);
+  console.log('New lending pool implementation:', lendingPoolImpl.address);
 
   console.log('Updating Lending pool');
   // Set the new implementation and initialize it

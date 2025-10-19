@@ -18,7 +18,7 @@ const ERC20_MIN_ABI = [
   'function decimals() view returns (uint8)',
 ];
 
-const { WHBARE, LendingPool, USDC } = outputReserveData;
+const { WHBAR, LendingPool, USDC } = outputReserveData;
 
 require('dotenv').config();
 
@@ -28,14 +28,14 @@ let provider, owner, whbarTokenAddress, whbarGatewayAddress;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
-  whbarTokenAddress = WHBARE.hedera_testnet.token.address;
+  whbarTokenAddress = WHBAR.hedera_testnet.token.address;
   whbarGatewayAddress =
-    process.env.WHBARGATEWAY_ADDRESS || '0xa01b8Df369F528594a0C460E87d891dd0C203C44';
+    process.env.WHBARGATEWAY_ADDRESS || '0x20b43012852bf77495026e429b74F6C55946C92B';
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_LIQUIDATIONS || '', provider);
-  whbarTokenAddress = WHBARE.hedera_mainnet.token.address;
+  whbarTokenAddress = WHBAR.hedera_mainnet.token.address;
   whbarGatewayAddress = process.env.WHBAR_GATEWAY_MAINNET || '';
 }
 
@@ -188,7 +188,7 @@ describe('WHBAR Tests', function () {
     expect(reserve.stableDebtTokenAddress).to.not.be.null;
   });
 
-  it('should supply native HBAR via Gateway and get aWHBAR tokens', async function () {
+  it.skip('should supply native HBAR via Gateway and get aWHBAR tokens', async function () {
     if (!whbarGatewayContract) return this.skip();
 
     const amountInHBAR = '11';
@@ -214,6 +214,99 @@ describe('WHBAR Tests', function () {
     const balanceAfter = await checkBalance(aTokenContract, owner.address, 'WHBAR aToken');
     const tolerance = ethers.BigNumber.from(100); // allow minor index/rounding variance
     expect(balanceAfter.sub(balanceBefore)).to.be.closeTo(expectedAmount, tolerance);
+  });
+
+  it('should deposit, borrow, repay and withdraw HBAR end-to-end via Gateway', async function () {
+    if (!whbarGatewayContract) return this.skip();
+
+    // 1) Deposit native HBAR via Gateway → receive aWHBAR
+    console.log('\n\n🧪  WHBAR Composite Flow');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('🏦  Step 1: Deposit HBAR via Gateway');
+    const depositHBAR = '2';
+    const depositWei = ethers.utils.parseEther(depositHBAR);
+    const expectedDeposit = ethers.utils.parseUnits(depositHBAR, 8);
+
+    const aBefore = await aTokenContract.balanceOf(owner.address);
+    console.log('   • Deposit HBAR:', depositHBAR);
+    console.log('   • Deposit Wei:', depositWei.toString());
+    console.log('   • aWHBAR before:', aBefore.toString());
+    const depTx = await whbarGatewayContract.depositHBAR(
+      lendingPoolContract.address,
+      owner.address,
+      0,
+      { value: depositWei }
+    );
+    await depTx.wait();
+    console.log('🔗 Gateway Deposit tx:', depTx.hash);
+    await new Promise((r) => setTimeout(r, 1500));
+
+    const aAfterDeposit = await aTokenContract.balanceOf(owner.address);
+    const depositTolerance = ethers.BigNumber.from(100);
+    console.log('   • aWHBAR after:', aAfterDeposit.toString());
+    console.log('   • aWHBAR Δ:', aAfterDeposit.sub(aBefore).toString());
+    expect(aAfterDeposit.sub(aBefore)).to.be.closeTo(expectedDeposit, depositTolerance);
+
+    // 2) Borrow small amount of HBAR via Gateway
+    console.log('\n💳  Step 2: Borrow HBAR via Gateway');
+    const borrowHBAR = '0.2';
+    const borrowAmt = ethers.utils.parseUnits(borrowHBAR, 8);
+    console.log('   • Borrow HBAR (8dp):', borrowAmt.toString());
+    await ensureBorrowAllowance(borrowAmt);
+
+    const debtBeforeBorrow = await debtTokenContract.balanceOf(owner.address);
+    console.log('   • Debt before:', debtBeforeBorrow.toString());
+    await borrowWHBAR(borrowAmt, owner.address);
+    await new Promise((r) => setTimeout(r, 1500));
+    const debtAfterBorrow = await debtTokenContract.balanceOf(owner.address);
+    console.log('   • Debt after:', debtAfterBorrow.toString());
+    console.log('   • Debt Δ:', debtAfterBorrow.sub(debtBeforeBorrow).toString());
+    expect(debtAfterBorrow.sub(debtBeforeBorrow)).to.be.closeTo(borrowAmt, 2);
+
+    // 3) Repay part of the borrowed amount via Gateway
+    console.log('\n💸  Step 3: Repay HBAR via Gateway');
+    const repayHBAR = '0.1';
+    const repayAmt = ethers.utils.parseUnits(repayHBAR, 8);
+    const repayWei = ethers.utils.parseEther(repayHBAR);
+    console.log('   • Repay HBAR (8dp):', repayAmt.toString());
+    console.log('   • Repay Wei:', repayWei.toString());
+
+    const debtBeforeRepay = await debtTokenContract.balanceOf(owner.address);
+    console.log('   • Debt before:', debtBeforeRepay.toString());
+    const repayTx = await whbarGatewayContract.repayHBAR(
+      lendingPoolContract.address,
+      repayAmt,
+      2,
+      owner.address,
+      { value: repayWei }
+    );
+    await repayTx.wait();
+    console.log('🔗 Gateway Repay tx:', repayTx.hash);
+    await new Promise((r) => setTimeout(r, 1500));
+    const debtAfterRepay = await debtTokenContract.balanceOf(owner.address);
+    console.log('   • Debt after:', debtAfterRepay.toString());
+    console.log('   • Debt Δ:', debtBeforeRepay.sub(debtAfterRepay).toString());
+    expect(debtBeforeRepay.sub(debtAfterRepay)).to.be.closeTo(
+      repayAmt,
+      ethers.utils.parseUnits('0.001', 8)
+    );
+
+    // 4) Withdraw part of supplied aWHBAR and receive native HBAR
+    console.log('\n🏧  Step 4: Withdraw HBAR via Gateway');
+    const withdrawHBAR = '0.5';
+    const withdrawAmt = ethers.utils.parseUnits(withdrawHBAR, 8);
+    console.log('   • Withdraw HBAR (8dp):', withdrawAmt.toString());
+
+    const aBeforeWithdraw = await aTokenContract.balanceOf(owner.address);
+    console.log('   • aWHBAR before:', aBeforeWithdraw.toString());
+    await withdrawWHBAR(withdrawAmt, owner.address);
+    await new Promise((r) => setTimeout(r, 1500));
+    const aAfterWithdraw = await aTokenContract.balanceOf(owner.address);
+    console.log('   • aWHBAR after:', aAfterWithdraw.toString());
+    console.log('   • aWHBAR Δ:', aBeforeWithdraw.sub(aAfterWithdraw).toString());
+    expect(aBeforeWithdraw.sub(aAfterWithdraw)).to.be.closeTo(withdrawAmt, 2);
+
+    console.log('\n✅  Composite flow completed successfully');
   });
 
   it.skip('should withdraw WHBAR via Gateway and receive HBAR', async function () {
@@ -365,7 +458,7 @@ describe('WHBAR Tests', function () {
     try {
       forceFeeder = await ForceHBARFactory.deploy({ value: amount });
       await forceFeeder.deployed();
-    } catch (err) {
+    } catch (err: any) {
       console.log('Unable to deploy ForceHBAR helper, skipping:', err.message);
       return this.skip();
     }
@@ -402,14 +495,14 @@ describe('WHBAR Tests', function () {
       whbarGatewayContract.depositHBAR(lendingPoolContract.address, owner.address, 0, {
         value: 0,
       })
-    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+    ).to.be.revertedWith('Invalid HBAR amount');
   });
 
   it.skip('should revert borrowHBAR with zero amount', async function () {
     if (!whbarGatewayContract) return this.skip();
     await expect(
       whbarGatewayContract.borrowHBAR(lendingPoolContract.address, 0, 2, 0)
-    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+    ).to.be.revertedWith('INVALID_AMOUNT');
   });
 
   it.skip('should revert borrowHBAR with stable rate mode (disabled)', async function () {
@@ -434,7 +527,7 @@ describe('WHBAR Tests', function () {
       whbarGatewayContract.repayHBAR(lendingPoolContract.address, 0, 2, owner.address, {
         value: 0,
       })
-    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+    ).to.be.revertedWith('NO_DEBT_TO_REPAY');
   });
 
   it.skip('should revert repayHBAR when no variable debt exists', async function () {
@@ -448,7 +541,7 @@ describe('WHBAR Tests', function () {
         owner.address,
         { value: 1 }
       )
-    ).to.be.revertedWith('15'); // VL_NO_DEBT_OF_SELECTED_TYPE
+    ).to.be.revertedWith('NO_DEBT_TO_REPAY');
   });
 
   it.skip('should revert withdrawHBAR when user has insufficient aWHBAR balance', async function () {
@@ -456,7 +549,7 @@ describe('WHBAR Tests', function () {
     const amt = ethers.utils.parseUnits('1', 8);
     await expect(
       whbarGatewayContract.withdrawHBAR(lendingPoolContract.address, amt, owner.address)
-    ).to.be.revertedWith('ERC20: transfer amount exceeds balance');
+    ).to.be.revertedWith('INSUFFICIENT_BALANCE');
   });
 
   it.skip('should revert withdrawHBAR with zero amount', async function () {
@@ -467,7 +560,7 @@ describe('WHBAR Tests', function () {
         ethers.constants.Zero,
         owner.address
       )
-    ).to.be.revertedWith('1'); // VL_INVALID_AMOUNT
+    ).to.be.revertedWith('INVALID_AMOUNT');
   });
 
   it.skip('should reject direct HBAR transfers via receive()', async function () {
