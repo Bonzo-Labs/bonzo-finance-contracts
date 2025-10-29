@@ -26,6 +26,7 @@ const {
   GRELF,
   HBARX,
   WHBAR,
+  WHBARE,
   LendingPool,
   LendingPoolAddressesProvider,
   AaveOracle,
@@ -54,6 +55,28 @@ client.setOperator(operatorAccountId, operatorPrKey);
 async function setupContract(artifactName, contractAddress) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
   return new ethers.Contract(contractAddress, artifact.abi, owner);
+}
+
+// Minimal ABI for WHBAR(E) wrapper token to mint via native HBAR
+const WHBAR_MIN_ABI = [
+  'function balanceOf(address) view returns (uint256)',
+  'function deposit() payable',
+];
+
+// Ensure the signer has some WHBARE by wrapping native HBAR if balance is zero
+async function ensureWhbareIfNeeded(tokenAddress: string, hbarToWrap: string = '1') {
+  try {
+    const whbare = new ethers.Contract(tokenAddress, WHBAR_MIN_ABI, owner);
+    const current = await whbare.balanceOf(owner.address);
+    if (current.eq(0)) {
+      console.log(`No WHBARE balance found. Wrapping ${hbarToWrap} HBAR → WHBARE...`);
+      const tx = await whbare.deposit({ value: ethers.utils.parseEther(hbarToWrap) });
+      await tx.wait();
+      console.log('Wrapped HBAR tx:', tx.hash);
+    }
+  } catch (e) {
+    console.log('Unable to ensure WHBARE balance, proceeding anyway:', (e as any)?.message || e);
+  }
 }
 
 async function approveAndDeposit(
@@ -175,12 +198,17 @@ describe('Lending Pool Contract Tests', function () {
       console.log(`🧾 VariableDebt: ${variableDebtAddr}`);
       console.log('------------------------------------------------------------');
 
+      // If current asset is WHBARE and user has zero balance, mint some by sending HBAR
+      if (asset === WHBARE) {
+        await ensureWhbareIfNeeded(tokenAddr, '1'); // wrap 1 HBAR if needed
+      }
+
       const erc20Contract = await setupContract('ERC20Wrapper', tokenAddr);
       const aTokenContract = await setupContract('AToken', aTokenAddr);
       const debtTokenContract = await setupContract('VariableDebtToken', variableDebtAddr);
 
-      // 1) Deposit 0.1
-      const depositAmount = ethers.utils.parseUnits('0.1', decimals[index]);
+      // 1) Deposit 1
+      const depositAmount = ethers.utils.parseUnits('1', decimals[index]);
       console.log(`\n💰 Deposit → ${ethers.utils.formatUnits(depositAmount, decimals[index])}`);
       await approveAndDeposit(
         erc20Contract,
@@ -205,28 +233,8 @@ describe('Lending Pool Contract Tests', function () {
         )}`
       );
 
-      // 2a) Try a small withdraw BEFORE borrowing to isolate transfer-out path
-      const smallWithdraw = ethers.utils.parseUnits('0.001', decimals[index]);
-      try {
-        const approveSmall = await aTokenContract.approve(
-          lendingPoolContract.address,
-          smallWithdraw
-        );
-        await approveSmall.wait();
-        const wSmall = await lendingPoolContract.withdraw(tokenAddr, smallWithdraw, owner.address);
-        await wSmall.wait();
-        console.log(
-          `   🟢 Small pre-borrow withdraw ok: ${ethers.utils.formatUnits(
-            smallWithdraw,
-            decimals[index]
-          )}`
-        );
-      } catch (e) {
-        console.log('   🔴 Small pre-borrow withdraw failed:', (e as any)?.message || e);
-      }
-
-      // 2) Borrow 0.01
-      const borrowAmount = ethers.utils.parseUnits('0.01', decimals[index]);
+      // 2) Borrow 0.1
+      const borrowAmount = ethers.utils.parseUnits('0.1', decimals[index]);
       console.log(`\n📥 Borrow → ${ethers.utils.formatUnits(borrowAmount, decimals[index])}`);
       const overrides = { gasLimit: 3000000 };
       console.log('   🔧 Attempting actual borrow with gas limit:', overrides.gasLimit);
@@ -316,7 +324,12 @@ describe('Lending Pool Contract Tests', function () {
           console.log(`   📝 Approve repay tx: ${approveTxn.hash}`);
         }
 
-        const repayTxn = await lendingPoolContract.repay(tokenAddr, currentDebt, 2, owner.address);
+        const repayTxn = await lendingPoolContract.repay(
+          tokenAddr,
+          currentDebt / 10,
+          2,
+          owner.address
+        );
         await repayTxn.wait();
         console.log(`   ✅ Repay tx: ${repayTxn.hash}`);
         const aTokenAfterRepay = await aTokenContract.balanceOf(owner.address);

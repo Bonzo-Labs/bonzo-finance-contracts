@@ -13,7 +13,7 @@ const networkConfigs: Record<string, NetworkConfig> = {
   hedera_testnet: {
     providerUrl: 'https://testnet.hashio.io/api',
     ownerKey: process.env.PRIVATE_KEY2 || '',
-    oracleAddress: '0x16e55AF5576502e05ed18fD265F8dF7fC6f8ACbd',
+    oracleAddress: '0x8D1F2367D94933044046a10d9A3Fb1CdcC6cb01F',
   },
   hedera_mainnet: {
     providerUrl: process.env.PROVIDER_URL_MAINNET || '',

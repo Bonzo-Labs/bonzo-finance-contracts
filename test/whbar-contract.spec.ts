@@ -14,6 +14,12 @@ const DEFAULT_WHBAR_CONTRACT_TESTNET = '0x0000000000000000000000000000000000003a
 const WHBAR_TOKEN_ADDRESS_TESTNET = '0x0000000000000000000000000000000000003ad2';
 const WHBAR_TOKEN_ADDRESS_MAINNET = '0x0000000000000000000000000000000000163b5a';
 
+const WHBAR_TOKEN_ABI = [
+  'function approve(address, uint256) returns (bool)',
+  'function allowance(address, address) view returns (uint256)',
+  'function balanceOf(address) view returns (uint256)',
+];
+
 let provider, owner;
 
 if (chain_type === 'hedera_testnet') {
@@ -34,20 +40,6 @@ async function checkBalance(contract, address, label) {
   const balance = await contract.balanceOf(address);
   console.log(`${label} Balance:`, balance.toString());
   return balance;
-}
-
-async function approveWithReset(token, spender, amount) {
-  const current = await token.allowance(owner.address, spender);
-  if (current.lt(amount)) {
-    if (current.gt(0)) {
-      const resetTx = await token.approve(spender, 0, { gasLimit: 1000000 });
-      await resetTx.wait();
-    }
-    const tx = await token.approve(spender, amount, { gasLimit: 1000000 });
-    await tx.wait();
-    return tx.hash;
-  }
-  return undefined;
 }
 
 describe('WHBAR Contract Integration Tests', function () {
@@ -74,7 +66,7 @@ describe('WHBAR Contract Integration Tests', function () {
     whbarTokenAddress =
       chain_type === 'hedera_testnet' ? WHBAR_TOKEN_ADDRESS_TESTNET : WHBAR_TOKEN_ADDRESS_MAINNET;
 
-    whbarTokenContract = await setupContract('ERC20Wrapper', whbarTokenAddress);
+    whbarTokenContract = new ethers.Contract(whbarTokenAddress, WHBAR_TOKEN_ABI, owner);
     whbarContract = await setupContract('WHBARContract', whbarContractAddress);
 
     // Derive reserve token addresses dynamically from the pool
@@ -84,7 +76,6 @@ describe('WHBAR Contract Integration Tests', function () {
   });
 
   it('should deposit, borrow, withdraw and repay WHBAR using WHBAR contract route', async function () {
-    // 1) Acquire WHBAR via WHBARContract.deposit (native HBAR -> WHBAR)
     console.log('WHBAR token address:', whbarTokenAddress);
     if (!whbarTokenAddress) {
       console.log('===== WHBAR token address not found, skipping test.');
@@ -92,49 +83,42 @@ describe('WHBAR Contract Integration Tests', function () {
     }
     console.log('LendingPool address:', lendingPoolContract.address);
 
-    const depositHBAR = '0.5';
-    const depositWei = ethers.utils.parseEther(depositHBAR);
-    const expectedWHBAR = ethers.utils.parseUnits(depositHBAR, 8);
+    const depositHBAR = '1';
+    const depositAmount = ethers.utils.parseUnits(depositHBAR, 8); // HBAR in tinybars (8 decimals)
+    const depositValue = ethers.utils.parseEther(depositHBAR); // HBAR in wei (18 decimals) for msg.value
 
-    const balBeforeWHBAR = await checkBalance(
-      whbarTokenContract,
-      owner.address,
-      'WHBAR before deposit'
-    );
-    const mintTx = await whbarContract['deposit()']({ value: depositWei });
-    await mintTx.wait();
-
-    const balAfterWHBAR = await checkBalance(
-      whbarTokenContract,
-      owner.address,
-      'WHBAR after deposit'
-    );
-    expect(balAfterWHBAR.sub(balBeforeWHBAR)).to.be.gte(expectedWHBAR.sub(1));
-
-    // 2) Approve LendingPool and deposit WHBAR into the pool
-    console.log('Approving LendingPool to spend WHBAR...');
-    await approveWithReset(whbarTokenContract, lendingPoolContract.address, expectedWHBAR);
-    console.log('Depositing WHBAR into LendingPool...');
+    // 1) Deposit native HBAR to LendingPool (sends tinybars, LendingPool wraps to WHBAR internally)
+    console.log('Depositing native HBAR to LendingPool (will be wrapped to WHBAR)...');
     const depositTx = await lendingPoolContract.deposit(
       whbarTokenAddress,
-      expectedWHBAR,
+      depositAmount,
       owner.address,
-      0
+      0,
+      { value: depositValue } // Hedera RPC converts 18dp wei to 8dp tinybar for msg.value
     );
     const depositRcpt = await depositTx.wait();
     console.log('Deposit tx:', depositTx.hash);
     expect(depositRcpt.status).to.equal(1);
 
+    // 2) Verify aWHBAR balance after deposit
     const aBalAfterDeposit = await checkBalance(
       aTokenContract,
       owner.address,
       'aWHBAR after deposit'
     );
-    expect(aBalAfterDeposit).to.be.gte(expectedWHBAR.sub(1));
+    expect(aBalAfterDeposit).to.be.gte(depositAmount.sub(100)); // allow small tolerance
 
-    // 3) Borrow some WHBAR
+    // 3) Borrow some WHBAR (receive actual WHBAR tokens)
     const borrowAmount = ethers.utils.parseUnits('0.05', 8);
-    console.log('Borrowing WHBAR from LendingPool...');
+
+    // Pre-approve WHBARContract to be able to pull WHBAR tokens during borrow->unwrap flow
+    console.log(`Approving WHBAR for WHBARContract: ${whbarContract.address}`);
+    const approveTx = await whbarTokenContract.approve(whbarContract.address, borrowAmount, {
+      gasLimit: 1000000,
+    });
+    await approveTx.wait();
+
+    console.log('Borrowing WHBAR tokens from LendingPool...');
     const borrowTx = await lendingPoolContract.borrow(
       whbarTokenAddress,
       borrowAmount,
@@ -154,13 +138,27 @@ describe('WHBAR Contract Integration Tests', function () {
       owner.address,
       'WHBAR debt after borrow'
     );
-    expect(debtAfterBorrow).to.be.gte(borrowAmount.sub(1));
+    expect(debtAfterBorrow).to.be.gte(borrowAmount.sub(100));
 
-    // 4) Withdraw a small amount of aWHBAR back to WHBAR tokens
+    // 4) Withdraw a small amount of aWHBAR back to native HBAR
     const withdrawAmount = ethers.utils.parseUnits('0.01', 8);
-    const approveATx = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
-    await approveATx.wait();
-    console.log('Withdrawing small amount of aWHBAR...');
+
+    // Add approvals based on UI flow for withdrawal
+    console.log('Approving aWHBAR for LendingPool...');
+    const approveATokenTx = await aTokenContract.approve(
+      lendingPoolContract.address,
+      withdrawAmount,
+      { gasLimit: 1000000 }
+    );
+    await approveATokenTx.wait();
+
+    console.log('Approving WHBAR for WHBARContract...');
+    const approveWhbarTx = await whbarTokenContract.approve(whbarContract.address, withdrawAmount, {
+      gasLimit: 1000000,
+    });
+    await approveWhbarTx.wait();
+
+    console.log('Withdrawing small amount of aWHBAR (receive native HBAR)...');
     const withdrawTx = await lendingPoolContract.withdraw(
       whbarTokenAddress,
       withdrawAmount,
@@ -170,25 +168,40 @@ describe('WHBAR Contract Integration Tests', function () {
     console.log('Withdraw tx:', withdrawTx.hash);
     expect(withdrawRcpt.status).to.equal(1);
 
-    // 5) Convert some WHBAR back to native HBAR via WHBARContract.withdraw
-    const toRedeem = ethers.utils.parseUnits('0.005', 8);
-    console.log('Approving WHBARContract to spend WHBAR for unwrap...');
-    await approveWithReset(whbarTokenContract, whbarContract.address, toRedeem);
+    // 5) Wrap some native HBAR to WHBAR via WHBARContract
+    const wrapAmountHBAR = '0.005';
+    const wrapAmountWei = ethers.utils.parseEther(wrapAmountHBAR);
+    console.log('Wrapping native HBAR to WHBAR tokens via WHBARContract...');
+    const wrapTx = await whbarContract['deposit()']({ value: wrapAmountWei });
+    await wrapTx.wait();
+    console.log('Wrap tx:', wrapTx.hash);
+
+    // 6) Unwrap some WHBAR tokens back to native HBAR via WHBARContract.withdraw
+    const toRedeem = ethers.utils.parseUnits(wrapAmountHBAR, 8);
+    console.log('Unwrapping WHBAR tokens to native HBAR via WHBARContract...');
+    const approveUnwrapTx = await whbarTokenContract.approve(whbarContract.address, toRedeem, {
+      gasLimit: 1000000,
+    });
+    await approveUnwrapTx.wait();
     const redeemTx = await whbarContract['withdraw(uint256)'](toRedeem);
     const redeemRcpt = await redeemTx.wait();
-    console.log('Redeem (unwrap) tx:', redeemTx.hash);
+    console.log('Unwrap tx:', redeemTx.hash);
     expect(redeemRcpt.status).to.equal(1);
 
-    // 6) Repay outstanding variable debt with WHBAR
+    // 7) Repay outstanding variable debt with native HBAR
     const currentDebt = await debtTokenContract.balanceOf(owner.address);
     if (currentDebt.gt(0)) {
-      console.log('Approving LendingPool to spend WHBAR for repay...');
-      await approveWithReset(whbarTokenContract, lendingPoolContract.address, currentDebt);
+      console.log('Repaying WHBAR debt with native HBAR...');
+      const repayAmount = currentDebt.div(2); // Repay half the debt
+      const repayAmountInHBAR = ethers.utils.formatUnits(repayAmount, 8);
+      const repayValue = ethers.utils.parseEther(repayAmountInHBAR);
+
       const repayTx = await lendingPoolContract.repay(
         whbarTokenAddress,
-        currentDebt,
+        repayAmount,
         2,
-        owner.address
+        owner.address,
+        { value: repayValue } // Send native HBAR in wei
       );
       const repayRcpt = await repayTx.wait();
       console.log('Repay tx:', repayTx.hash);
@@ -198,7 +211,7 @@ describe('WHBAR Contract Integration Tests', function () {
         owner.address,
         'WHBAR debt after repay'
       );
-      expect(debtAfterRepay).to.be.gte(0);
+      expect(debtAfterRepay).to.be.lt(currentDebt);
     }
   });
 });

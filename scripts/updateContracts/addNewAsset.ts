@@ -247,10 +247,10 @@ async function main() {
   // Note: If you can't add a new asset to the oracle, then update the oracle
   // await addNewAssetToOracle(newAsset);
   // // // Step 3: Enable borrowing
-  await enableBorrowing(newAsset);
+  // await enableBorrowing(newAsset);
   // // Step 4: configureReserveAsCollateral and set reserve factor
-  await configureReserveAsCollateral(newAsset);
-  await setReserveFactor(newAsset);
+  // await configureReserveAsCollateral(newAsset);
+  // await setReserveFactor(newAsset);
   // Step 5 - Configure the aToken and variableDebtToken in incentives controller
   // Step 6: Update the scripts - getUpdatedMetrics, cronJob, processPoints
   // Step 7: Set borrow cap

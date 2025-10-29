@@ -109,10 +109,10 @@ async function lendingPool() {
   //   '0xbe058ee0884696653E01cfC6F34678f2762d84db'
   // );
   // console.log('User Reserve Data for USDC:', userReserveData);
-  console.log(
-    'user account data:',
-    await lendingPoolContract.getUserAccountData('0xbe058ee0884696653E01cfC6F34678f2762d84db')
-  );
+  // console.log(
+  //   'user account data:',
+  //   await lendingPoolContract.getUserAccountData('0xbe058ee0884696653E01cfC6F34678f2762d84db')
+  // );
   // const amountInEth = await lendingPoolContract.getAmountInEth(
   //   100000000,
   //   WSTEAM.hedera_testnet.token.address
@@ -155,40 +155,40 @@ async function lendingPool() {
   //   ethers.utils.formatUnits(totalSupply.toString(), 8)
   // );
 
-  console.log('Provider oracle:', await lendingPoolAddressesProviderContract.getPriceOracle());
-  console.log(
-    'SAUCE 0.1 in HBAR:',
-    await lendingPoolContract.getAmountInEth(
-      ethers.utils.parseUnits('0.1', 6),
-      SAUCE.hedera_testnet.token.address
-    )
-  );
+  // console.log('Provider oracle:', await lendingPoolAddressesProviderContract.getPriceOracle());
+  // console.log(
+  //   'SAUCE 0.1 in HBAR:',
+  //   await lendingPoolContract.getAmountInEth(
+  //     ethers.utils.parseUnits('0.1', 6),
+  //     SAUCE.hedera_testnet.token.address
+  //   )
+  // );
 
-  // // Fetch and print reserve data for all current reserves in the pool
-  // const reservesList = await lendingPoolContract.getReservesList();
-  // console.log('Reserves List:', reservesList);
+  // Fetch and print reserve data for all current reserves in the pool
+  const reservesList = await lendingPoolContract.getReservesList();
+  console.log('Reserves List:', reservesList);
 
-  // // Build a symbol lookup for nicer logs
-  // const allReservesTokens = await dataProviderContract.getAllReservesTokens();
-  // const symbolByAddress = new Map<string, string>();
-  // for (const t of allReservesTokens) {
-  //   // t: { symbol: string, tokenAddress: string }
-  //   symbolByAddress.set(t.tokenAddress.toLowerCase(), t.symbol);
-  // }
+  // Build a symbol lookup for nicer logs
+  const allReservesTokens = await dataProviderContract.getAllReservesTokens();
+  const symbolByAddress = new Map<string, string>();
+  for (const t of allReservesTokens) {
+    // t: { symbol: string, tokenAddress: string }
+    symbolByAddress.set(t.tokenAddress.toLowerCase(), t.symbol);
+  }
 
-  // for (const reserve of reservesList) {
-  //   const sym = symbolByAddress.get(reserve.toLowerCase()) || 'UNKNOWN';
-  //   console.log(`\n===== Reserve ${sym} (${reserve}) =====`);
-  //   try {
-  //     const reserveCfg = await dataProviderContract.getReserveConfigurationData(reserve);
-  //     console.log(`${sym} Reserve Configuration:`, reserveCfg);
+  for (const reserve of reservesList) {
+    const sym = symbolByAddress.get(reserve.toLowerCase()) || 'UNKNOWN';
+    console.log(`\n===== Reserve ${sym} (${reserve}) =====`);
+    try {
+      const reserveCfg = await dataProviderContract.getReserveConfigurationData(reserve);
+      console.log(`${sym} Reserve Configuration:`, reserveCfg);
 
-  //     const reserveData = await dataProviderContract.getReserveData(reserve);
-  //     console.log(`${sym} Reserve Data:`, reserveData);
-  //   } catch (e) {
-  //     console.error(`Failed fetching data for reserve ${sym} (${reserve})`, e);
-  //   }
-  // }
+      const reserveData = await dataProviderContract.getReserveData(reserve);
+      console.log(`${sym} Reserve Data:`, reserveData);
+    } catch (e) {
+      console.error(`Failed fetching data for reserve ${sym} (${reserve})`, e);
+    }
+  }
 }
 
 async function main() {

@@ -35,12 +35,12 @@ async function updateOracle(oracleAddress: string) {
   // 0x24D08A1b5902C4c5e42956F786D3582e732e9E8d
   console.log('Oracle before = ', await lendingPoolAddressesProviderContract.getPriceOracle());
 
-  await lendingPoolAddressesProviderContract.setPriceOracle(oracleAddress);
-  console.log('Oracle after = ', await lendingPoolAddressesProviderContract.getPriceOracle());
+  // await lendingPoolAddressesProviderContract.setPriceOracle(oracleAddress);
+  // console.log('Oracle after = ', await lendingPoolAddressesProviderContract.getPriceOracle());
 }
 
 async function main() {
-  await updateOracle('0x16e55AF5576502e05ed18fD265F8dF7fC6f8ACbd');
+  await updateOracle('0x8D1F2367D94933044046a10d9A3Fb1CdcC6cb01F');
 }
 
 main()
