@@ -36,7 +36,8 @@ if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider(url);
   owner = new ethers.Wallet(process.env.PRIVATE_KEY_LIQUIDATIONS || '', provider);
   whbarTokenAddress = WHBAR.hedera_mainnet.token.address;
-  whbarGatewayAddress = process.env.WHBAR_GATEWAY_MAINNET || '';
+  whbarGatewayAddress =
+    process.env.WHBAR_GATEWAY_MAINNET || '0xeF36629d959B09Fe5b31a0BA07a925F6388A757c';
 }
 
 async function setupContract(artifactName, contractAddress) {

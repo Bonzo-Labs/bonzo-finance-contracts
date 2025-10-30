@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import hre from 'hardhat';
-import { USDC, SAUCE } from './outputReserveData.json';
+import { USDC, SAUCE, WETH, WHBAR } from './outputReserveData.json';
 import 'dotenv/config';
 
 interface NetworkConfig {
@@ -18,7 +18,7 @@ const networkConfigs: Record<string, NetworkConfig> = {
   hedera_mainnet: {
     providerUrl: process.env.PROVIDER_URL_MAINNET || '',
     ownerKey: process.env.PRIVATE_KEY_MAINNET || '',
-    oracleAddress: '0xA40a801E4F6Adc1Bb589ADc4f1999519C635dE50',
+    oracleAddress: '0x2e78BedD7175dEC675949f50a2604bC835A47a03',
   },
 };
 
@@ -33,8 +33,11 @@ const setupContract = async (
 
 const getAssetInfo = (assetData: any, networkName: string) => {
   if (assetData && assetData[networkName] && assetData[networkName].token) {
+    const rawAddress = assetData[networkName].token.address;
+    // Normalize address to checksum format to ensure consistent casing
+    const normalizedAddress = ethers.utils.getAddress(rawAddress);
     return {
-      address: assetData[networkName].token.address,
+      address: normalizedAddress,
     };
   }
   return null;
@@ -59,6 +62,8 @@ const checkSupraPrices = async () => {
   const assetsToCheck = [
     { name: 'USDC', data: USDC },
     { name: 'SAUCE', data: SAUCE },
+    { name: 'WETH', data: WETH },
+    { name: 'WHBAR', data: WHBAR },
   ];
 
   for (const asset of assetsToCheck) {
@@ -69,8 +74,41 @@ const checkSupraPrices = async () => {
       try {
         const price = await supraOracle.getAssetPrice(assetInfo.address);
         console.log(`${asset.name} price = `, ethers.utils.formatUnits(price, 18));
-      } catch (error) {
-        console.error(`Error fetching price for ${asset.name}:`, (error as Error).message);
+      } catch (error: any) {
+        // Try to decode the error
+        let errorMessage = 'Unknown error';
+        let errorName = '';
+
+        if (error.error) {
+          errorName = error.error.name || '';
+          errorMessage = error.error.message || error.message || String(error);
+        } else if (error.reason) {
+          errorMessage = error.reason;
+        } else if (error.errorName) {
+          errorName = error.errorName;
+          errorMessage = error.message || String(error);
+        } else {
+          errorMessage = error.message || String(error);
+        }
+
+        // Check for common custom errors
+        const errorStr = String(errorMessage).toLowerCase();
+        if (errorName === 'UnsupportedAsset' || errorStr.includes('unsupportedasset')) {
+          console.error(
+            `Error: ${asset.name} is not registered in the oracle contract. Asset needs to be added via addNewAsset().`
+          );
+        } else if (errorName === 'DivisionByZero' || errorStr.includes('divisionbyzero')) {
+          console.error(
+            `Error: Division by zero when fetching ${asset.name} price (feed may be stale or invalid)`
+          );
+        } else if (errorStr.includes('call revert exception')) {
+          console.error(`Error: Contract call reverted for ${asset.name}. This usually means:`);
+          console.error(`  1. Asset is not registered in the oracle`);
+          console.error(`  2. Price feed data is unavailable`);
+          console.error(`  3. Address mismatch (check if address is correct)`);
+        } else {
+          console.error(`Error fetching price for ${asset.name}:`, errorMessage);
+        }
       }
     } else {
       console.log(`\n--- Skipping ${asset.name} (no config for ${networkName}) ---`);

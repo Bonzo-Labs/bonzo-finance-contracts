@@ -17,49 +17,52 @@ contract SupraOracle is Ownable2Step {
   ISupraSValueFeed private sValueFeed;
   AggregatorV3Interface internal HBAR_USD_dataFeed;
   AggregatorV3Interface internal USDC_USD_dataFeed;
+  AggregatorV3Interface internal ETH_USD_dataFeed;
 
   mapping(address => uint16) private assetToPriceIndex;
   mapping(address => uint16) private assetToDecimals;
   mapping(string => address) private assetToAddress;
 
-  // // Mainnet addresses
-  // address private constant USDC = 0x000000000000000000000000000000000006f89a;
-  // address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
+  // Mainnet addresses
+  address private constant USDC = 0x000000000000000000000000000000000006f89a;
+  address private constant WHBAR = 0x0000000000000000000000000000000000163B5a;
 
-  // Testnet addresses
-  address private constant USDC = 0x0000000000000000000000000000000000001549;
-  address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
+  // // Testnet addresses
+  // address private constant USDC = 0x0000000000000000000000000000000000001549;
+  // address private constant WHBAR = 0x0000000000000000000000000000000000003aD2;
 
   /// @notice Constructor to initialize the contract with the SupraSValueFeed address.
   /// @param _sValueFeed The address of the SupraSValueFeed contract.
   constructor(
     ISupraSValueFeed _sValueFeed,
     AggregatorV3Interface _HBAR_USD_dataFeed,
-    AggregatorV3Interface _USDC_USD_dataFeed
+    AggregatorV3Interface _USDC_USD_dataFeed,
+    AggregatorV3Interface _ETH_USD_dataFeed
   ) {
     sValueFeed = _sValueFeed;
     HBAR_USD_dataFeed = _HBAR_USD_dataFeed;
     USDC_USD_dataFeed = _USDC_USD_dataFeed;
+    ETH_USD_dataFeed = _ETH_USD_dataFeed;
 
-    // // // Mainnet addresses
-    // assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
-    // assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
-    // assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
-    // assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
-    // assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
-    // assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
-    // assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
-    // assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
-    // assetToAddress['XPACK'] = 0x00000000000000000000000000000000006E86Ce;
-    // assetToAddress['GRELF'] = 0x000000000000000000000000000000000011afa2;
-    // assetToAddress['KBL'] = 0x00000000000000000000000000000000005B665A;
-    // assetToAddress['BONZO'] = 0x00000000000000000000000000000000007e545e;
+    // // Mainnet addresses
+    assetToAddress['KARATE'] = 0x000000000000000000000000000000000022D6de;
+    assetToAddress['HBARX'] = 0x00000000000000000000000000000000000cbA44;
+    assetToAddress['SAUCE'] = 0x00000000000000000000000000000000000b2aD5;
+    assetToAddress['XSAUCE'] = 0x00000000000000000000000000000000001647e8;
+    assetToAddress['DOVU'] = 0x000000000000000000000000000000000038b3db;
+    assetToAddress['HST'] = 0x00000000000000000000000000000000000Ec585;
+    assetToAddress['PACK'] = 0x0000000000000000000000000000000000492A28;
+    assetToAddress['STEAM'] = 0x000000000000000000000000000000000030fb8b;
+    assetToAddress['GRELF'] = 0x000000000000000000000000000000000011afa2;
+    assetToAddress['KBL'] = 0x00000000000000000000000000000000005B665A;
+    assetToAddress['BONZO'] = 0x00000000000000000000000000000000007e545e;
+    assetToAddress['WETH'] = 0xCa367694CDaC8f152e33683BB36CC9d6A73F1ef2;
 
-    // Testnet addresses
-    assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
-    assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
-    assetToAddress['SAUCE'] = 0x0000000000000000000000000000000000120f46;
-    assetToAddress['XSAUCE'] = 0x000000000000000000000000000000000015a59b;
+    // // Testnet addresses
+    // assetToAddress['KARATE'] = 0x00000000000000000000000000000000003991eD;
+    // assetToAddress['HBARX'] = 0x0000000000000000000000000000000000220cED;
+    // assetToAddress['SAUCE'] = 0x0000000000000000000000000000000000120f46;
+    // assetToAddress['XSAUCE'] = 0x000000000000000000000000000000000015a59b;
 
     assetToAddress['USDC'] = USDC;
     assetToAddress['WHBAR'] = WHBAR;
@@ -70,14 +73,14 @@ contract SupraOracle is Ownable2Step {
     assetToPriceIndex[assetToAddress['XSAUCE']] = 426;
     assetToPriceIndex[assetToAddress['USDC']] = 505;
     assetToPriceIndex[assetToAddress['WHBAR']] = 471; // This doesn't matter because for WHBAR we are always returning 1 HBAR as the price
-    // assetToPriceIndex[assetToAddress['STEAM']] = 479;
-    // assetToPriceIndex[assetToAddress['DOVU']] = 429;
-    // assetToPriceIndex[assetToAddress['PACK']] = 478;
-    // assetToPriceIndex[assetToAddress['HST']] = 428;
-    // assetToPriceIndex[assetToAddress['GRELF']] = 527;
-    // assetToPriceIndex[assetToAddress['KBL']] = 526;
-    // assetToPriceIndex[assetToAddress['XPACK']] = 513; // This is XPACK/PACK
-    // assetToPriceIndex[assetToAddress['BONZO']] = 532;
+    assetToPriceIndex[assetToAddress['STEAM']] = 479;
+    assetToPriceIndex[assetToAddress['DOVU']] = 429;
+    assetToPriceIndex[assetToAddress['PACK']] = 478;
+    assetToPriceIndex[assetToAddress['HST']] = 428;
+    assetToPriceIndex[assetToAddress['GRELF']] = 527;
+    assetToPriceIndex[assetToAddress['KBL']] = 526;
+    assetToPriceIndex[assetToAddress['BONZO']] = 532;
+    assetToPriceIndex[assetToAddress['WETH']] = 1001; // This doesn't matter because for WETH we are using Chainlink feed
 
     assetToDecimals[assetToAddress['KARATE']] = 8;
     assetToDecimals[assetToAddress['HBARX']] = 8;
@@ -85,14 +88,14 @@ contract SupraOracle is Ownable2Step {
     assetToDecimals[assetToAddress['XSAUCE']] = 6;
     assetToDecimals[assetToAddress['USDC']] = 6;
     assetToDecimals[assetToAddress['WHBAR']] = 8;
-    // assetToDecimals[assetToAddress['DOVU']] = 8;
-    // assetToDecimals[assetToAddress['PACK']] = 6;
-    // assetToDecimals[assetToAddress['HST']] = 8;
-    // assetToDecimals[assetToAddress['STEAM']] = 2;
-    // assetToDecimals[assetToAddress['GRELF']] = 8;
-    // assetToDecimals[assetToAddress['KBL']] = 6;
-    // assetToDecimals[assetToAddress['XPACK']] = 6;
-    // assetToDecimals[assetToAddress['BONZO']] = 8;
+    assetToDecimals[assetToAddress['DOVU']] = 8;
+    assetToDecimals[assetToAddress['PACK']] = 6;
+    assetToDecimals[assetToAddress['HST']] = 8;
+    assetToDecimals[assetToAddress['STEAM']] = 2;
+    assetToDecimals[assetToAddress['GRELF']] = 8;
+    assetToDecimals[assetToAddress['KBL']] = 6;
+    assetToDecimals[assetToAddress['BONZO']] = 8;
+    assetToDecimals[assetToAddress['WETH']] = 18;
   }
 
   /// @notice Updates the SupraSValueFeed contract address.
@@ -124,6 +127,25 @@ contract SupraOracle is Ownable2Step {
 
     // Multiply normalized USDC by 10^18 and divide by normalized HBAR to get a result in 18 decimals.
     return (normalizedUSDC * (10 ** 18)) / normalizedHBAR;
+  }
+
+  /// @notice Gets the current ETH Price from Chainlink feed.
+  /// @return The current ETH price in HBAR.
+  function getETHPrice() public view returns (uint256) {
+    (, int priceETH, , , ) = ETH_USD_dataFeed.latestRoundData();
+    (, int priceHBAR, , , ) = HBAR_USD_dataFeed.latestRoundData();
+    if (priceETH <= 0 || priceHBAR <= 0) revert DivisionByZero();
+
+    // Get the decimals from each Chainlink feed.
+    uint8 ethFeedDecimals = ETH_USD_dataFeed.decimals();
+    uint8 hbarFeedDecimals = HBAR_USD_dataFeed.decimals();
+
+    // Normalize the raw feed prices to 18 decimals.
+    uint256 normalizedETH = uint256(priceETH) * (10 ** (18 - ethFeedDecimals));
+    uint256 normalizedHBAR = uint256(priceHBAR) * (10 ** (18 - hbarFeedDecimals));
+
+    // Multiply normalized ETH by 10^18 and divide by normalized HBAR to get a result in 18 decimals.
+    return (normalizedETH * (10 ** 18)) / normalizedHBAR;
   }
 
   /// @notice Adds a new asset to the oracle.
@@ -196,26 +218,6 @@ contract SupraOracle is Ownable2Step {
     amountInEth = (price * amount) / (10 ** assetToDecimals[asset]);
   }
 
-  /// @notice Calculates the price of XPACK in terms of WHBAR
-  /// @dev This function calculates XPACK/WHBAR by multiplying:
-  ///      - XPACK/PACK price from Supra feed (index 513)
-  ///      - PACK/WHBAR price from Supra feed (index 478)
-  ///      The result is normalized to 18 decimals to match the contract's decimal standard.
-  /// @return The price of XPACK in WHBAR (18 decimals)
-  /// @custom:revert UnsupportedAsset if either PACK or XPACK price feeds are not configured
-  function getXPackPrice() public view returns (uint256) {
-    uint16 packPriceIndex = assetToPriceIndex[assetToAddress['PACK']];
-    uint16 xPackPriceIndex = assetToPriceIndex[assetToAddress['XPACK']];
-    if (packPriceIndex == 0 || xPackPriceIndex == 0) revert UnsupportedAsset();
-
-    ISupraSValueFeed.priceFeed memory packPriceFeed = sValueFeed.getSvalue(packPriceIndex);
-    ISupraSValueFeed.priceFeed memory xPackPriceFeed = sValueFeed.getSvalue(xPackPriceIndex);
-
-    // Both prices are already in 18 decimals from Supra feed
-    // Multiplying them gives us XPACK/WHBAR in 18 decimals
-    return (xPackPriceFeed.price * packPriceFeed.price) / (10 ** decimals());
-  }
-
   /// @notice Gets the price of an asset in HBAR.
   /// @param _asset The address of the asset.
   /// @return The price of the asset in HBAR.
@@ -233,13 +235,13 @@ contract SupraOracle is Ownable2Step {
       return getUSDCPrice();
     }
 
-    // For XPACK, we need to calculate the ratio directly from the price feeds
-    if (_asset == assetToAddress['XPACK']) {
-      return getXPackPrice();
+    if (_asset == assetToAddress['WETH']) {
+      return getETHPrice();
     }
 
     // For all other assets, return the price directly from the feed
     ISupraSValueFeed.priceFeed memory priceFeed = sValueFeed.getSvalue(priceIndex);
+    if (priceFeed.price == 0) revert DivisionByZero();
     return priceFeed.price;
   }
 

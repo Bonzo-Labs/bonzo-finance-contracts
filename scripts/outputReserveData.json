@@ -89,6 +89,36 @@
       }
     }
   },
+  "GRELF": {
+    "hedera_testnet": {
+      "token": {
+        "address": ""
+      },
+      "aToken": {
+        "address": ""
+      },
+      "stableDebt": {
+        "address": ""
+      },
+      "variableDebt": {
+        "address": ""
+      }
+    },
+    "hedera_mainnet": {
+      "token": {
+        "address": "0x000000000000000000000000000000000011afa2"
+      },
+      "aToken": {
+        "address": "0xb8c34c9a46AEdf1decb846F942861EeE7dE78075"
+      },
+      "stableDebt": {
+        "address": "0xCbECc4dfa531cA34FDbD78d683758FDE731cE57b"
+      },
+      "variableDebt": {
+        "address": "0x0E509Fc72f4b5d97494c0d45fcd1cF04d531Be44"
+      }
+    }
+  },
   "XSAUCE": {
     "hedera_testnet": {
       "token": {
@@ -227,6 +257,36 @@
     "hedera_mainnet": {
       "token": {
         "address": "0x00000000000000000000000000000000007e545e"
+      },
+      "aToken": {
+        "address": "0xC5aa104d5e7D9baE3A69Ddd5A722b8F6B69729c9"
+      },
+      "stableDebt": {
+        "address": "0xedac3fC0aA6704709e897f0d5146230510bAdeC3"
+      },
+      "variableDebt": {
+        "address": "0x1790C9169480c5C67D8011cd0311DDE1b2DC76e0"
+      }
+    }
+  },
+  "WETH": {
+    "hedera_testnet": {
+      "token": {
+        "address": ""
+      },
+      "aToken": {
+        "address": ""
+      },
+      "stableDebt": {
+        "address": ""
+      },
+      "variableDebt": {
+        "address": ""
+      }
+    },
+    "hedera_mainnet": {
+      "token": {
+        "address": "0xca367694cdac8f152e33683bb36cc9d6a73f1ef2"
       },
       "aToken": {
         "address": "0xC5aa104d5e7D9baE3A69Ddd5A722b8F6B69729c9"

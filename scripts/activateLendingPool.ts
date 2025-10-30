@@ -18,12 +18,12 @@ if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
   dataProviderAddress = AaveProtocolDataProvider.hedera_testnet.address;
-} else if (chain_type === 'hedera_testnet') {
+} else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   // console.log('Provider = ', provider);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
-  dataProviderAddress = AaveProtocolDataProvider.hedera_testnet.address;
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  dataProviderAddress = AaveProtocolDataProvider.hedera_mainnet.address;
 }
 
 async function setupContract(artifactName, contractAddress) {
@@ -36,15 +36,15 @@ async function lendingPool() {
   // Load the contract artifacts
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_testnet.address
+    LendingPool.hedera_mainnet.address
   );
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
+    LendingPoolAddressesProvider.hedera_mainnet.address
   );
   const dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 
@@ -164,31 +164,34 @@ async function lendingPool() {
   //   )
   // );
 
-  // Fetch and print reserve data for all current reserves in the pool
-  const reservesList = await lendingPoolContract.getReservesList();
-  console.log('Reserves List:', reservesList);
+  const poolAdmin = await lendingPoolAddressesProviderContract.getPoolAdmin();
+  console.log('Pool admin:', poolAdmin);
 
-  // Build a symbol lookup for nicer logs
-  const allReservesTokens = await dataProviderContract.getAllReservesTokens();
-  const symbolByAddress = new Map<string, string>();
-  for (const t of allReservesTokens) {
-    // t: { symbol: string, tokenAddress: string }
-    symbolByAddress.set(t.tokenAddress.toLowerCase(), t.symbol);
-  }
+  // // Fetch and print reserve data for all current reserves in the pool
+  // const reservesList = await lendingPoolContract.getReservesList();
+  // console.log('Reserves List:', reservesList);
 
-  for (const reserve of reservesList) {
-    const sym = symbolByAddress.get(reserve.toLowerCase()) || 'UNKNOWN';
-    console.log(`\n===== Reserve ${sym} (${reserve}) =====`);
-    try {
-      const reserveCfg = await dataProviderContract.getReserveConfigurationData(reserve);
-      console.log(`${sym} Reserve Configuration:`, reserveCfg);
+  // // Build a symbol lookup for nicer logs
+  // const allReservesTokens = await dataProviderContract.getAllReservesTokens();
+  // const symbolByAddress = new Map<string, string>();
+  // for (const t of allReservesTokens) {
+  //   // t: { symbol: string, tokenAddress: string }
+  //   symbolByAddress.set(t.tokenAddress.toLowerCase(), t.symbol);
+  // }
 
-      const reserveData = await dataProviderContract.getReserveData(reserve);
-      console.log(`${sym} Reserve Data:`, reserveData);
-    } catch (e) {
-      console.error(`Failed fetching data for reserve ${sym} (${reserve})`, e);
-    }
-  }
+  // for (const reserve of reservesList) {
+  //   const sym = symbolByAddress.get(reserve.toLowerCase()) || 'UNKNOWN';
+  //   console.log(`\n===== Reserve ${sym} (${reserve}) =====`);
+  //   try {
+  //     const reserveCfg = await dataProviderContract.getReserveConfigurationData(reserve);
+  //     console.log(`${sym} Reserve Configuration:`, reserveCfg);
+
+  //     const reserveData = await dataProviderContract.getReserveData(reserve);
+  //     console.log(`${sym} Reserve Data:`, reserveData);
+  //   } catch (e) {
+  //     console.error(`Failed fetching data for reserve ${sym} (${reserve})`, e);
+  //   }
+  // }
 }
 
 async function main() {

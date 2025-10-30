@@ -26,6 +26,59 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   bool internal whbarAssociated;
   uint256 internal constant MAX_APPROVAL = uint256(type(int64).max);
 
+  // Events
+  event DepositHBAR(
+    address indexed user,
+    address indexed lendingPool,
+    address indexed onBehalfOf,
+    uint256 hbarAmount,
+    uint256 whbarAmount,
+    uint16 referralCode
+  );
+
+  event WithdrawHBAR(
+    address indexed user,
+    address indexed lendingPool,
+    address indexed to,
+    uint256 amount,
+    uint256 hbarAmount
+  );
+
+  event RepayHBAR(
+    address indexed user,
+    address indexed lendingPool,
+    address indexed onBehalfOf,
+    uint256 hbarAmount,
+    uint256 whbarAmount,
+    uint256 rateMode,
+    uint256 refundAmount
+  );
+
+  event BorrowHBAR(
+    address indexed user,
+    address indexed lendingPool,
+    uint256 amount,
+    uint256 interestRateMode,
+    uint16 referralCode
+  );
+
+  event LendingPoolAuthorized(
+    address indexed lendingPool,
+    address indexed authorizedBy,
+    uint256 timestamp
+  );
+
+  event TokenAssociated(address indexed token, address indexed gateway, int32 responseCode);
+
+  event ERC20Recovered(
+    address indexed token,
+    address indexed recipient,
+    uint256 amount,
+    address indexed recoveredBy
+  );
+
+  event NativeRecovered(address indexed recipient, uint256 amount, address indexed recoveredBy);
+
   constructor(address helper) public {
     require(helper != address(0), 'Invalid helper address');
     whbarHelper = IWhbarHelper(helper);
@@ -44,6 +97,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
       'WHBAR association failed'
     );
     whbarAssociated = true;
+    emit TokenAssociated(whbarHelper.whbarToken(), address(this), response);
   }
 
   function associateWhbarToken() public onlyOwner {
@@ -58,6 +112,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     whbarToken.safeApprove(address(whbarHelper), MAX_APPROVAL);
     whbarToken.safeApprove(lendingPool, 0);
     whbarToken.safeApprove(lendingPool, MAX_APPROVAL);
+    emit LendingPoolAuthorized(lendingPool, msg.sender, block.timestamp);
   }
 
   function depositHBAR(
@@ -103,6 +158,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     whbarHelper.deposit{value: amount}();
     _approveLendingPool(lendingPool, amount);
     ILendingPool(lendingPool).deposit(address(whbarToken), amount, onBehalfOf, referralCode);
+    emit DepositHBAR(msg.sender, lendingPool, onBehalfOf, amount, amount, referralCode);
   }
 
   function _withdraw(address lendingPool, uint256 amount, address to) internal returns (uint256) {
@@ -129,6 +185,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     whbarHelper.unwrapWhbar(amountToWithdraw);
     _safeTransferHBAR(to, amountToWithdraw);
 
+    emit WithdrawHBAR(msg.sender, lendingPool, to, amountToWithdraw, amountToWithdraw);
     return amountToWithdraw;
   }
 
@@ -164,6 +221,8 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
       _safeTransferHBAR(msg.sender, refund);
     }
 
+    emit RepayHBAR(msg.sender, lendingPool, onBehalfOf, msg.value, paybackAmount, 2, refund);
+
     return paybackAmount;
   }
 
@@ -187,6 +246,8 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     _approveHelper(amount);
     whbarHelper.unwrapWhbar(amount);
     _safeTransferHBAR(msg.sender, amount);
+
+    emit BorrowHBAR(msg.sender, lendingPool, amount, interestRateMode, referralCode);
   }
 
   function _approveLendingPool(address lendingPool, uint256 amount) internal {
@@ -208,11 +269,13 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   function recoverERC20(address token, uint256 amount, address recipient) external onlyOwner {
     require(recipient != address(0), 'INVALID_RECIPIENT');
     IERC20(token).safeTransfer(recipient, amount);
+    emit ERC20Recovered(token, recipient, amount, msg.sender);
   }
 
   function recoverNative(address recipient, uint256 amount) external onlyOwner {
     require(recipient != address(0), 'INVALID_RECIPIENT');
     _safeTransferHBAR(recipient, amount);
+    emit NativeRecovered(recipient, amount, msg.sender);
   }
 
   function _safeTransferHBAR(address to, uint256 value) internal {
