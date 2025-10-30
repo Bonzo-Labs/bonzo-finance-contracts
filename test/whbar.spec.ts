@@ -90,7 +90,7 @@ describe('WHBAR Tests', function () {
   }
 
   before(async function () {
-    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
 
     if (whbarGatewayAddress && whbarGatewayAddress !== '') {
       whbarGatewayContract = await setupContract('WHBARGateway', whbarGatewayAddress);
@@ -262,7 +262,6 @@ describe('WHBAR Tests', function () {
     const debtAfterBorrow = await debtTokenContract.balanceOf(owner.address);
     console.log('   • Debt after:', debtAfterBorrow.toString());
     console.log('   • Debt Δ:', debtAfterBorrow.sub(debtBeforeBorrow).toString());
-    // expect(debtAfterBorrow.sub(debtBeforeBorrow)).to.be.closeTo(borrowAmt, 2);
 
     // 3) Repay part of the borrowed amount via Gateway
     console.log('\n💸  Step 3: Repay HBAR via Gateway');
@@ -287,10 +286,6 @@ describe('WHBAR Tests', function () {
     const debtAfterRepay = await debtTokenContract.balanceOf(owner.address);
     console.log('   • Debt after:', debtAfterRepay.toString());
     console.log('   • Debt Δ:', debtBeforeRepay.sub(debtAfterRepay).toString());
-    // expect(debtBeforeRepay.sub(debtAfterRepay)).to.be.closeTo(
-    //   repayAmt,
-    //   ethers.utils.parseUnits('0.001', 8)
-    // );
 
     // 4) Withdraw part of supplied aWHBAR and receive native HBAR
     console.log('\n🏧  Step 4: Withdraw HBAR via Gateway');
@@ -305,7 +300,6 @@ describe('WHBAR Tests', function () {
     const aAfterWithdraw = await aTokenContract.balanceOf(owner.address);
     console.log('   • aWHBAR after:', aAfterWithdraw.toString());
     console.log('   • aWHBAR Δ:', aBeforeWithdraw.sub(aAfterWithdraw).toString());
-    // expect(aBeforeWithdraw.sub(aAfterWithdraw)).to.be.closeTo(withdrawAmt, 2);
 
     console.log('\n✅  Composite flow completed successfully');
   });
