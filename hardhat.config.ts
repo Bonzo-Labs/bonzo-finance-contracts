@@ -123,7 +123,7 @@ const buidlerConfig: HardhatUserConfig = {
     username: process.env.TENDERLY_USERNAME || '',
     forkNetwork: '1', //Network id of the network we want to fork
   },
-  defaultNetwork: 'hedera_testnet',
+  defaultNetwork: 'hedera_mainnet',
   networks: {
     coverage: {
       url: 'http://localhost:8555',

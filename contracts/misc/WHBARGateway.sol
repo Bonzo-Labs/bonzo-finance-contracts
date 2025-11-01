@@ -6,6 +6,7 @@ import {Ownable} from '../dependencies/openzeppelin/contracts/Ownable.sol';
 import {IERC20} from '../dependencies/openzeppelin/contracts/IERC20.sol';
 import {SafeERC20} from '../dependencies/openzeppelin/contracts/SafeERC20.sol';
 import {ILendingPool} from '../interfaces/ILendingPool.sol';
+import {ILendingPoolAddressesProvider} from '../interfaces/ILendingPoolAddressesProvider.sol';
 import {IAToken} from '../interfaces/IAToken.sol';
 import {Helpers} from '../protocol/libraries/helpers/Helpers.sol';
 import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
@@ -20,6 +21,7 @@ import {SafeHederaTokenService} from './WHBAR/SafeHederaTokenService.sol';
  */
 contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   using SafeERC20 for IERC20;
+  ILendingPoolAddressesProvider internal immutable addressesProvider;
   IWhbarHelper internal whbarHelper;
   IERC20 internal whbarToken;
   address internal whbarContract;
@@ -79,12 +81,22 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
 
   event NativeRecovered(address indexed recipient, uint256 amount, address indexed recoveredBy);
 
-  constructor(address helper) public {
+  constructor(address helper, address _addressesProvider) public {
     require(helper != address(0), 'Invalid helper address');
+    require(_addressesProvider != address(0), 'Invalid addresses provider');
     whbarHelper = IWhbarHelper(helper);
     address tokenAddress = whbarHelper.whbarToken();
     whbarToken = IERC20(tokenAddress);
     whbarContract = whbarHelper.whbarContract();
+    addressesProvider = ILendingPoolAddressesProvider(_addressesProvider);
+  }
+
+  /**
+   * @dev Validates that the provided lending pool address matches the canonical pool
+   * @param lendingPool The lending pool address to validate
+   */
+  function _validateLendingPool(address lendingPool) internal view {
+    require(lendingPool == addressesProvider.getLendingPool(), 'INVALID_LENDING_POOL');
   }
 
   function _ensureWhbarAssociation() internal {
@@ -105,7 +117,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   }
 
   function authorizeLendingPool(address lendingPool) external onlyOwner {
-    require(lendingPool != address(0), 'Invalid lending pool');
+    _validateLendingPool(lendingPool);
     _ensureWhbarAssociation();
     // Restore legacy allowance pattern: reset to 0 then set max
     whbarToken.safeApprove(address(whbarHelper), 0);
@@ -152,7 +164,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     address onBehalfOf,
     uint16 referralCode
   ) internal {
-    require(lendingPool != address(0), 'INVALID_LENDING_POOL');
+    _validateLendingPool(lendingPool);
     require(amount > 0, 'INVALID_AMOUNT');
     _ensureWhbarAssociation();
     whbarHelper.deposit{value: amount}();
@@ -162,6 +174,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   }
 
   function _withdraw(address lendingPool, uint256 amount, address to) internal returns (uint256) {
+    _validateLendingPool(lendingPool);
     require(to != address(0), 'INVALID_RECIPIENT');
     _ensureWhbarAssociation();
 
@@ -195,6 +208,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     uint256 rateMode,
     address onBehalfOf
   ) internal returns (uint256) {
+    _validateLendingPool(lendingPool);
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebtMemory(
       onBehalfOf,
       ILendingPool(lendingPool).getReserveData(address(whbarToken))
@@ -232,6 +246,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     uint256 interestRateMode,
     uint16 referralCode
   ) internal {
+    _validateLendingPool(lendingPool);
     require(amount > 0, 'INVALID_AMOUNT');
     _ensureWhbarAssociation();
 
@@ -264,6 +279,10 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
 
   function getWHBARAddress() external view returns (address) {
     return address(whbarToken);
+  }
+
+  function getLendingPool() external view returns (address) {
+    return addressesProvider.getLendingPool();
   }
 
   function recoverERC20(address token, uint256 amount, address recipient) external onlyOwner {

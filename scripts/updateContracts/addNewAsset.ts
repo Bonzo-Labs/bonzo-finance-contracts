@@ -15,9 +15,9 @@ import {
 } from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
 
-// const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
-const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
+// const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
 
 export const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -98,6 +98,7 @@ const assetConfigurations = {
     ltv: 7000,
     liquidationThreshold: 7500,
     liquidationBonus: 10700,
+    aTokenImplementation: '0x2Bf2835b69144567784Bb04CEfe0F8D0a688e5C8',
   },
 };
 
@@ -151,7 +152,7 @@ async function updateReserve(tokenAddress: string) {
   const initReserveInput = assetConfigurations[tokenAddress];
 
   const reserveParams: ReserveParams = {
-    aTokenImpl: AToken.hedera_mainnet.address,
+    aTokenImpl: initReserveInput.aTokenImplementation,
     stableDebtTokenImpl: StableDebtToken.hedera_mainnet.address,
     variableDebtTokenImpl: VariableDebtToken.hedera_mainnet.address,
     underlyingAssetDecimals: initReserveInput.underlyingAssetDecimals,
@@ -172,12 +173,12 @@ async function updateReserve(tokenAddress: string) {
   reserveParamsArray.push(reserveParams);
   console.log(reserveParamsArray);
 
-  // const addReserveTxn = await lendingPoolConfiguratorContract.batchInitReserve(reserveParamsArray);
-  // await addReserveTxn.wait();
-  // console.log('Reserve added');
+  const addReserveTxn = await lendingPoolConfiguratorContract.batchInitReserve(reserveParamsArray);
+  await addReserveTxn.wait();
+  console.log('Reserve added');
 
-  // const reserve = await lendingPoolContract.getReserveData(tokenAddress);
-  // console.log(reserve);
+  const reserve = await lendingPoolContract.getReserveData(tokenAddress);
+  console.log(reserve);
 }
 
 async function addNewAssetToOracle(tokenAddress: string) {
@@ -241,13 +242,13 @@ async function setReserveFactor(tokenAddress: string) {
     LendingPoolConfigurator.hedera_mainnet.address
   );
 
-  const txn = await lendingPoolConfiguratorContract.setReserveFactor(tokenAddress, '1725');
+  const txn = await lendingPoolConfiguratorContract.setReserveFactor(tokenAddress, '2000');
   await txn.wait();
   console.log('Reserve factor set');
 }
 
 async function main() {
-  const newAsset = '0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed';
+  const newAsset = '0xca367694cdac8f152e33683bb36cc9d6a73f1ef2';
   // Step 0: Deploy a new interest rate strategy contract, if needed - use DefaultReserveInterestRateStrategy.sol
   // Step 0: Deploy new aToken implementation contract, if needed - use AToken.sol
   // Step 1: Update the reserve

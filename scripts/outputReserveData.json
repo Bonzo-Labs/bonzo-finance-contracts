@@ -289,13 +289,13 @@
         "address": "0xca367694cdac8f152e33683bb36cc9d6a73f1ef2"
       },
       "aToken": {
-        "address": "0xC5aa104d5e7D9baE3A69Ddd5A722b8F6B69729c9"
+        "address": "0x6f3FBff04314573e5A2f4eD6dcEf3aA709ab8eD0"
       },
       "stableDebt": {
-        "address": "0xedac3fC0aA6704709e897f0d5146230510bAdeC3"
+        "address": "0xF22b69Fa1D12eDfeA4430540A51D3728Ed3505a6"
       },
       "variableDebt": {
-        "address": "0x1790C9169480c5C67D8011cd0311DDE1b2DC76e0"
+        "address": "0x5451A5863b3d6b672610CE5923Eb1eC0bB8FCa51"
       }
     }
   },

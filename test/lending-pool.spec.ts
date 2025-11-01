@@ -45,7 +45,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_PROXY || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 }
 
 const client = Client.forTestnet();
@@ -168,11 +168,11 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it('should deposit, borrow, withdraw and repay for USDC and SAUCE', async function () {
-    // const assets = [HBARX, USDC, SAUCE];
-    // const decimals = [8, 6, 6];
-    const assets = [SAUCE, BONZO];
-    const decimals = [6, 8];
+  it.skip('should deposit, borrow, withdraw and repay for USDC and SAUCE', async function () {
+    const assets = [HBARX, USDC, SAUCE];
+    const decimals = [8, 6, 6];
+    // const assets = [SAUCE, BONZO];
+    // const decimals = [6, 8];
     console.log('In the test, owner:', owner.address);
 
     for (const [index, asset] of assets.entries()) {
@@ -334,7 +334,7 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it.skip('should deposit, borrow, withdraw and repay for WETH', async function () {
+  it('should deposit, borrow, withdraw and repay for WETH', async function () {
     const asset = WETH;
     const decimals = 18; // WETH uses 18 decimals
     console.log('In the test, owner:', owner.address);
@@ -354,7 +354,7 @@ describe('Lending Pool Contract Tests', function () {
     const debtTokenContract = await setupContract('VariableDebtToken', variableDebtAddr);
 
     // 1) Deposit 1 WETH
-    const depositAmount = ethers.utils.parseUnits('1', decimals);
+    const depositAmount = ethers.utils.parseUnits('0.01', decimals);
     console.log(`\n💰 Deposit → ${ethers.utils.formatUnits(depositAmount, decimals)} WETH`);
     await approveAndDeposit(
       erc20Contract,
@@ -377,7 +377,7 @@ describe('Lending Pool Contract Tests', function () {
     );
 
     // 2) Borrow 0.1 WETH
-    const borrowAmount = ethers.utils.parseUnits('0.1', decimals);
+    const borrowAmount = ethers.utils.parseUnits('0.001', decimals);
     console.log(`\n📥 Borrow → ${ethers.utils.formatUnits(borrowAmount, decimals)} WETH`);
     const overrides = { gasLimit: 3000000 };
     console.log('   🔧 Attempting actual borrow with gas limit:', overrides.gasLimit);
@@ -405,35 +405,7 @@ describe('Lending Pool Contract Tests', function () {
       `   🔻 Debt after borrow: ${ethers.utils.formatUnits(debtAfterBorrow.toString(), decimals)}`
     );
 
-    // 3) Withdraw 0.01 WETH
-    const withdrawAmount = ethers.utils.parseUnits('0.01', decimals);
-    console.log(`\n🏧 Withdraw → ${ethers.utils.formatUnits(withdrawAmount, decimals)} WETH`);
-    const aTokenApprove = await aTokenContract.approve(lendingPoolContract.address, withdrawAmount);
-    await aTokenApprove.wait();
-    console.log(`   📝 aToken approve tx: ${aTokenApprove.hash}`);
-    const withdrawTxn = await lendingPoolContract.withdraw(
-      tokenAddr,
-      withdrawAmount,
-      owner.address
-    );
-    await withdrawTxn.wait();
-    console.log(`   ✅ Withdraw tx: ${withdrawTxn.hash}`);
-    const aTokenAfterWithdraw = await aTokenContract.balanceOf(owner.address);
-    const debtAfterWithdraw = await debtTokenContract.balanceOf(owner.address);
-    console.log(
-      `   🟢 aToken after withdraw: ${ethers.utils.formatUnits(
-        aTokenAfterWithdraw.toString(),
-        decimals
-      )}`
-    );
-    console.log(
-      `   🧮 Debt after withdraw: ${ethers.utils.formatUnits(
-        debtAfterWithdraw.toString(),
-        decimals
-      )}`
-    );
-
-    // 4) Repay remaining
+    // 3) Repay remaining
     let currentDebt = await debtTokenContract.balanceOf(owner.address);
 
     console.log(
@@ -443,30 +415,32 @@ describe('Lending Pool Contract Tests', function () {
       )} WETH`
     );
     if (currentDebt.gt(0)) {
+      // Use MaxUint256 to repay the full debt, accounting for interest accrual
+      const maxRepayAmount = ethers.constants.MaxUint256;
       const currentAllowance = await erc20Contract.allowance(
         owner.address,
         lendingPoolContract.address
       );
-      if (currentAllowance.lt(currentDebt)) {
+      if (currentAllowance.lt(maxRepayAmount)) {
         if (currentAllowance.gt(0)) {
           const resetTx = await erc20Contract.approve(lendingPoolContract.address, 0, {
             gasLimit: 1000000,
           });
           await resetTx.wait();
         }
-        const approveTxn = await erc20Contract.approve(lendingPoolContract.address, currentDebt, {
-          gasLimit: 1000000,
-        });
+        const approveTxn = await erc20Contract.approve(
+          lendingPoolContract.address,
+          maxRepayAmount,
+          {
+            gasLimit: 1000000,
+          }
+        );
         await approveTxn.wait();
         console.log(`   📝 Approve repay tx: ${approveTxn.hash}`);
       }
 
-      const repayTxn = await lendingPoolContract.repay(
-        tokenAddr,
-        currentDebt / 10,
-        2,
-        owner.address
-      );
+      // Pass MaxUint256 to repay the entire debt (handles interest accrual automatically)
+      const repayTxn = await lendingPoolContract.repay(tokenAddr, maxRepayAmount, 2, owner.address);
       await repayTxn.wait();
       console.log(`   ✅ Repay tx: ${repayTxn.hash}`);
       const aTokenAfterRepay = await aTokenContract.balanceOf(owner.address);
@@ -486,6 +460,44 @@ describe('Lending Pool Contract Tests', function () {
       console.log('------------------------------------------------------------\n');
       expect(balanceOfAfterRepay).to.be.gte(0);
     }
+
+    // 4) Withdraw full balance (use MaxUint256 to withdraw without dust)
+    const maxWithdrawAmount = ethers.constants.MaxUint256;
+    const aTokenBalanceBefore = await aTokenContract.balanceOf(owner.address);
+    console.log(
+      `\n🏧 Withdraw → current aToken balance: ${ethers.utils.formatUnits(
+        aTokenBalanceBefore.toString(),
+        decimals
+      )} aWETH`
+    );
+    const aTokenApprove = await aTokenContract.approve(
+      lendingPoolContract.address,
+      maxWithdrawAmount
+    );
+    await aTokenApprove.wait();
+    console.log(`   📝 aToken approve tx: ${aTokenApprove.hash}`);
+    // Pass MaxUint256 to withdraw the entire aToken balance (handles interest accrual automatically)
+    const withdrawTxn = await lendingPoolContract.withdraw(
+      tokenAddr,
+      maxWithdrawAmount,
+      owner.address
+    );
+    await withdrawTxn.wait();
+    console.log(`   ✅ Withdraw tx: ${withdrawTxn.hash}`);
+    const aTokenAfterWithdraw = await aTokenContract.balanceOf(owner.address);
+    const debtAfterWithdraw = await debtTokenContract.balanceOf(owner.address);
+    console.log(
+      `   🟢 aToken after withdraw: ${ethers.utils.formatUnits(
+        aTokenAfterWithdraw.toString(),
+        decimals
+      )}`
+    );
+    console.log(
+      `   🧮 Debt after withdraw: ${ethers.utils.formatUnits(
+        debtAfterWithdraw.toString(),
+        decimals
+      )}`
+    );
   });
 
   it.skip('should deposit, withdraw and borrow SAUCE tokens', async function () {

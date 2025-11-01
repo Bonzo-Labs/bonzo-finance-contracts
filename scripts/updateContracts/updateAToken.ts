@@ -5,7 +5,7 @@ import {
   LendingPoolAddressesProvider,
   LendingPoolConfigurator,
   AToken,
-} from '../outputReserveDataTestnet.json';
+} from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
 
 require('dotenv').config();
@@ -19,7 +19,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
 }
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -29,7 +29,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateAToken(tokenAddress: string, tokenName: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
 
   console.log('Owner:', owner.address);
@@ -71,7 +71,7 @@ async function updateAToken(tokenAddress: string, tokenName: string) {
 
 async function main() {
   // "address": "0xe97f8ED6eeE331954ADA0F8056412262Aa7fa975", - Old testnet atoken impl
-  await updateAToken('0xb1f616b8134f602c3bb465fb5b5e6565ccad37ed', 'WHBARE');
+  await updateAToken('0xca367694cdac8f152e33683bb36cc9d6a73f1ef2', 'WETH');
 }
 
 main()

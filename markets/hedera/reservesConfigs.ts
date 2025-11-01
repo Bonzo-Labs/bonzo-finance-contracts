@@ -63,7 +63,7 @@ export const strategyWETH: IReserveParams = {
   liquidationBonus: '10700',
   borrowingEnabled: true,
   stableBorrowRateEnabled: false,
-  reserveDecimals: '8',
+  reserveDecimals: '18',
   aTokenImpl: eContractid.AToken,
   reserveFactor: '2000',
   supplyCap: '0',
