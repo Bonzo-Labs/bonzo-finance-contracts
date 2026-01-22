@@ -9,6 +9,7 @@ import {
   rateStrategyHBARX,
   rateStrategyVolatileTwo,
   rateStrategyUSDCNew,
+  rateStrategyWETH,
 } from './rateStrategies';
 
 // Reference - https://docs.aave.com/risk/v/aave-v2/liquidity-risk/borrow-interest-rate for the rate strategies
@@ -53,6 +54,20 @@ export const strategyWHBAR: IReserveParams = {
   reserveFactor: '1168',
   supplyCap: '0',
   borrowCap: '9714624',
+};
+
+export const strategyWETH: IReserveParams = {
+  strategy: rateStrategyWETH,
+  baseLTVAsCollateral: '7000',
+  liquidationThreshold: '7500',
+  liquidationBonus: '10700',
+  borrowingEnabled: true,
+  stableBorrowRateEnabled: false,
+  reserveDecimals: '18',
+  aTokenImpl: eContractid.AToken,
+  reserveFactor: '2000',
+  supplyCap: '0',
+  borrowCap: '0',
 };
 
 export const strategyHBARX: IReserveParams = {

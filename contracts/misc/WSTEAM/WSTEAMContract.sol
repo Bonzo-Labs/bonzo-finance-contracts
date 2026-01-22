@@ -133,7 +133,7 @@ contract WSTEAM is SafeHederaTokenService {
 
     safeTransferToken(steamToken, src, address(this), steamAmount); // Transfer STEAM tokens from the source to the contract
     uint256 wsteamAmount = toWSTEAM(steamAmount); // Calculate the amount of WSTEAM to mint (adjusting for decimals difference)
-    safeMintToken(token, dst, wsteamAmount, new bytes[](0)); // Mint WSTEAM tokens (tokens get minted to the treasury, which is the contract itself)
+    safeMintToken(token, address(this), wsteamAmount, new bytes[](0)); // Mint WSTEAM tokens (tokens get minted to the treasury, which is the contract itself)
     safeTransferToken(token, address(this), dst, wsteamAmount); // Now, transfer the tokens from the treasury to the user
 
     emit Deposit(src, dst, steamAmount, wsteamAmount);
@@ -168,13 +168,14 @@ contract WSTEAM is SafeHederaTokenService {
     require(dst != address(0), 'Invalid destination address');
     require(src == msg.sender, 'Only token owner can withdraw');
 
-    uint256 steamAmount = toSTEAM(wsteamAmount); // Calculate the amount of STEAM to send back (adjusting for decimals)
-    require(steamAmount > 0, 'WSTEAM amount too small');
+    uint256 alignedWsteamAmount = wsteamAmount.sub(wsteamAmount % DECIMALS_CONVERSION);
+    require(alignedWsteamAmount > 0, 'WSTEAM amount too small');
+    uint256 steamAmount = alignedWsteamAmount.div(DECIMALS_CONVERSION);
 
-    safeTransferToken(token, src, address(this), wsteamAmount); // Transfer WSTEAM tokens from the source to the contract and burn them
-    safeBurnToken(token, src, wsteamAmount, new int64[](0));
+    safeTransferToken(token, src, address(this), alignedWsteamAmount); // Transfer WSTEAM tokens from the source to the contract and burn them
+    safeBurnToken(token, address(this), alignedWsteamAmount, new int64[](0));
     safeTransferToken(steamToken, address(this), dst, steamAmount); // Transfer STEAM tokens to the destination
 
-    emit Withdrawal(src, dst, steamAmount, wsteamAmount);
+    emit Withdrawal(src, dst, steamAmount, alignedWsteamAmount);
   }
 }

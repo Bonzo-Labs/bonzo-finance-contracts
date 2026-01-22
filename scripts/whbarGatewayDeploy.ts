@@ -7,18 +7,20 @@ const outputReserveData = require('./outputReserveData.json');
 const chainType = process.env.CHAIN_TYPE || 'hedera_testnet';
 
 async function deployWHBARGateway() {
-  let provider, owner, whbarHelper, lendingPool;
+  let provider, owner, whbarHelper, lendingPool, addressesProvider;
 
   if (chainType === 'hedera_testnet') {
     provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
     owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
     whbarHelper = process.env.WHBAR_HELPER_TESTNET || process.env.WHBAR_HELPER || '';
     lendingPool = outputReserveData.LendingPool.hedera_testnet.address;
+    addressesProvider = outputReserveData.LendingPoolAddressesProvider.hedera_testnet.address;
   } else if (chainType === 'hedera_mainnet') {
     provider = new hardhat.ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
     owner = new hardhat.ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
     whbarHelper = process.env.WHBAR_HELPER_MAINNET || process.env.WHBAR_HELPER || '';
     lendingPool = outputReserveData.LendingPool.hedera_mainnet.address;
+    addressesProvider = outputReserveData.LendingPoolAddressesProvider.hedera_mainnet.address;
   }
 
   try {
@@ -26,8 +28,12 @@ async function deployWHBARGateway() {
       throw new Error('WHBAR helper address not configured or invalid');
     }
 
+    if (!addressesProvider || !ethers.utils.isAddress(addressesProvider)) {
+      throw new Error('Addresses provider address not configured or invalid');
+    }
+
     const Gateway = await hardhat.ethers.getContractFactory('WHBARGateway');
-    const gateway = await Gateway.connect(owner).deploy(whbarHelper, {
+    const gateway = await Gateway.connect(owner).deploy(whbarHelper, addressesProvider, {
       gasLimit: 14500000,
     });
     console.log('Deploying WHBARGateway...');
@@ -43,6 +49,15 @@ async function deployWHBARGateway() {
       .authorizeLendingPool(lendingPool, { gasLimit: 6000000 });
     await authTx.wait();
     console.log('LendingPool authorized:', lendingPool);
+
+    const lendingPoolInGateway = await gateway.getLendingPool();
+    console.log('LendingPool in Gateway:', lendingPoolInGateway);
+
+    if (lendingPoolInGateway !== lendingPool) {
+      throw new Error('LendingPool in Gateway does not match the expected lending pool');
+    }
+
+    console.log('LendingPool in Gateway matches the expected lending pool');
   } catch (error) {
     console.error('An error occurred during deployment:', error);
   }

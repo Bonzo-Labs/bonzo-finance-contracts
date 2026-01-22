@@ -10,8 +10,9 @@ import {
 } from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
 
-const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
+// const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -21,13 +22,13 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateLendingPool() {
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
+    LendingPoolAddressesProvider.hedera_mainnet.address
   );
 
   const LendingPoolFactory = await ethers.getContractFactory('LendingPool', {
     libraries: {
-      ReserveLogic: ReserveLogic.hedera_testnet.address,
-      ValidationLogic: ValidationLogic.hedera_testnet.address,
+      ReserveLogic: ReserveLogic.hedera_mainnet.address,
+      ValidationLogic: ValidationLogic.hedera_mainnet.address,
     },
   });
   const lendingPoolImpl = await LendingPoolFactory.deploy();

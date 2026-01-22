@@ -6,6 +6,7 @@ import {Ownable} from '../dependencies/openzeppelin/contracts/Ownable.sol';
 import {IERC20} from '../dependencies/openzeppelin/contracts/IERC20.sol';
 import {SafeERC20} from '../dependencies/openzeppelin/contracts/SafeERC20.sol';
 import {ILendingPool} from '../interfaces/ILendingPool.sol';
+import {ILendingPoolAddressesProvider} from '../interfaces/ILendingPoolAddressesProvider.sol';
 import {IAToken} from '../interfaces/IAToken.sol';
 import {Helpers} from '../protocol/libraries/helpers/Helpers.sol';
 import {DataTypes} from '../protocol/libraries/types/DataTypes.sol';
@@ -20,18 +21,58 @@ import {SafeHederaTokenService} from './WHBAR/SafeHederaTokenService.sol';
  */
 contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   using SafeERC20 for IERC20;
+  ILendingPoolAddressesProvider internal immutable addressesProvider;
   IWhbarHelper internal whbarHelper;
   IERC20 internal whbarToken;
   address internal whbarContract;
   bool internal whbarAssociated;
   uint256 internal constant MAX_APPROVAL = uint256(type(int64).max);
+  address public lendingPool;
 
-  constructor(address helper) public {
+  // Events for audit compliance (TOB-BONZO-4)
+  event WhbarAssociated(address indexed caller);
+  event LendingPoolAuthorized(
+    address indexed lendingPool,
+    address indexed authorizedBy,
+    uint256 timestamp
+  );
+  event DepositHBAR(
+    address indexed caller,
+    address indexed onBehalfOf,
+    uint256 amount,
+    uint16 referralCode
+  );
+  event WithdrawHBAR(address indexed caller, address indexed to, uint256 amount);
+  event RepayHBAR(
+    address indexed caller,
+    address indexed onBehalfOf,
+    uint256 amount,
+    uint256 rateMode,
+    uint256 refundAmount
+  );
+  event BorrowHBAR(
+    address indexed caller,
+    uint256 amount,
+    uint256 interestRateMode,
+    uint16 referralCode
+  );
+  event TokenAssociated(address indexed token, address indexed gateway, int32 responseCode);
+  event ERC20Recovered(
+    address indexed token,
+    address indexed recipient,
+    uint256 amount,
+    address indexed recoveredBy
+  );
+  event NativeRecovered(address indexed recipient, uint256 amount, address indexed recoveredBy);
+
+  constructor(address helper, address _addressesProvider) public {
     require(helper != address(0), 'Invalid helper address');
+    require(_addressesProvider != address(0), 'Invalid addresses provider');
     whbarHelper = IWhbarHelper(helper);
     address tokenAddress = whbarHelper.whbarToken();
     whbarToken = IERC20(tokenAddress);
     whbarContract = whbarHelper.whbarContract();
+    addressesProvider = ILendingPoolAddressesProvider(_addressesProvider);
   }
 
   function _ensureWhbarAssociation() internal {
@@ -44,73 +85,139 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
       'WHBAR association failed'
     );
     whbarAssociated = true;
+    emit TokenAssociated(whbarHelper.whbarToken(), address(this), response);
   }
 
   function associateWhbarToken() public onlyOwner {
     _ensureWhbarAssociation();
+    emit WhbarAssociated(msg.sender);
   }
 
-  function authorizeLendingPool(address lendingPool) external onlyOwner {
-    require(lendingPool != address(0), 'Invalid lending pool');
+  /**
+   * @notice Authorizes a lending pool address for use with this gateway
+   * @dev Only the canonical lending pool from addressesProvider can be authorized (TOB-BONZO-6)
+   * @param lendingPoolAddress The lending pool address to authorize
+   */
+  function authorizeLendingPool(address lendingPoolAddress) external onlyOwner {
+    require(lendingPoolAddress != address(0), 'Invalid lending pool');
+    // Ensure the provided address matches the canonical lending pool (TOB-BONZO-6)
+    require(lendingPoolAddress == addressesProvider.getLendingPool(), 'LENDING_POOL_MISMATCH');
     _ensureWhbarAssociation();
     // Restore legacy allowance pattern: reset to 0 then set max
     whbarToken.safeApprove(address(whbarHelper), 0);
     whbarToken.safeApprove(address(whbarHelper), MAX_APPROVAL);
-    whbarToken.safeApprove(lendingPool, 0);
-    whbarToken.safeApprove(lendingPool, MAX_APPROVAL);
+    if (lendingPool != address(0) && lendingPool != lendingPoolAddress) {
+      whbarToken.safeApprove(lendingPool, 0);
+    }
+    whbarToken.safeApprove(lendingPoolAddress, 0);
+    whbarToken.safeApprove(lendingPoolAddress, MAX_APPROVAL);
+    lendingPool = lendingPoolAddress;
+    emit LendingPoolAuthorized(lendingPoolAddress, msg.sender, block.timestamp);
   }
 
+  /**
+   * @notice Deposits HBAR into the lending pool
+   * @param lendingPoolAddress The lending pool address (must match authorized pool)
+   * @param onBehalfOf The address to receive the aTokens
+   * @param referralCode Referral code for tracking
+   */
   function depositHBAR(
-    address lendingPool,
+    address lendingPoolAddress,
     address onBehalfOf,
     uint16 referralCode
   ) external payable nonReentrant {
     require(msg.value > 0, 'Invalid HBAR amount');
-    _deposit(lendingPool, msg.value, onBehalfOf, referralCode);
+    address pool = _validatedLendingPool(lendingPoolAddress);
+    _deposit(pool, msg.value, onBehalfOf, referralCode);
+    emit DepositHBAR(msg.sender, onBehalfOf, msg.value, referralCode);
   }
 
-  function withdrawHBAR(address lendingPool, uint256 amount, address to) external nonReentrant {
-    _withdraw(lendingPool, amount, to);
+  /**
+   * @notice Withdraws HBAR from the lending pool
+   * @param lendingPoolAddress The lending pool address (must match authorized pool)
+   * @param amount The amount to withdraw (use type(uint256).max for full balance)
+   * @param to The address to receive the HBAR
+   */
+  function withdrawHBAR(
+    address lendingPoolAddress,
+    uint256 amount,
+    address to
+  ) external nonReentrant {
+    address pool = _validatedLendingPool(lendingPoolAddress);
+    uint256 withdrawn = _withdraw(pool, amount, to);
+    emit WithdrawHBAR(msg.sender, to, withdrawn);
   }
 
+  /**
+   * @notice Repays HBAR debt in the lending pool
+   * @param lendingPoolAddress The lending pool address (must match authorized pool)
+   * @param amount The amount to repay
+   * @param rateMode The interest rate mode (ignored, always uses variable)
+   * @param onBehalfOf The address whose debt to repay
+   */
   function repayHBAR(
-    address lendingPool,
+    address lendingPoolAddress,
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
   ) external payable nonReentrant {
-    _repay(lendingPool, amount, rateMode, onBehalfOf);
+    address pool = _validatedLendingPool(lendingPoolAddress);
+    (uint256 repaid, uint256 refund) = _repay(pool, amount, rateMode, onBehalfOf);
+    emit RepayHBAR(msg.sender, onBehalfOf, repaid, rateMode, refund);
   }
 
+  /**
+   * @notice Borrows HBAR from the lending pool
+   * @param lendingPoolAddress The lending pool address (must match authorized pool)
+   * @param amount The amount to borrow
+   * @param interestRateMode The interest rate mode
+   * @param referralCode Referral code for tracking
+   */
   function borrowHBAR(
-    address lendingPool,
+    address lendingPoolAddress,
     uint256 amount,
     uint256 interestRateMode,
     uint16 referralCode
   ) external nonReentrant {
-    _borrow(lendingPool, amount, interestRateMode, referralCode);
+    address pool = _validatedLendingPool(lendingPoolAddress);
+    _borrow(pool, amount, interestRateMode, referralCode);
+    emit BorrowHBAR(msg.sender, amount, interestRateMode, referralCode);
+  }
+
+  /**
+   * @dev Validates that the lending pool address matches the authorized pool (TOB-BONZO-6)
+   * @param lendingPoolAddress The lending pool address to validate
+   * @return The validated lending pool address
+   */
+  function _validatedLendingPool(address lendingPoolAddress) internal view returns (address) {
+    require(lendingPool != address(0), 'LENDING_POOL_NOT_SET');
+    require(lendingPoolAddress == lendingPool, 'INVALID_LENDING_POOL');
+    return lendingPool;
   }
 
   function _deposit(
-    address lendingPool,
+    address lendingPoolAddr,
     uint256 amount,
     address onBehalfOf,
     uint16 referralCode
   ) internal {
-    require(lendingPool != address(0), 'INVALID_LENDING_POOL');
     require(amount > 0, 'INVALID_AMOUNT');
     _ensureWhbarAssociation();
     whbarHelper.deposit{value: amount}();
-    _approveLendingPool(lendingPool, amount);
-    ILendingPool(lendingPool).deposit(address(whbarToken), amount, onBehalfOf, referralCode);
+    _approveLendingPool(lendingPoolAddr, amount);
+    ILendingPool(lendingPoolAddr).deposit(address(whbarToken), amount, onBehalfOf, referralCode);
   }
 
-  function _withdraw(address lendingPool, uint256 amount, address to) internal returns (uint256) {
+  function _withdraw(
+    address lendingPoolAddr,
+    uint256 amount,
+    address to
+  ) internal returns (uint256) {
     require(to != address(0), 'INVALID_RECIPIENT');
     _ensureWhbarAssociation();
 
     IAToken aToken = IAToken(
-      ILendingPool(lendingPool).getReserveData(address(whbarToken)).aTokenAddress
+      ILendingPool(lendingPoolAddr).getReserveData(address(whbarToken)).aTokenAddress
     );
     uint256 userBalance = aToken.balanceOf(msg.sender);
     uint256 amountToWithdraw = amount;
@@ -123,7 +230,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     require(amountToWithdraw <= userBalance, 'INSUFFICIENT_BALANCE');
 
     aToken.transferFrom(msg.sender, address(this), amountToWithdraw);
-    ILendingPool(lendingPool).withdraw(address(whbarToken), amountToWithdraw, address(this));
+    ILendingPool(lendingPoolAddr).withdraw(address(whbarToken), amountToWithdraw, address(this));
 
     _approveHelper(amountToWithdraw);
     whbarHelper.unwrapWhbar(amountToWithdraw);
@@ -133,14 +240,14 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
   }
 
   function _repay(
-    address lendingPool,
+    address lendingPoolAddr,
     uint256 amount,
     uint256 rateMode,
     address onBehalfOf
-  ) internal returns (uint256) {
+  ) internal returns (uint256, uint256) {
     (uint256 stableDebt, uint256 variableDebt) = Helpers.getUserCurrentDebtMemory(
       onBehalfOf,
-      ILendingPool(lendingPool).getReserveData(address(whbarToken))
+      ILendingPool(lendingPoolAddr).getReserveData(address(whbarToken))
     );
     // Default to variable debt; stable debt is disabled
     uint256 paybackAmount = variableDebt;
@@ -154,9 +261,9 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     require(msg.value >= paybackAmount, 'INSUFFICIENT_HBAR_SENT');
     _ensureWhbarAssociation();
     whbarHelper.deposit{value: paybackAmount}();
-    _approveLendingPool(lendingPool, paybackAmount);
+    _approveLendingPool(lendingPoolAddr, paybackAmount);
     // Always repay variable debt (rateMode = 2)
-    ILendingPool(lendingPool).repay(address(whbarToken), paybackAmount, 2, onBehalfOf);
+    ILendingPool(lendingPoolAddr).repay(address(whbarToken), paybackAmount, 2, onBehalfOf);
 
     // Compute refund safely without underflow
     uint256 refund = msg.value > paybackAmount ? (msg.value - paybackAmount) : 0;
@@ -164,11 +271,11 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
       _safeTransferHBAR(msg.sender, refund);
     }
 
-    return paybackAmount;
+    return (paybackAmount, refund);
   }
 
   function _borrow(
-    address lendingPool,
+    address lendingPoolAddr,
     uint256 amount,
     uint256 interestRateMode,
     uint16 referralCode
@@ -176,7 +283,7 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     require(amount > 0, 'INVALID_AMOUNT');
     _ensureWhbarAssociation();
 
-    ILendingPool(lendingPool).borrow(
+    ILendingPool(lendingPoolAddr).borrow(
       address(whbarToken),
       amount,
       interestRateMode,
@@ -205,14 +312,20 @@ contract WHBARGateway is Ownable, ReentrancyGuard, SafeHederaTokenService {
     return address(whbarToken);
   }
 
+  function getLendingPool() external view returns (address) {
+    return addressesProvider.getLendingPool();
+  }
+
   function recoverERC20(address token, uint256 amount, address recipient) external onlyOwner {
     require(recipient != address(0), 'INVALID_RECIPIENT');
     IERC20(token).safeTransfer(recipient, amount);
+    emit ERC20Recovered(token, recipient, amount, msg.sender);
   }
 
   function recoverNative(address recipient, uint256 amount) external onlyOwner {
     require(recipient != address(0), 'INVALID_RECIPIENT');
     _safeTransferHBAR(recipient, amount);
+    emit NativeRecovered(recipient, amount, msg.sender);
   }
 
   function _safeTransferHBAR(address to, uint256 value) internal {

@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import hre from 'hardhat';
-import { USDC, SAUCE } from './outputReserveData.json';
+import { USDC, SAUCE, WETH, WHBAR } from './outputReserveData.json';
 import 'dotenv/config';
 
 interface NetworkConfig {
@@ -9,16 +9,18 @@ interface NetworkConfig {
   oracleAddress: string;
 }
 
-const networkConfigs: Record<string, NetworkConfig> = {
+const networkConfigs: Record<string, NetworkConfig & { chainId: number }> = {
   hedera_testnet: {
     providerUrl: 'https://testnet.hashio.io/api',
     ownerKey: process.env.PRIVATE_KEY2 || '',
-    oracleAddress: '0x16e55AF5576502e05ed18fD265F8dF7fC6f8ACbd',
+    oracleAddress: '0x8D1F2367D94933044046a10d9A3Fb1CdcC6cb01F',
+    chainId: 296,
   },
   hedera_mainnet: {
     providerUrl: process.env.PROVIDER_URL_MAINNET || '',
     ownerKey: process.env.PRIVATE_KEY_MAINNET || '',
-    oracleAddress: '0xA40a801E4F6Adc1Bb589ADc4f1999519C635dE50',
+    oracleAddress: '0x2e78BedD7175dEC675949f50a2604bC835A47a03',
+    chainId: 295,
   },
 };
 
@@ -33,21 +35,30 @@ const setupContract = async (
 
 const getAssetInfo = (assetData: any, networkName: string) => {
   if (assetData && assetData[networkName] && assetData[networkName].token) {
+    const rawAddress = assetData[networkName].token.address;
+    // Normalize address to checksum format to ensure consistent casing
+    const normalizedAddress = ethers.utils.getAddress(rawAddress);
     return {
-      address: assetData[networkName].token.address,
+      address: normalizedAddress,
     };
   }
   return null;
 };
 
 const checkSupraPrices = async () => {
-  const networkName = process.env.CHAIN_TYPE || 'hedera_testnet';
+  // Use Hardhat's network name if available, otherwise fall back to CHAIN_TYPE env var
+  const networkName =
+    hre.network.name !== 'hardhat' ? hre.network.name : process.env.CHAIN_TYPE || 'hedera_testnet';
   if (!networkConfigs[networkName]) {
     throw new Error(`Configuration for network "${networkName}" not found.`);
   }
   const config = networkConfigs[networkName];
 
-  const provider = new ethers.providers.JsonRpcProvider(config.providerUrl);
+  // Pass network configuration explicitly to avoid "could not detect network" error
+  const provider = new ethers.providers.JsonRpcProvider(config.providerUrl, {
+    name: networkName,
+    chainId: config.chainId,
+  });
   const owner = new ethers.Wallet(config.ownerKey, provider);
 
   console.log(`Running on ${networkName}`);
@@ -59,6 +70,8 @@ const checkSupraPrices = async () => {
   const assetsToCheck = [
     { name: 'USDC', data: USDC },
     { name: 'SAUCE', data: SAUCE },
+    { name: 'WETH', data: WETH },
+    { name: 'WHBAR', data: WHBAR },
   ];
 
   for (const asset of assetsToCheck) {
@@ -69,8 +82,41 @@ const checkSupraPrices = async () => {
       try {
         const price = await supraOracle.getAssetPrice(assetInfo.address);
         console.log(`${asset.name} price = `, ethers.utils.formatUnits(price, 18));
-      } catch (error) {
-        console.error(`Error fetching price for ${asset.name}:`, (error as Error).message);
+      } catch (error: any) {
+        // Try to decode the error
+        let errorMessage = 'Unknown error';
+        let errorName = '';
+
+        if (error.error) {
+          errorName = error.error.name || '';
+          errorMessage = error.error.message || error.message || String(error);
+        } else if (error.reason) {
+          errorMessage = error.reason;
+        } else if (error.errorName) {
+          errorName = error.errorName;
+          errorMessage = error.message || String(error);
+        } else {
+          errorMessage = error.message || String(error);
+        }
+
+        // Check for common custom errors
+        const errorStr = String(errorMessage).toLowerCase();
+        if (errorName === 'UnsupportedAsset' || errorStr.includes('unsupportedasset')) {
+          console.error(
+            `Error: ${asset.name} is not registered in the oracle contract. Asset needs to be added via addNewAsset().`
+          );
+        } else if (errorName === 'DivisionByZero' || errorStr.includes('divisionbyzero')) {
+          console.error(
+            `Error: Division by zero when fetching ${asset.name} price (feed may be stale or invalid)`
+          );
+        } else if (errorStr.includes('call revert exception')) {
+          console.error(`Error: Contract call reverted for ${asset.name}. This usually means:`);
+          console.error(`  1. Asset is not registered in the oracle`);
+          console.error(`  2. Price feed data is unavailable`);
+          console.error(`  3. Address mismatch (check if address is correct)`);
+        } else {
+          console.error(`Error fetching price for ${asset.name}:`, errorMessage);
+        }
       }
     } else {
       console.log(`\n--- Skipping ${asset.name} (no config for ${networkName}) ---`);
@@ -79,13 +125,19 @@ const checkSupraPrices = async () => {
 };
 
 const checkSaucePriceIndex = async () => {
-  const networkName = process.env.CHAIN_TYPE || 'hedera_testnet';
+  // Use Hardhat's network name if available, otherwise fall back to CHAIN_TYPE env var
+  const networkName =
+    hre.network.name !== 'hardhat' ? hre.network.name : process.env.CHAIN_TYPE || 'hedera_testnet';
   if (!networkConfigs[networkName]) {
     console.log(`\n--- Skipping SAUCE price index (no config for ${networkName}) ---`);
     return;
   }
   const config = networkConfigs[networkName];
-  const provider = new ethers.providers.JsonRpcProvider(config.providerUrl);
+  // Pass network configuration explicitly to avoid "could not detect network" error
+  const provider = new ethers.providers.JsonRpcProvider(config.providerUrl, {
+    name: networkName,
+    chainId: config.chainId,
+  });
   const owner = new ethers.Wallet(config.ownerKey, provider);
   const supraOracle = await setupContract('SupraOracle', config.oracleAddress, owner);
   const sauceInfo = getAssetInfo(SAUCE, networkName);
