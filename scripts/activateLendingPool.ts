@@ -18,12 +18,12 @@ if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
   dataProviderAddress = AaveProtocolDataProvider.hedera_testnet.address;
-} else if (chain_type === 'hedera_testnet') {
+} else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
   // console.log('Provider = ', provider);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
-  dataProviderAddress = AaveProtocolDataProvider.hedera_testnet.address;
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+  dataProviderAddress = AaveProtocolDataProvider.hedera_mainnet.address;
 }
 
 async function setupContract(artifactName, contractAddress) {
@@ -36,15 +36,15 @@ async function lendingPool() {
   // Load the contract artifacts
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_testnet.address
+    LendingPool.hedera_mainnet.address
   );
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator.hedera_mainnet.address
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_testnet.address
+    LendingPoolAddressesProvider.hedera_mainnet.address
   );
   const dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 
@@ -109,10 +109,10 @@ async function lendingPool() {
   //   '0xbe058ee0884696653E01cfC6F34678f2762d84db'
   // );
   // console.log('User Reserve Data for USDC:', userReserveData);
-  console.log(
-    'user account data:',
-    await lendingPoolContract.getUserAccountData('0xbe058ee0884696653E01cfC6F34678f2762d84db')
-  );
+  // console.log(
+  //   'user account data:',
+  //   await lendingPoolContract.getUserAccountData('0xbe058ee0884696653E01cfC6F34678f2762d84db')
+  // );
   // const amountInEth = await lendingPoolContract.getAmountInEth(
   //   100000000,
   //   WSTEAM.hedera_testnet.token.address
@@ -155,14 +155,17 @@ async function lendingPool() {
   //   ethers.utils.formatUnits(totalSupply.toString(), 8)
   // );
 
-  console.log('Provider oracle:', await lendingPoolAddressesProviderContract.getPriceOracle());
-  console.log(
-    'SAUCE 0.1 in HBAR:',
-    await lendingPoolContract.getAmountInEth(
-      ethers.utils.parseUnits('0.1', 6),
-      SAUCE.hedera_testnet.token.address
-    )
-  );
+  // console.log('Provider oracle:', await lendingPoolAddressesProviderContract.getPriceOracle());
+  // console.log(
+  //   'SAUCE 0.1 in HBAR:',
+  //   await lendingPoolContract.getAmountInEth(
+  //     ethers.utils.parseUnits('0.1', 6),
+  //     SAUCE.hedera_testnet.token.address
+  //   )
+  // );
+
+  const poolAdmin = await lendingPoolAddressesProviderContract.getPoolAdmin();
+  console.log('Pool admin:', poolAdmin);
 
   // // Fetch and print reserve data for all current reserves in the pool
   // const reservesList = await lendingPoolContract.getReservesList();

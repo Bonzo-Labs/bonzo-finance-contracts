@@ -18,6 +18,7 @@ import {
   KARATE,
   PACK,
   STEAM,
+  WETH,
 } from '../outputReserveData.json';
 import {
   rateStrategyDOVU,
@@ -31,6 +32,7 @@ import {
   rateStrategySTEAM,
   rateStrategyUSDC,
   rateStrategyUSDCNew,
+  rateStrategyWETH,
 } from '../../markets/hedera/rateStrategies';
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
@@ -99,6 +101,9 @@ if (chain_type === 'hedera_testnet') {
     '0x000000000000000000000000000000000030fb8b': {
       strategy: rateStrategySTEAM,
     },
+    '0xca367694cdac8f152e33683bb36cc9d6a73f1ef2': {
+      strategy: rateStrategyWETH,
+    },
   };
 
   lendingPoolAddress = LendingPool.hedera_mainnet.address;
@@ -107,7 +112,7 @@ if (chain_type === 'hedera_testnet') {
   reserves = [
     // WHBAR.hedera_mainnet.token.address,
     // HBARX.hedera_mainnet.token.address,
-    USDC.hedera_mainnet.token.address,
+    // USDC.hedera_mainnet.token.address,
     // SAUCE.hedera_mainnet.token.address,
     // XSAUCE.hedera_mainnet.token.address,
     // KARATE.hedera_mainnet.token.address,
@@ -115,6 +120,7 @@ if (chain_type === 'hedera_testnet') {
     // PACK.hedera_mainnet.token.address,
     // HST.hedera_mainnet.token.address,
     // STEAM.hedera_mainnet.token.address,
+    WETH.hedera_mainnet.token.address,
   ];
 }
 

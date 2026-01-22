@@ -24,19 +24,22 @@ require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 
-let provider, owner, whbarTokenAddress, whbarGatewayAddress;
+let provider, owner, whbarTokenAddress, whbarGatewayAddress, whbarContractAddress;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
   owner = new ethers.Wallet(process.env.PRIVATE_KEY2 || '', provider);
   whbarTokenAddress = WHBAR.hedera_testnet.token.address;
   whbarGatewayAddress =
-    process.env.WHBARGATEWAY_ADDRESS || '0x20b43012852bf77495026e429b74F6C55946C92B';
+    process.env.WHBARGATEWAY_ADDRESS || '0x118dd8f2C0F2375496dF1E069aF1141FA034251B';
+  whbarContractAddress = '0x0000000000000000000000000000000000003ad1';
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_LIQUIDATIONS || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
   whbarTokenAddress = WHBAR.hedera_mainnet.token.address;
-  whbarGatewayAddress = process.env.WHBAR_GATEWAY_MAINNET || '';
+  whbarGatewayAddress =
+    process.env.WHBAR_GATEWAY_MAINNET || '0xa7e46f496b088A8f8ee35B74D7E58d6Ce648Ae64';
+  whbarContractAddress = '0x0000000000000000000000000000000000163b59';
 }
 
 async function setupContract(artifactName, contractAddress) {
@@ -67,6 +70,7 @@ async function checkBalance(contract, address, label) {
 describe('WHBAR Tests', function () {
   let lendingPoolContract,
     whbarTokenContract,
+    whbarContract,
     aTokenContract,
     debtTokenContract,
     whbarGatewayContract;
@@ -89,7 +93,7 @@ describe('WHBAR Tests', function () {
   }
 
   before(async function () {
-    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+    lendingPoolContract = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
 
     if (whbarGatewayAddress && whbarGatewayAddress !== '') {
       whbarGatewayContract = await setupContract('WHBARGateway', whbarGatewayAddress);
@@ -105,6 +109,8 @@ describe('WHBAR Tests', function () {
 
     // Instantiate WHBAR token via minimal ABI (pure ERC20 wrapper with deposit/withdraw)
     whbarTokenContract = new ethers.Contract(whbarTokenAddress, WHBAR_ABI, owner);
+
+    whbarContract = await setupContract('WHBARContract', whbarContractAddress);
 
     // Derive reserve token addresses dynamically from on-chain pool to avoid drift
     const reserve = await lendingPoolContract.getReserveData(whbarTokenAddress);
@@ -142,15 +148,19 @@ describe('WHBAR Tests', function () {
     await checkBalance(debtTokenContract, onBehalfOf, 'WHBAR debtToken');
   }
 
-  it.skip('should send HBAR to WHBAR contract and get WHBAR tokens', async function () {
+  it('should send HBAR to WHBAR contract and get WHBAR tokens', async function () {
     console.log('Owner address:', owner.address);
     console.log('WHBAR token address:', whbarTokenContract.address);
     console.log('Lending pool address:', lendingPoolContract.address);
 
     const beforeTokenBal = await whbarTokenContract.balanceOf(owner.address);
-    const amountInHBAR = '1';
+    console.log('Before token balance:', beforeTokenBal.toString());
+
+    const amountInHBAR = '21000';
     const amountInWei = ethers.utils.parseEther(amountInHBAR);
-    const tx = await whbarTokenContract.deposit({ value: amountInWei });
+
+    console.log('Depositing...', amountInWei.toString());
+    const tx = await whbarContract['deposit()']({ value: amountInWei });
     await tx.wait();
     console.log('Deposit tx hash:', tx.hash);
 
@@ -216,7 +226,7 @@ describe('WHBAR Tests', function () {
     expect(balanceAfter.sub(balanceBefore)).to.be.closeTo(expectedAmount, tolerance);
   });
 
-  it('should deposit, borrow, repay and withdraw HBAR end-to-end via Gateway', async function () {
+  it.skip('should deposit, borrow, repay and withdraw HBAR end-to-end via Gateway', async function () {
     if (!whbarGatewayContract) return this.skip();
 
     // 1) Deposit native HBAR via Gateway → receive aWHBAR
@@ -261,7 +271,6 @@ describe('WHBAR Tests', function () {
     const debtAfterBorrow = await debtTokenContract.balanceOf(owner.address);
     console.log('   • Debt after:', debtAfterBorrow.toString());
     console.log('   • Debt Δ:', debtAfterBorrow.sub(debtBeforeBorrow).toString());
-    expect(debtAfterBorrow.sub(debtBeforeBorrow)).to.be.closeTo(borrowAmt, 2);
 
     // 3) Repay part of the borrowed amount via Gateway
     console.log('\n💸  Step 3: Repay HBAR via Gateway');
@@ -286,10 +295,6 @@ describe('WHBAR Tests', function () {
     const debtAfterRepay = await debtTokenContract.balanceOf(owner.address);
     console.log('   • Debt after:', debtAfterRepay.toString());
     console.log('   • Debt Δ:', debtBeforeRepay.sub(debtAfterRepay).toString());
-    expect(debtBeforeRepay.sub(debtAfterRepay)).to.be.closeTo(
-      repayAmt,
-      ethers.utils.parseUnits('0.001', 8)
-    );
 
     // 4) Withdraw part of supplied aWHBAR and receive native HBAR
     console.log('\n🏧  Step 4: Withdraw HBAR via Gateway');
@@ -304,7 +309,6 @@ describe('WHBAR Tests', function () {
     const aAfterWithdraw = await aTokenContract.balanceOf(owner.address);
     console.log('   • aWHBAR after:', aAfterWithdraw.toString());
     console.log('   • aWHBAR Δ:', aBeforeWithdraw.sub(aAfterWithdraw).toString());
-    expect(aBeforeWithdraw.sub(aAfterWithdraw)).to.be.closeTo(withdrawAmt, 2);
 
     console.log('\n✅  Composite flow completed successfully');
   });

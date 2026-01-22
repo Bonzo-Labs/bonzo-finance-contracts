@@ -21,11 +21,13 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
   event BaseCurrencySet(address indexed baseCurrency, uint256 baseCurrencyUnit);
   event AssetSourceUpdated(address indexed asset, address indexed source);
   event FallbackOracleUpdated(address indexed fallbackOracle);
+  event MaxPriceStalenessUpdated(uint256 previousMaxPriceStaleness, uint256 newMaxPriceStaleness);
 
   mapping(address => IChainlinkAggregator) private assetsSources;
   IPriceOracleGetter private _fallbackOracle;
   address public immutable BASE_CURRENCY;
   uint256 public immutable BASE_CURRENCY_UNIT;
+  uint256 public maxPriceStaleness = 1 days;
 
   /// @notice Constructor
   /// @param assets The addresses of the assets
@@ -65,6 +67,15 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
     _setFallbackOracle(fallbackOracle);
   }
 
+  /// @notice Sets the max price staleness
+  /// - Callable only by the Aave governance
+  /// @param newMaxPriceStaleness The max staleness (in seconds)
+  function setMaxPriceStaleness(uint256 newMaxPriceStaleness) external onlyOwner {
+    require(newMaxPriceStaleness > 0, 'INVALID_STALENESS');
+    emit MaxPriceStalenessUpdated(maxPriceStaleness, newMaxPriceStaleness);
+    maxPriceStaleness = newMaxPriceStaleness;
+  }
+
   /// @notice Internal function to set the sources for each asset
   /// @param assets The addresses of the assets
   /// @param sources The address of the source of each asset
@@ -91,13 +102,17 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
     if (asset == BASE_CURRENCY) {
       return BASE_CURRENCY_UNIT;
     } else if (address(source) == address(0)) {
-      return _fallbackOracle.getAssetPrice(asset);
+      uint256 fallbackPrice = _fallbackOracle.getAssetPrice(asset);
+      require(fallbackPrice > 0, 'INVALID_PRICE');
+      return fallbackPrice;
     } else {
       int256 price = IChainlinkAggregator(source).latestAnswer();
-      if (price > 0) {
+      if (price > 0 && !_isPriceStale(IChainlinkAggregator(source).latestTimestamp())) {
         return uint256(price);
       } else {
-        return _fallbackOracle.getAssetPrice(asset);
+        uint256 fallbackPrice = _fallbackOracle.getAssetPrice(asset);
+        require(fallbackPrice > 0, 'INVALID_PRICE');
+        return fallbackPrice;
       }
     }
   }
@@ -123,5 +138,12 @@ contract AaveOracle is IPriceOracleGetter, Ownable {
   /// @return address The addres of the fallback oracle
   function getFallbackOracle() external view returns (address) {
     return address(_fallbackOracle);
+  }
+
+  function _isPriceStale(uint256 updatedAt) internal view returns (bool) {
+    if (updatedAt == 0 || updatedAt > block.timestamp) {
+      return true;
+    }
+    return block.timestamp - updatedAt > maxPriceStaleness;
   }
 }
