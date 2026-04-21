@@ -1,0 +1,19 @@
+{
+  "bipId": "C4-UPGRADE-001",
+  "targetSafe": "executor",
+  "description": "C-4 upgrade: updateAToken with no-op impl on testnet USDC. Replace impl address before running.",
+  "actions": [
+    {
+      "kind": "updateAToken",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "treasury": "0x0000000000000000000000000000000000000003",
+        "incentivesController": "0x0000000000000000000000000000000000000000",
+        "name": "Bonzo aToken USDC",
+        "symbol": "mUSDC",
+        "implementation": "0x0000000000000000000000000000000000000001",
+        "params": "0x"
+      }
+    }
+  ]
+}

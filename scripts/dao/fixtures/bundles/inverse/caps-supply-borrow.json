@@ -1,0 +1,15 @@
+{
+  "bipId": "C4-CAPS-001-ROLLBACK",
+  "targetSafe": "executor",
+  "description": "Inverse: restore prior caps. Operator fills prior values before running.",
+  "actions": [
+    {
+      "kind": "setSupplyCap",
+      "args": { "asset": "0x0000000000000000000000000000000000001549", "supplyCap": 0 }
+    },
+    {
+      "kind": "setBorrowCap",
+      "args": { "asset": "0x0000000000000000000000000000000000001549", "borrowCap": 0 }
+    }
+  ]
+}

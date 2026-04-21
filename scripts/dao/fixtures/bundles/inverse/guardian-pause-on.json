@@ -1,0 +1,6 @@
+{
+  "bipId": "C4-GUARDIAN-PAUSE-ON-ROLLBACK",
+  "targetSafe": "guardian",
+  "description": "Inverse of guardian-pause-on.json — unpause.",
+  "actions": [{ "kind": "setPoolPause", "args": { "val": false } }]
+}

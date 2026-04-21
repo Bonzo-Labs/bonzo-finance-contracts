@@ -1,0 +1,11 @@
+{
+  "bipId": "C4-PROVIDER-001-ROLLBACK",
+  "targetSafe": "executor",
+  "description": "Inverse: restore prior PriceOracle address. Operator fills prior value before running.",
+  "actions": [
+    {
+      "kind": "setPriceOracle",
+      "args": { "priceOracle": "0x0000000000000000000000000000000000000002" }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "bipId": "C4-LIFECYCLE-FREEZE-ROLLBACK",
+  "targetSafe": "executor",
+  "description": "Inverse of lifecycle-freeze.json — unfreeze USDC.",
+  "actions": [
+    { "kind": "unfreezeReserve", "args": { "asset": "0x0000000000000000000000000000000000001549" } }
+  ]
+}

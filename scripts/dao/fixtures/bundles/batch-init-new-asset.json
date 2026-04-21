@@ -1,0 +1,32 @@
+{
+  "bipId": "C4-LISTING-001",
+  "targetSafe": "executor",
+  "description": "C-4 new-asset listing: mock HTS token. Replace impl and treasury addresses before running.",
+  "actions": [
+    {
+      "kind": "batchInitReserve",
+      "args": {
+        "inputs": [
+          {
+            "aTokenImpl": "0x0000000000000000000000000000000000000001",
+            "stableDebtTokenImpl": "0x0000000000000000000000000000000000000001",
+            "variableDebtTokenImpl": "0x0000000000000000000000000000000000000001",
+            "underlyingAssetDecimals": 8,
+            "interestRateStrategyAddress": "0x0000000000000000000000000000000000000001",
+            "underlyingAsset": "0x0000000000000000000000000000000000000002",
+            "treasury": "0x0000000000000000000000000000000000000003",
+            "incentivesController": "0x0000000000000000000000000000000000000000",
+            "underlyingAssetName": "MOCK",
+            "aTokenName": "Bonzo aToken MOCK",
+            "aTokenSymbol": "mMOCK",
+            "variableDebtTokenName": "Bonzo variableDebt MOCK",
+            "variableDebtTokenSymbol": "variableDebtMOCK",
+            "stableDebtTokenName": "Bonzo Stable Debt MOCK",
+            "stableDebtTokenSymbol": "stableDebtMOCK",
+            "params": "0x"
+          }
+        ]
+      }
+    }
+  ]
+}

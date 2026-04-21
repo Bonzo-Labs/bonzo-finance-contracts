@@ -1,0 +1,5 @@
+{
+  "bipId": "INVALID-001",
+  "targetSafe": "executor",
+  "actions": [{ "kind": "definitelyNotAnAction", "args": {} }]
+}

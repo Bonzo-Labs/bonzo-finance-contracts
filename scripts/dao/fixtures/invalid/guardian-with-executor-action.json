@@ -1,0 +1,13 @@
+{
+  "bipId": "INVALID-002",
+  "targetSafe": "guardian",
+  "actions": [
+    {
+      "kind": "setReserveFactor",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "reserveFactor": 1000
+      }
+    }
+  ]
+}

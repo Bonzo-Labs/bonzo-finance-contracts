@@ -1,0 +1,16 @@
+{
+  "bipId": "C4-RISK-001-ROLLBACK",
+  "targetSafe": "executor",
+  "description": "Inverse: restore prior collateral parameters. Operator fills prior values before running.",
+  "actions": [
+    {
+      "kind": "configureReserveAsCollateral",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "ltv": 6500,
+        "liquidationThreshold": 7000,
+        "liquidationBonus": 10500
+      }
+    }
+  ]
+}

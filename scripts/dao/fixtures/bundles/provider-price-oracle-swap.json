@@ -1,0 +1,11 @@
+{
+  "bipId": "C4-PROVIDER-001",
+  "targetSafe": "executor",
+  "description": "C-4 provider: swap price oracle to a stub on testnet. Inverse bundle restores.",
+  "actions": [
+    {
+      "kind": "setPriceOracle",
+      "args": { "priceOracle": "0x0000000000000000000000000000000000000001" }
+    }
+  ]
+}

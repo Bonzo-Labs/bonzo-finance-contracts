@@ -1,0 +1,691 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>STEAM/HBAR Oracle Failure — 6 Affected Users</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f1117; color: #e0e0e0; padding: 24px; }
+
+  h1 { color: #fff; margin-bottom: 4px; font-size: 22px; }
+  .subtitle { color: #666; margin-bottom: 24px; font-size: 13px; }
+
+  /* ── Top KPIs ── */
+  .kpi-row { display: grid; grid-template-columns: repeat(5,1fr); gap: 12px; margin-bottom: 24px; }
+  .kpi { background: #1a1d27; border-radius: 10px; padding: 16px; border: 1px solid #22253a; }
+  .kpi .lbl { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .kpi .val { font-size: 26px; font-weight: 700; line-height: 1; }
+  .kpi .sub { color: #666; font-size: 11px; margin-top: 4px; }
+  .red    { color: #ff4444; }
+  .orange { color: #ff8844; }
+  .green  { color: #44cc88; }
+  .blue   { color: #4499ff; }
+  .yellow { color: #ffdd44; }
+  .purple { color: #aa66ff; }
+  .teal   { color: #44ddbb; }
+
+  /* ── User Scoreboard ── */
+  .section-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.7px; color: #555; margin: 0 0 10px; border-bottom: 1px solid #1e2130; padding-bottom: 6px; }
+  .user-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; margin-bottom: 24px; }
+  .user-card { background: #1a1d27; border-radius: 10px; padding: 16px 18px; border: 1px solid #22253a; position: relative; overflow: hidden; }
+  .user-card::before { content:''; position:absolute; top:0; left:0; width:4px; height:100%; }
+  .u0::before { background:#ff4444; }
+  .u1::before { background:#ff8844; }
+  .u2::before { background:#ffdd44; }
+  .u3::before { background:#4499ff; }
+  .u4::before { background:#aa66ff; }
+  .u5::before { background:#44ddbb; }
+  .user-card .account { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+  .user-card .ev-addr { font-size: 10px; color: #555; font-family: monospace; margin-bottom: 10px; }
+  .user-card .row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 4px; }
+  .user-card .metric-lbl { font-size: 11px; color: #666; }
+  .user-card .metric-val { font-size: 15px; font-weight: 700; }
+  .user-card .bar-wrap { background: #111318; border-radius: 4px; height: 5px; margin-top: 8px; }
+  .user-card .bar-fill { height: 5px; border-radius: 4px; }
+  .victim-badge { position: absolute; top: 10px; right: 10px; background: rgba(255,68,68,0.15); color: #ff4444; font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px; border: 1px solid rgba(255,68,68,0.3); }
+
+  /* ── Charts ── */
+  .chart-box { background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 18px; border: 1px solid #22253a; }
+  .chart-box h3 { font-size: 14px; color: #ccc; margin-bottom: 4px; }
+  .chart-box p  { font-size: 12px; color: #555; margin-bottom: 14px; }
+
+  /* ── Legend for chart users ── */
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+  .cl-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: #bbb; }
+  .cl-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .cl-line { width: 18px; height: 2px; }
+
+  /* ── Timeline events ── */
+  .timeline-box { background: #1a1d27; border-radius: 12px; padding: 20px; margin-bottom: 18px; border: 1px solid #22253a; }
+  .timeline-box h3 { font-size: 14px; color: #ccc; margin-bottom: 14px; }
+  .ev { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid #1a1d27; font-size: 12.5px; }
+  .ev:last-child { border: none; }
+  .ev-time { color: #666; min-width: 180px; font-family: monospace; font-size: 12px; }
+  .ev-body { flex:1; }
+  .tag { display:inline-block; padding:1px 7px; border-radius:3px; font-size:10.5px; font-weight:600; margin-right:5px; }
+  .t-spike  { background:rgba(255,68,68,.18);  color:#ff4444; }
+  .t-norm   { background:rgba(68,204,136,.15); color:#44cc88; }
+
+  /* user color tags */
+  .t-u0 { background:rgba(255,68,68,.18);  color:#ff4444; }
+  .t-u1 { background:rgba(255,136,68,.18); color:#ff8844; }
+  .t-u2 { background:rgba(255,221,68,.15); color:#ffdd44; }
+  .t-u3 { background:rgba(68,153,255,.15); color:#4499ff; }
+  .t-u4 { background:rgba(170,102,255,.15);color:#aa66ff; }
+  .t-u5 { background:rgba(68,221,187,.15); color:#44ddbb; }
+
+  /* ── Finding boxes ── */
+  .finding { background: #1a1d27; border-left: 3px solid #ff4444; border-radius: 0 10px 10px 0; padding: 14px 16px; margin-bottom: 12px; border: 1px solid #22253a; border-left: 3px solid #ff4444; }
+  .finding.orange { border-left-color: #ff8844; }
+  .finding.green  { border-left-color: #44cc88; }
+  .finding h4 { margin-bottom: 5px; font-size: 13px; }
+  .finding p  { color: #999; font-size: 12px; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<h1>STEAM/HBAR Supra Oracle Failure — Multi-User Impact Analysis</h1>
+<p class="subtitle">129,536 per-second price observations · 2026-03-17 03:00 UTC → 2026-03-18 15:00 UTC · Supra Feed Index 479</p>
+
+<!-- ── KPIs ── -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="lbl">Peak Oracle Price</div>
+    <div class="val red">15.728 HBAR</div>
+    <div class="sub">Normal: ~0.034 · 463× overvaluation</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Total WHBAR Seized</div>
+    <div class="val red">415,075</div>
+    <div class="sub">Across all 6 affected users</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Users Affected</div>
+    <div class="val orange">6</div>
+    <div class="sub">All held STEAM debt positions</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Spike Episodes</div>
+    <div class="val orange">57</div>
+    <div class="sub">772 s corrupt · 7.5 hrs total window</div>
+  </div>
+  <div class="kpi">
+    <div class="lbl">Liquidation Rate</div>
+    <div class="val red">68.7×</div>
+    <div class="sub">Normal baseline: 4 events/day</div>
+  </div>
+</div>
+
+<!-- ── User Scoreboard ── -->
+<p class="section-label">Affected Users — WHBAR Seized by Oracle Failure</p>
+<div class="user-grid">
+
+  <div class="user-card u0">
+    <div class="victim-badge">PRIMARY</div>
+    <div class="account red">0.0.2964381</div>
+    <div class="ev-addr">0x00000000000000000000002D3b9D</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val red">301,593</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">72.7%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">22</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">07:21 – 10:07 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:72.7%;background:#ff4444"></div></div>
+  </div>
+
+  <div class="user-card u1">
+    <div class="account orange">0.0.847393</div>
+    <div class="ev-addr">0x000000000000000000000000000cee21</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val orange">97,734</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">23.5%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">14</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">07:21 – 10:07 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:23.5%;background:#ff8844"></div></div>
+  </div>
+
+  <div class="user-card u2">
+    <div class="account yellow">0.0.4713153</div>
+    <div class="ev-addr">0x000000000000000000000000000047eac1</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val yellow">8,581</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">2.1%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">1</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">10:08 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:2.1%;background:#ffdd44"></div></div>
+  </div>
+
+  <div class="user-card u3">
+    <div class="account blue">0.0.4760042</div>
+    <div class="ev-addr">0x000000000000000000000000000048a1ea</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val blue">5,741</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">1.4%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">49</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">07:21 – 07:44 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:1.4%;background:#4499ff"></div></div>
+  </div>
+
+  <div class="user-card u4">
+    <div class="account purple">0.0.2175236</div>
+    <div class="ev-addr">0x000000000000000000000000000213104</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val purple">878</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">0.2%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">30</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">07:24 – 09:15 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:0.8%;background:#aa66ff"></div></div>
+  </div>
+
+  <div class="user-card u5">
+    <div class="account teal">0.0.9082904</div>
+    <div class="ev-addr">0x0000000000000000000000000008a9818</div>
+    <div class="row"><span class="metric-lbl">WHBAR Seized</span><span class="metric-val teal">548</span></div>
+    <div class="row"><span class="metric-lbl">Share of total</span><span class="metric-val">0.1%</span></div>
+    <div class="row"><span class="metric-lbl">Liquidation events</span><span class="metric-val">8</span></div>
+    <div class="row"><span class="metric-lbl">Window</span><span class="metric-val" style="font-size:12px">07:21 – 10:08 UTC</span></div>
+    <div class="bar-wrap"><div class="bar-fill" style="width:0.5%;background:#44ddbb"></div></div>
+  </div>
+
+</div>
+
+<!-- ── Chart 1: Full Timeline with all user markers ── -->
+<div class="chart-box">
+  <h3>Full Oracle Price Timeline — All User Liquidation Events</h3>
+  <p>Each marker shows when a user's position was liquidated and at what oracle price level. Log scale. Green dashed = true market price (~0.034 HBAR).</p>
+  <div class="chart-legend">
+    <div class="cl-item"><div class="cl-line" style="background:#ff4444"></div>Oracle Price</div>
+    <div class="cl-item"><div class="cl-line" style="background:#44cc88;height:1px;border-top:2px dashed #44cc88"></div>Market Price</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#ff4444"></div>0.0.2964381</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#ff8844"></div>0.0.847393</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#ffdd44"></div>0.0.4713153</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#4499ff"></div>0.0.4760042</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#aa66ff"></div>0.0.2175236</div>
+    <div class="cl-item"><div class="cl-dot" style="background:#44ddbb"></div>0.0.9082904</div>
+  </div>
+  <canvas id="fullChart" height="80"></canvas>
+</div>
+
+<!-- ── Chart 2: Zoomed window ── -->
+<div class="chart-box">
+  <h3>Zoomed: First 4 Minutes of the Main Spike (07:20–07:25 UTC) — Second-by-Second</h3>
+  <p>Shows the two-level price structure (7.88 HBAR → 15.73 HBAR) and the first liquidation events firing across multiple users simultaneously.</p>
+  <canvas id="zoomChart" height="80"></canvas>
+</div>
+
+<!-- ── Chart 3: Hourly WHBAR seizure per user (stacked bar) ── -->
+<div class="chart-box">
+  <h3>WHBAR Seized Per Hour — Stacked by User</h3>
+  <p>Shows which users were hit in each hour. The 07:00 UTC hour was the most catastrophic (357k WHBAR). Damage continued across 3 more hours for 0.0.847393.</p>
+  <canvas id="hourlyBar" height="60"></canvas>
+</div>
+
+<!-- ── Event Timeline ── -->
+<div class="timeline-box">
+  <h3>Annotated Event Timeline — Oracle Spikes & User Liquidations</h3>
+
+  <div class="ev">
+    <div class="ev-time">Mar 17, 03:46:43 UTC</div>
+    <div class="ev-body"><span class="tag t-spike">SPIKE #1</span> Precursor — 4s move to 7.80 HBAR (230×). No liquidations. Feed returns to baseline.</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 00:11:43 UTC</div>
+    <div class="ev-body"><span class="tag t-spike">SPIKE #2</span> Precursor — 4s move to 7.81 HBAR (230×). First liquidation fires.</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 00:11:58 UTC</div>
+    <div class="ev-body"><span class="tag t-u0">0.0.2964381</span> 109,388 STEAM seized (STEAM debt). Precursor spike catches this user's position under-collateralised.</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:20:46 UTC</div>
+    <div class="ev-body"><span class="tag t-spike">MAIN SPIKE</span> Oracle: 0.034 → 7.88 → <strong style="color:#ff4444">15.728 HBAR</strong> in 2 seconds. L2 maximum reached.</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:21:14 UTC</div>
+    <div class="ev-body"><span class="tag t-u0">0.0.2964381</span> 54,694 STEAM seized (STEAM debt repaid: 50,578)</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:21:20 UTC</div>
+    <div class="ev-body"><span class="tag t-u0">0.0.2964381</span> <strong style="color:#ff4444">292,918 WHBAR seized</strong> — largest single liquidation. STEAM debt repaid: 18,262. Oracle at 15.73 HBAR.</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:21:28 UTC</div>
+    <div class="ev-body">
+      <span class="tag t-u3">0.0.4760042</span> 2,791 WHBAR seized (STEAM debt: 347) &nbsp;|&nbsp;
+      <span class="tag t-u5">0.0.9082904</span> 2,493 STEAM seized (STEAM debt: 2,306)
+    </div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:21:40 UTC</div>
+    <div class="ev-body"><span class="tag t-u1">0.0.847393</span> <strong>48,975 WHBAR seized</strong> (STEAM debt: 6,094)</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:22:10 UTC</div>
+    <div class="ev-body"><span class="tag t-u3">0.0.4760042</span> 1,201 WHBAR seized (STEAM debt: 36,957)</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:22:38 UTC</div>
+    <div class="ev-body"><span class="tag t-u1">0.0.847393</span> 3,253 SAUCE seized (STEAM debt: 23,743)</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:24:02 UTC</div>
+    <div class="ev-body"><span class="tag t-u0">0.0.2964381</span> 8,675 WHBAR seized (STEAM debt: 542) — second WHBAR hit during episode #4</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:24:12 UTC</div>
+    <div class="ev-body"><span class="tag t-u4">0.0.2175236</span> 852 WHBAR seized (STEAM debt: 53)</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:33:10–34 UTC</div>
+    <div class="ev-body">
+      <span class="tag t-u3">0.0.4760042</span> 1,684 + 48 WHBAR seized &nbsp;|&nbsp;
+      <span class="tag t-u4">0.0.2175236</span> 16.6 WHBAR seized
+    </div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 07:21:41 UTC</div>
+    <div class="ev-body"><span class="tag t-norm">BASELINE</span> Oracle returns to 0.032 HBAR. First 54-second episode ends. But more follow…</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 08:21 – 08:46 UTC</div>
+    <div class="ev-body">
+      <span class="tag t-u1">0.0.847393</span> Three more hits: 192 WHBAR (08:21) + 12,352 WHBAR (08:45) + 13,424 WHBAR (08:46) — during L1/L2 late-hour spikes
+    </div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 09:15 UTC</div>
+    <div class="ev-body">
+      <span class="tag t-u3">0.0.4760042</span> 1.35 WHBAR &nbsp;|&nbsp;
+      <span class="tag t-u4">0.0.2175236</span> 0.49 WHBAR — residual positions swept
+    </div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 09:17:32 UTC</div>
+    <div class="ev-body"><span class="tag t-u1">0.0.847393</span> 22,791 WHBAR seized (STEAM debt: 3,094) — fifth major hit</div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, 10:08 UTC</div>
+    <div class="ev-body">
+      <span class="tag t-u2">0.0.4713153</span> <strong>8,581 WHBAR seized</strong> (STEAM debt: 586) — final large WHBAR seizure &nbsp;|&nbsp;
+      <span class="tag t-u5">0.0.9082904</span> 548 WHBAR seized (STEAM debt: 75) &nbsp;|&nbsp;
+      <span class="tag t-u5">0.0.9082904</span> 11,039 DOVU seized (STEAM debt: 58)
+    </div>
+  </div>
+  <div class="ev">
+    <div class="ev-time">Mar 18, ~10:41 UTC</div>
+    <div class="ev-body"><span class="tag t-norm">STABILIZED</span> Final spike episode. Feed permanently returns to ~0.034 HBAR baseline.</div>
+  </div>
+</div>
+
+<!-- ── Findings ── -->
+<div class="finding">
+  <h4>Root Cause: Supra Provider Transition Failure</h4>
+  <p>Supra confirmed a data provider failure during a provider transition (one going down, one onboarding). The faulty provider returned ~221× the correct STEAM/HBAR value. When both were simultaneously active, the aggregate doubled to ~456×. This is confirmed by back-calculation from the Aave V2 liquidation formula, which implies a price of exactly 15.728 HBAR — matching the CSV peak of 15.728162 HBAR at 07:20:48 UTC.</p>
+</div>
+<div class="finding orange">
+  <h4>Mechanism: STEAM as Debt = Instant Health Factor Collapse</h4>
+  <p>Any user who had borrowed STEAM found their debt valued 463× higher than reality. This instantly pushed health factors far below 1.0 for all 6 users, enabling liquidations even on healthy positions. WHBAR collateral (hardcoded at 10^18 in SupraOracle.sol) was priced correctly — so the entire distortion was on the debt side, making each STEAM token "worth" ~15.73 HBAR instead of ~0.034 HBAR.</p>
+</div>
+<div class="finding green">
+  <h4>Broader Damage: 415,075 WHBAR Total — Not Just 301,593</h4>
+  <p>Initial analysis focused on the primary victim (0.0.2964381). Reviewing all protocol liquidation events reveals 5 additional users were hit by the same oracle failure, adding 113,482 WHBAR in wrongful seizures. The second-largest victim (0.0.847393) lost 97,734 WHBAR across 14 transactions spread over 3 hours.</p>
+</div>
+
+<script>
+// ──────────────────────────────────────────────
+// DATA
+// ──────────────────────────────────────────────
+
+const oracleLine = [
+  {t:'03/17 03:00',p:0.0344},{t:'03/17 06:00',p:0.0338},{t:'03/17 09:00',p:0.0338},
+  {t:'03/17 12:00',p:0.0334},{t:'03/17 15:00',p:0.0331},{t:'03/17 18:00',p:0.0324},
+  {t:'03/17 21:00',p:0.0322},
+  // precursor 1
+  {t:'03/17 03:46',p:7.80},{t:'03/17 03:47',p:0.034},
+  {t:'03/18 00:00',p:0.0321},
+  // precursor 2
+  {t:'03/18 00:11',p:7.81},{t:'03/18 00:12',p:0.032},
+  {t:'03/18 03:00',p:0.0318},{t:'03/18 04:00',p:0.0318},
+  {t:'03/18 05:00',p:0.0318},{t:'03/18 06:00',p:0.0318},
+  {t:'03/18 07:00',p:0.0318},
+  // main spike zone
+  {t:'03/18 07:20',p:0.0347},{t:'03/18 07:20:48',p:15.728},
+  {t:'03/18 07:21:41',p:0.0319},
+  {t:'03/18 07:23:39',p:15.693},{t:'03/18 07:24:21',p:0.0319},
+  {t:'03/18 07:27:00',p:15.691},{t:'03/18 07:27:42',p:0.0319},
+  {t:'03/18 07:42:00',p:15.688},{t:'03/18 07:46:00',p:0.0319},
+  {t:'03/18 08:06:00',p:15.688},{t:'03/18 08:07:00',p:0.0319},
+  {t:'03/18 08:10:00',p:7.88},{t:'03/18 08:10:30',p:0.0319},
+  {t:'03/18 08:42:00',p:7.88},{t:'03/18 08:43:00',p:0.0319},
+  {t:'03/18 08:45:00',p:15.688},{t:'03/18 08:47:00',p:0.0319},
+  {t:'03/18 09:00:00',p:0.0343},
+  {t:'03/18 09:17:00',p:14.386},{t:'03/18 09:18:00',p:0.0348},
+  {t:'03/18 10:07:00',p:14.365},{t:'03/18 10:09:00',p:0.0349},
+  {t:'03/18 11:00',p:0.0349},{t:'03/18 12:00',p:0.0355},
+  {t:'03/18 13:00',p:0.0357},{t:'03/18 14:00',p:0.0357},{t:'03/18 15:00',p:0.0357}
+];
+
+// Per-user liquidation scatter points [timeLabel, oraclePrice, WHBAR seized]
+// Mapped to nearest oracleLine label for x-axis alignment
+
+const userEvents = [
+  // 0.0.2964381 — red
+  { color:'#ff4444', user:'0.0.2964381', fill:'rgba(255,68,68,0.6)',
+    points:[
+      {t:'03/18 00:12',  p:7.81,   w:109388},
+      {t:'03/18 07:21:41',p:15.728,w:292918},
+      {t:'03/18 07:24:21',p:15.693,w:8675},
+      {t:'03/18 07:27:42',p:0.032, w:17180},
+      {t:'03/18 07:27:42',p:0.032, w:8586},
+      {t:'03/18 07:46:00',p:0.032, w:4289},
+      {t:'03/18 08:07:00',p:0.032, w:2144},
+    ]
+  },
+  // 0.0.847393 — orange
+  { color:'#ff8844', user:'0.0.847393', fill:'rgba(255,136,68,0.65)',
+    points:[
+      {t:'03/18 07:21:41',p:15.728,w:48975},
+      {t:'03/18 07:24:21',p:15.693,w:3253},
+      {t:'03/18 08:07:00',p:0.032, w:192},
+      {t:'03/18 08:10:30',p:0.032, w:4931},
+      {t:'03/18 08:47:00',p:15.688,w:12352},
+      {t:'03/18 08:47:00',p:15.688,w:13424},
+      {t:'03/18 09:18:00',p:14.386,w:22791},
+      {t:'03/18 10:09:00',p:0.032, w:0},
+    ]
+  },
+  // 0.0.4713153 — yellow
+  { color:'#ffdd44', user:'0.0.4713153', fill:'rgba(255,221,68,0.65)',
+    points:[
+      {t:'03/18 10:09:00',p:14.365,w:8581},
+    ]
+  },
+  // 0.0.4760042 — blue
+  { color:'#4499ff', user:'0.0.4760042', fill:'rgba(68,153,255,0.65)',
+    points:[
+      {t:'03/18 07:21:41',p:15.728,w:2791},
+      {t:'03/18 07:24:21',p:15.693,w:1201},
+      {t:'03/18 07:27:42',p:0.032, w:1684},
+      {t:'03/18 07:27:42',p:0.032, w:48},
+    ]
+  },
+  // 0.0.2175236 — purple
+  { color:'#aa66ff', user:'0.0.2175236', fill:'rgba(170,102,255,0.65)',
+    points:[
+      {t:'03/18 07:24:21',p:15.693,w:852},
+      {t:'03/18 07:27:42',p:0.032, w:17},
+    ]
+  },
+  // 0.0.9082904 — teal
+  { color:'#44ddbb', user:'0.0.9082904', fill:'rgba(68,221,187,0.65)',
+    points:[
+      {t:'03/18 07:21:41',p:15.728,w:2494},
+      {t:'03/18 10:09:00',p:14.365,w:548},
+    ]
+  },
+];
+
+// ──────────────────────────────────────────────
+// CHART 1 — Full Timeline
+// ──────────────────────────────────────────────
+const labels = oracleLine.map(d => d.t);
+const labelIdx = {};
+labels.forEach((l,i) => labelIdx[l] = i);
+
+// For scatter datasets, we need x as label index
+const datasets = [
+  {
+    type: 'line',
+    label: 'Oracle Price (STEAM/HBAR)',
+    data: oracleLine.map(d => d.p),
+    borderColor: 'rgba(255,68,68,0.7)',
+    backgroundColor: 'rgba(255,68,68,0.07)',
+    fill: true,
+    pointRadius: 0,
+    borderWidth: 1.5,
+    tension: 0,
+    order: 10
+  },
+  {
+    type: 'line',
+    label: 'Market Price (~0.034)',
+    data: oracleLine.map(() => 0.034),
+    borderColor: 'rgba(68,204,136,0.6)',
+    borderWidth: 1,
+    borderDash: [5,5],
+    pointRadius: 0,
+    fill: false,
+    order: 9
+  }
+];
+
+// Add per-user scatter points
+userEvents.forEach(u => {
+  const pts = u.points.map(p => {
+    const xi = labelIdx[p.t] ?? 0;
+    return { x: xi, y: p.p };
+  });
+  datasets.push({
+    type: 'scatter',
+    label: u.user,
+    data: pts,
+    backgroundColor: u.fill,
+    borderColor: u.color,
+    borderWidth: 1.5,
+    pointRadius: 7,
+    pointStyle: 'triangle',
+    order: 1
+  });
+});
+
+const fullCtx = document.getElementById('fullChart').getContext('2d');
+new Chart(fullCtx, {
+  data: { labels, datasets },
+  options: {
+    responsive: true,
+    interaction: { mode: 'point' },
+    plugins: {
+      legend: { labels: { color: '#888', font:{size:11}, boxWidth:10 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            if (ctx.dataset.type === 'scatter') {
+              const u = userEvents.find(u => u.user === ctx.dataset.label);
+              const p = u ? u.points[ctx.dataIndex] : null;
+              return p
+                ? ` ${ctx.dataset.label} — ${ctx.parsed.y.toFixed(3)} HBAR | ${p.w.toLocaleString()} WHBAR seized`
+                : ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} HBAR`;
+            }
+            return ` ${ctx.parsed.y.toFixed(4)} HBAR`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks: { color:'#666', maxTicksLimit:16, maxRotation:40, font:{size:11} },
+        grid:  { color:'rgba(255,255,255,0.04)' }
+      },
+      y: {
+        type: 'logarithmic',
+        ticks: { color:'#666', callback: v => v >= 1 ? v.toFixed(0) : v.toFixed(3) },
+        grid:  { color:'rgba(255,255,255,0.04)' },
+        title: { display: true, text: 'HBAR (log)', color: '#555' }
+      }
+    }
+  }
+});
+
+// ──────────────────────────────────────────────
+// CHART 2 — Zoomed second-by-second
+// ──────────────────────────────────────────────
+const zoomData = [
+  {t:'07:20:30',p:0.0318},{t:'07:20:35',p:0.0318},{t:'07:20:40',p:0.0347},
+  {t:'07:20:44',p:0.0347},{t:'07:20:46',p:7.883},{t:'07:20:47',p:7.883},
+  {t:'07:20:48',p:15.728},{t:'07:20:50',p:15.728},{t:'07:20:55',p:15.728},
+  {t:'07:21:00',p:15.728},{t:'07:21:05',p:15.728},{t:'07:21:10',p:15.728},
+  {t:'07:21:14',p:15.728},{t:'07:21:15',p:15.728},{t:'07:21:20',p:15.728},
+  {t:'07:21:22',p:7.880},{t:'07:21:25',p:7.880},{t:'07:21:28',p:7.880},
+  {t:'07:21:30',p:7.880},{t:'07:21:35',p:7.880},{t:'07:21:40',p:7.880},
+  {t:'07:21:41',p:0.0319},{t:'07:21:45',p:0.0319},
+  {t:'07:21:50',p:0.0319},{t:'07:21:55',p:0.0319},{t:'07:22:00',p:0.0319},
+  {t:'07:22:10',p:0.0319},{t:'07:22:20',p:0.0319},{t:'07:22:38',p:0.0319},
+  {t:'07:22:50',p:0.0319},{t:'07:23:00',p:0.0319},
+  {t:'07:23:39',p:15.693},{t:'07:23:45',p:15.693},{t:'07:23:50',p:15.693},
+  {t:'07:24:00',p:15.693},{t:'07:24:02',p:15.693},{t:'07:24:12',p:15.693},
+  {t:'07:24:20',p:0.0319},{t:'07:24:25',p:0.0319}
+];
+
+// User event markers on zoomed chart: [zoomLabel, price, user, color, label]
+const zoomMarkers = [
+  // TX at 07:21:14 — 0.0.2964381 (STEAM seized)
+  {t:'07:21:14', p:15.728, user:'0.0.2964381', color:'#ff4444', desc:'292k+ WHBAR (+STEAM)'},
+  // TX at 07:21:20 — 0.0.2964381 (big WHBAR hit)
+  {t:'07:21:20', p:15.728, user:'0.0.2964381', color:'#ff4444', desc:'292,918 WHBAR'},
+  // TX at 07:21:28 — 0.0.4760042 and 0.0.9082904
+  {t:'07:21:28', p:7.880,  user:'0.0.4760042', color:'#4499ff', desc:'2,791 WHBAR'},
+  {t:'07:21:28', p:7.880,  user:'0.0.9082904', color:'#44ddbb', desc:'STEAM seized'},
+  // TX at 07:21:40 — 0.0.847393
+  {t:'07:21:40', p:7.880,  user:'0.0.847393',  color:'#ff8844', desc:'48,975 WHBAR'},
+  // TX at 07:22:10 — 0.0.4760042
+  {t:'07:22:10', p:0.032,  user:'0.0.4760042', color:'#4499ff', desc:'1,201 WHBAR'},
+  // TX at 07:24:02 — 0.0.2964381
+  {t:'07:24:02', p:15.693, user:'0.0.2964381', color:'#ff4444', desc:'8,675 WHBAR'},
+  // TX at 07:24:12 — 0.0.2175236
+  {t:'07:24:12', p:15.693, user:'0.0.2175236', color:'#aa66ff', desc:'852 WHBAR'},
+];
+
+const zoomLabelIdx = {};
+zoomData.forEach((d,i) => zoomLabelIdx[d.t] = i);
+
+const zoomDatasets = [
+  {
+    type: 'line',
+    label: 'Oracle Price',
+    data: zoomData.map(d => d.p),
+    borderColor: 'rgba(255,68,68,0.8)',
+    backgroundColor: 'rgba(255,68,68,0.08)',
+    fill: true,
+    pointRadius: 0,
+    borderWidth: 2,
+    tension: 0,
+    order: 10,
+    segment: {
+      borderColor: ctx => {
+        const y = ctx.p0.parsed.y;
+        if (y > 10) return '#ff4444';
+        if (y > 1) return '#ff8844';
+        return '#44cc88';
+      }
+    }
+  }
+];
+
+// Group markers by user for separate datasets
+const zoomUserMap = {};
+zoomMarkers.forEach(m => {
+  if (!zoomUserMap[m.user]) zoomUserMap[m.user] = { color: m.color, pts:[], descs:[] };
+  const xi = zoomLabelIdx[m.t] ?? 0;
+  zoomUserMap[m.user].pts.push({ x: xi, y: m.p });
+  zoomUserMap[m.user].descs.push(m.desc);
+});
+
+Object.entries(zoomUserMap).forEach(([user, info]) => {
+  zoomDatasets.push({
+    type: 'scatter',
+    label: user,
+    data: info.pts,
+    backgroundColor: info.color + 'aa',
+    borderColor: info.color,
+    borderWidth: 2,
+    pointRadius: 8,
+    pointStyle: 'triangle',
+    order: 1,
+    _descs: info.descs
+  });
+});
+
+const zoomCtx = document.getElementById('zoomChart').getContext('2d');
+new Chart(zoomCtx, {
+  data: { labels: zoomData.map(d=>d.t), datasets: zoomDatasets },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color: '#888', font:{size:11}, boxWidth:10 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => {
+            if (ctx.dataset.type === 'scatter') {
+              const ds = ctx.dataset;
+              const desc = ds._descs?.[ctx.dataIndex] ?? '';
+              return ` ${ctx.dataset.label}: ${ctx.parsed.y.toFixed(3)} HBAR — ${desc}`;
+            }
+            return ` ${ctx.parsed.y.toFixed(4)} HBAR`;
+          }
+        }
+      }
+    },
+    scales: {
+      x: { ticks:{color:'#666', maxRotation:45, font:{size:11}}, grid:{color:'rgba(255,255,255,0.04)'} },
+      y: {
+        ticks:{ color:'#666', callback: v => v >= 1 ? v.toFixed(1) : v.toFixed(4) },
+        grid: { color:'rgba(255,255,255,0.04)' },
+        title:{ display:true, text:'HBAR', color:'#555' }
+      }
+    }
+  }
+});
+
+// ──────────────────────────────────────────────
+// CHART 3 — Hourly stacked WHBAR seizure by user
+// ──────────────────────────────────────────────
+const hourLabels = ['00:00','07:00','08:00','09:00','10:00'];
+
+// WHBAR seized per user per hour
+const hourlyData = {
+  '0.0.2964381': {color:'#ff4444', data:[109388, 301593, 6289,  0,     0   ]},
+  '0.0.847393':  {color:'#ff8844', data:[0,      51228,  25968, 22791, 0   ]},
+  '0.0.4713153': {color:'#ffdd44', data:[0,      0,      0,     0,     8581]},
+  '0.0.4760042': {color:'#4499ff', data:[0,      5725,   16,    1.8,   0   ]},
+  '0.0.2175236': {color:'#aa66ff', data:[0,      869,    0,     0.49,  0   ]},
+  '0.0.9082904': {color:'#44ddbb', data:[0,      2494,   0,     0,     548 ]},
+};
+
+const hourlyCtx = document.getElementById('hourlyBar').getContext('2d');
+new Chart(hourlyCtx, {
+  type: 'bar',
+  data: {
+    labels: hourLabels,
+    datasets: Object.entries(hourlyData).map(([user, info]) => ({
+      label: user,
+      data: info.data,
+      backgroundColor: info.color + 'cc',
+      borderColor: info.color,
+      borderWidth: 1,
+      stack: 'total',
+      borderRadius: 3
+    }))
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { labels: { color:'#888', font:{size:11}, boxWidth:10 } },
+      tooltip: {
+        callbacks: {
+          label: ctx => ` ${ctx.dataset.label}: ${Math.round(ctx.parsed.y).toLocaleString()} WHBAR`
+        }
+      }
+    },
+    scales: {
+      x: {
+        ticks:{color:'#666'},
+        grid:{color:'rgba(255,255,255,0.04)'},
+        title:{display:true, text:'UTC Hour (Mar 18)', color:'#555'}
+      },
+      y: {
+        stacked: true,
+        ticks:{color:'#666', callback: v => v>=1000 ? Math.round(v/1000)+'k' : v },
+        grid:{color:'rgba(255,255,255,0.04)'},
+        title:{display:true, text:'WHBAR Seized', color:'#555'}
+      }
+    }
+  }
+});
+</script>
+</body>
+</html>

@@ -18,3 +18,7 @@ coverage
 
 claude.md
 
+# Local editor / per-run artifacts
+docs/.obsidian/
+scripts/multisig/output/
+

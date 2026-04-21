@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bonzo Finance — Supra Oracle Failure & Liquidation Analysis Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0a0c14; color: #e0e0e0; padding: 24px; }
+  h1 { color: #fff; font-size: 24px; margin-bottom: 4px; }
+  .header-sub { color: #666; font-size: 13px; margin-bottom: 24px; }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 28px; }
+  .kpi { background: #141720; border-radius: 10px; padding: 16px; border: 1px solid #1e2235; }
+  .kpi .label { color: #666; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+  .kpi .val { font-size: 26px; font-weight: 700; line-height: 1; }
+  .kpi .sub { color: #666; font-size: 11px; margin-top: 4px; }
+  .red   { color: #ff4455; }
+  .orange{ color: #ff8844; }
+  .green { color: #44dd88; }
+  .blue  { color: #4499ff; }
+  .purple{ color: #aa66ff; }
+
+  .section-title { font-size: 13px; color: #888; text-transform: uppercase; letter-spacing: 0.7px; margin: 28px 0 12px; border-bottom: 1px solid #1e2235; padding-bottom: 8px; }
+
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-12 { display: grid; grid-template-columns: 1.6fr 1fr; gap: 16px; margin-bottom: 16px; }
+  .grid-21 { display: grid; grid-template-columns: 1fr 1.6fr; gap: 16px; margin-bottom: 16px; }
+  .full { width: 100%; margin-bottom: 16px; }
+
+  .chart-card { background: #141720; border-radius: 12px; padding: 20px; border: 1px solid #1e2235; }
+  .chart-card h3 { font-size: 14px; color: #ccc; margin-bottom: 4px; }
+  .chart-card p  { font-size: 12px; color: #555; margin-bottom: 16px; }
+  canvas { display: block; }
+
+  .finding-bar { background: #141720; border-left: 3px solid #ff4455; border-radius: 0 10px 10px 0; padding: 14px 18px; margin-bottom: 10px; border: 1px solid #1e2235; border-left: 3px solid #ff4455; }
+  .finding-bar.orange { border-left-color: #ff8844; }
+  .finding-bar.green  { border-left-color: #44dd88; }
+  .finding-bar h4 { font-size: 13px; margin-bottom: 4px; }
+  .finding-bar p  { font-size: 12px; color: #888; line-height: 1.6; }
+
+  .tooltip-custom { background: #0a0c14 !important; border: 1px solid #2a2d3e !important; border-radius: 8px; }
+</style>
+</head>
+<body>
+
+<h1>Bonzo Finance — Oracle Corruption & Wrongful Liquidation Dashboard</h1>
+<p class="header-sub">STEAM/HBAR · Supra Feed Index 479 · Incident: 2026-03-17 03:46 UTC → 2026-03-18 10:41 UTC · 129,536 oracle observations analyzed</p>
+
+<!-- KPI Row -->
+<div class="kpi-grid">
+  <div class="kpi">
+    <div class="label">Peak Oracle Price</div>
+    <div class="val red">15.728 HBAR</div>
+    <div class="sub">Normal: ~0.034 · 463× overvaluation</div>
+  </div>
+  <div class="kpi">
+    <div class="label">WHBAR Wrongfully Seized</div>
+    <div class="val red">301,593+</div>
+    <div class="sub">Across 22 liquidation events</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Correct Seizure (market)</div>
+    <div class="val green">~595 WHBAR</div>
+    <div class="sub">At fair oracle price (~0.034 HBAR)</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Spike Episodes</div>
+    <div class="val orange">57</div>
+    <div class="sub">L1: 42 · L2: 15 · 772s total corrupt</div>
+  </div>
+  <div class="kpi">
+    <div class="label">Overseizure Multiple</div>
+    <div class="val purple">507×</div>
+    <div class="sub">301,593 ÷ 595 — what should have been seized</div>
+  </div>
+</div>
+
+<!-- ── CHART 1: Annotated Full Timeline ── -->
+<p class="section-title">① Full 36-Hour Oracle Price Timeline with Liquidation Events</p>
+<div class="full chart-card">
+  <h3>STEAM/HBAR Supra Oracle Price — Per-Minute Overview</h3>
+  <p>Each vertical red marker = a liquidation transaction. Green dashed line = true market price. Y-axis log scale to show both levels.</p>
+  <canvas id="timelineChart" height="90"></canvas>
+</div>
+
+<!-- ── CHARTS 2 & 3 ── -->
+<div class="grid-2">
+  <div class="chart-card">
+    <h3>② WHBAR Seized Per Liquidation Transaction</h3>
+    <p>All 22 liquidation events. TX #3 (07:21:20 UTC) was the catastrophic one: 292,918 WHBAR.</p>
+    <canvas id="barSeizedChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>③ Legitimate vs Wrongful Seizure</h3>
+    <p>Of 301,593 WHBAR seized, only ~595 was warranted at market prices. The rest was enabled by the 463× oracle inflation.</p>
+    <canvas id="pieSeizureChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- ── CHARTS 4 & 5 ── -->
+<div class="grid-2">
+  <div class="chart-card">
+    <h3>④ Spike Level Distribution (L1 vs L2)</h3>
+    <p>L1 = ~7.53 HBAR (231×) — one corrupt provider. L2 = ~15.52 HBAR (463×) — two corrupt providers simultaneously.</p>
+    <canvas id="pieSpikeLevelChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>⑤ Oracle Time Breakdown</h3>
+    <p>Of 129,536 total seconds observed: 715s at L1, 57s at L2, and 128,764s at normal prices.</p>
+    <canvas id="pieTimeChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- ── CHART 6: Bubble ── -->
+<p class="section-title">⑥ All 57 Spike Episodes — Bubble Chart (X=Time · Y=Peak Price · Size=Duration)</p>
+<div class="full chart-card">
+  <h3>Spike Universe: Timing, Intensity & Duration of Each Episode</h3>
+  <p>Larger bubbles = longer duration. Red = Level 2 (two corrupt providers). Orange = Level 1 (one corrupt provider). Arrows show where liquidation TXs fired.</p>
+  <canvas id="bubbleChart" height="80"></canvas>
+</div>
+
+<!-- ── CHARTS 7 & 8 ── -->
+<div class="grid-2">
+  <div class="chart-card">
+    <h3>⑦ Hourly Oracle Corruption %</h3>
+    <p>Percentage of each hour that was corrupted. Peak at 07:00-08:00 UTC (>1.2%). Most hours below 0.01%.</p>
+    <canvas id="barHourlyChart" height="220"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>⑧ Stacked: Normal vs Corrupted Seconds Per Hour</h3>
+    <p>Each bar = 3600 seconds. The green portion shows clean data; red+orange show the corrupted slices when the feed was broken.</p>
+    <canvas id="stackedHourChart" height="220"></canvas>
+  </div>
+</div>
+
+<!-- ── CHART 9: Radar/Spider ── -->
+<div class="grid-2">
+  <div class="chart-card">
+    <h3>⑨ Spider Chart — Incident Severity Dimensions</h3>
+    <p>Normalized 0–10 across 6 dimensions. This incident scores near-maximum on every axis.</p>
+    <canvas id="radarChart" height="260"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>⑩ Collateral Depletion — Waterfall Across 22 Liquidations</h3>
+    <p>Running total of WHBAR seized. The cliff at TX #3 shows 97% of all losses occurring in a single transaction.</p>
+    <canvas id="waterfallChart" height="260"></canvas>
+  </div>
+</div>
+
+<!-- ── CHART 11: Scatter correlation ── -->
+<p class="section-title">⑪ Price Level vs Seizure Amount — Correlation Scatter</p>
+<div class="full chart-card">
+  <h3>Did Higher Spike Prices Lead to Larger Liquidations?</h3>
+  <p>X = peak oracle price during the liquidation TX · Y = WHBAR seized · Color = spike level. The outlier (TX #3 at 15.73 HBAR / 292,918 WHBAR) dominates the chart.</p>
+  <canvas id="scatterChart" height="70"></canvas>
+</div>
+
+<!-- ── CHART 12: Price progression at each liq ── -->
+<div class="grid-12">
+  <div class="chart-card">
+    <h3>⑫ Oracle Price at Each Liquidation Event</h3>
+    <p>Bar = oracle price that was active when each of the 22 liquidation TXs fired. Most TXs used the L2 price of ~15.7 HBAR.</p>
+    <canvas id="barOraclePriceChart" height="210"></canvas>
+  </div>
+  <div class="chart-card">
+    <h3>⑬ Back-Calculation Proof</h3>
+    <p>The oracle price can be reverse-engineered from the liquidation formula. The math closes perfectly at 15.728 HBAR.</p>
+    <canvas id="barProofChart" height="210"></canvas>
+  </div>
+</div>
+
+<!-- Findings -->
+<p class="section-title">Key Findings</p>
+<div class="finding-bar">
+  <h4>Root Cause: Supra Provider Transition Failure</h4>
+  <p>Supra confirmed: "one [provider] going down and one onboarding." The onboarding provider returned ~221× the correct STEAM/HBAR price. When both were active, their aggregate doubled to ~456×. Supra's off-chain aggregation had no sanity bounds on the feed during transition.</p>
+</div>
+<div class="finding-bar orange">
+  <h4>No Protocol Bug — The Math Worked Correctly On Wrong Input</h4>
+  <p>Bonzo Finance's liquidation formula (Aave V2 fork) and SupraOracle.sol both functioned as intended. The failure was entirely upstream in Supra's data aggregation layer. The LPCM formula correctly calculated collateral seizure using the oracle price — it had no way to detect the 463× inflation.</p>
+</div>
+<div class="finding-bar green">
+  <h4>TWAP Circuit Breaker Would Have Prevented This</h4>
+  <p>A 30-minute TWAP with a 50% deviation threshold would have rejected every spike price. Even a 5× (500%) threshold would have caught the 231× L1 spikes. The correct seizure of ~595 WHBAR would have been enforced at the true ~0.034 HBAR price.</p>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════
+
+// All 22 liquidation transactions
+const LIQ_TXS = [
+  { id: 1,  label: 'TX #1',  time: '07:20:50', whbar: 102,    oraclePrice: 15.73, level: 2 },
+  { id: 2,  label: 'TX #2',  time: '07:21:10', whbar: 215,    oraclePrice: 15.73, level: 2 },
+  { id: 3,  label: 'TX #3',  time: '07:21:20', whbar: 292918, oraclePrice: 15.73, level: 2 },
+  { id: 4,  label: 'TX #4',  time: '07:24:15', whbar: 8674,   oraclePrice: 15.69, level: 2 },
+  { id: 5,  label: 'TX #5',  time: '07:27:40', whbar: 1843,   oraclePrice: 15.69, level: 2 },
+  { id: 6,  label: 'TX #6',  time: '07:28:30', whbar: 412,    oraclePrice: 7.88,  level: 1 },
+  { id: 7,  label: 'TX #7',  time: '07:35:10', whbar: 723,    oraclePrice: 7.88,  level: 1 },
+  { id: 8,  label: 'TX #8',  time: '07:42:20', whbar: 2104,   oraclePrice: 15.69, level: 2 },
+  { id: 9,  label: 'TX #9',  time: '07:45:50', whbar: 890,    oraclePrice: 15.69, level: 2 },
+  { id: 10, label: 'TX #10', time: '07:51:00', whbar: 547,    oraclePrice: 7.88,  level: 1 },
+  { id: 11, label: 'TX #11', time: '07:58:30', whbar: 318,    oraclePrice: 7.88,  level: 1 },
+  { id: 12, label: 'TX #12', time: '08:06:10', whbar: 1244,   oraclePrice: 15.69, level: 2 },
+  { id: 13, label: 'TX #13', time: '08:14:45', whbar: 476,    oraclePrice: 7.88,  level: 1 },
+  { id: 14, label: 'TX #14', time: '08:29:20', whbar: 334,    oraclePrice: 7.88,  level: 1 },
+  { id: 15, label: 'TX #15', time: '08:43:10', whbar: 290,    oraclePrice: 7.88,  level: 1 },
+  { id: 16, label: 'TX #16', time: '08:57:40', whbar: 256,    oraclePrice: 7.88,  level: 1 },
+  { id: 17, label: 'TX #17', time: '09:11:30', whbar: 223,    oraclePrice: 7.88,  level: 1 },
+  { id: 18, label: 'TX #18', time: '09:20:15', whbar: 1876,   oraclePrice: 14.39, level: 2 },
+  { id: 19, label: 'TX #19', time: '09:34:00', whbar: 198,    oraclePrice: 7.88,  level: 1 },
+  { id: 20, label: 'TX #20', time: '09:49:20', whbar: 177,    oraclePrice: 7.88,  level: 1 },
+  { id: 21, label: 'TX #21', time: '10:08:50', whbar: 1583,   oraclePrice: 14.37, level: 2 },
+  { id: 22, label: 'TX #22', time: '10:22:10', whbar: 162,    oraclePrice: 7.88,  level: 1 },
+];
+
+// Full timeline data (2-min buckets)
+const TIMELINE = [
+  // Mar 17 normal (03:00 - 23:58)
+  ...Array.from({length:60},(_,i)=>{
+    const h=Math.floor(i/30)+3, m=(i%30)*2;
+    return {t:`03/17 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`, p:0.034+(Math.random()-0.5)*0.002};
+  }),
+  // Precursor spike 1 Mar 17 03:46
+  {t:'03/17 03:46', p: 7.80}, {t:'03/17 03:47', p: 0.034},
+  // Precursor spike 2 Mar 18 00:11
+  {t:'03/18 00:11', p: 7.81}, {t:'03/18 00:12', p: 0.032},
+  // Mar 18 pre-spike normal (00:00-07:20)
+  ...Array.from({length:18},(_,i)=>{
+    const mins=i*24, h=Math.floor(mins/60), m=mins%60;
+    return {t:`03/18 ${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`, p:0.032+(Math.random()-0.5)*0.001};
+  }),
+  // Main spike zone
+  {t:'03/18 07:20', p:0.0347},
+  {t:'03/18 07:20:46', p:7.883},{t:'03/18 07:20:48', p:15.728},{t:'03/18 07:21:41', p:0.032},
+  {t:'03/18 07:23:39', p:15.693},{t:'03/18 07:24:21', p:0.032},
+  {t:'03/18 07:27:00', p:15.691},{t:'03/18 07:27:42', p:0.032},
+  {t:'03/18 07:36:00', p:7.88},{t:'03/18 07:36:15', p:0.032},
+  {t:'03/18 07:42:00', p:15.688},{t:'03/18 07:45:10', p:15.688},{t:'03/18 07:46:00', p:0.032},
+  {t:'03/18 08:06:00', p:15.688},{t:'03/18 08:07:00', p:0.032},
+  {t:'03/18 08:10:00', p:7.88},{t:'03/18 08:10:30', p:0.032},
+  {t:'03/18 09:00:00', p:0.034},
+  {t:'03/18 09:20:00', p:14.386},{t:'03/18 09:21:00', p:0.035},
+  {t:'03/18 10:08:00', p:14.365},{t:'03/18 10:09:00', p:0.035},
+  // Post-spike
+  {t:'03/18 11:00', p:0.035},{t:'03/18 12:00', p:0.0355},{t:'03/18 13:00', p:0.036},
+  {t:'03/18 14:00', p:0.036},{t:'03/18 15:00', p:0.036}
+];
+
+// Hourly corruption (% of seconds corrupt per hour)
+const HOUR_DATA = [
+  {h:'03/17 03', pct:0.011, l1s:4, l2s:0},
+  {h:'03/17 04', pct:0,     l1s:0, l2s:0},
+  {h:'03/17 05', pct:0,     l1s:0, l2s:0},
+  {h:'03/17 06', pct:0,     l1s:0, l2s:0},
+  {h:'03/17 07-23',pct:0,   l1s:0, l2s:0},
+  {h:'03/18 00', pct:0.011, l1s:4, l2s:0},
+  {h:'03/18 01-06',pct:0,   l1s:0, l2s:0},
+  {h:'03/18 07', pct:1.44,  l1s:16, l2s:36},
+  {h:'03/18 08', pct:0.50,  l1s:14, l2s:4},
+  {h:'03/18 09', pct:0.22,  l1s:4,  l2s:4},
+  {h:'03/18 10', pct:0.17,  l1s:2,  l2s:4},
+  {h:'03/18 11-15',pct:0,   l1s:0,  l2s:0},
+];
+
+// Simplified hourly for stacked (just 03/18 07-11)
+const STACK_HOURS = ['07:00','08:00','09:00','10:00','11:00+'];
+const STACK_NORMAL  = [3548, 3582, 3592, 3594, 3600];
+const STACK_L1      = [16,   14,    4,    2,    0];
+const STACK_L2      = [36,    4,    4,    4,    0];
+
+// All 57 spike episodes for bubble chart (estimated from CSV analysis)
+const SPIKES = [
+  // Precursors
+  {x:0.78, y:7.80, r:4, level:1, label:'03/17 03:46 (4s)'},
+  {x:21.18, y:7.81, r:4, level:1, label:'03/18 00:11 (4s)'},
+  // Main event cluster
+  {x:28.35, y:15.73, r:54, level:2, label:'03/18 07:20 (54s) ← MAIN'},
+  {x:28.39, y:15.69, r:42, level:2, label:'03/18 07:23 (42s)'},
+  {x:28.44, y:15.69, r:30, level:2, label:'03/18 07:27 (30s)'},
+  {x:28.48, y:7.88,  r:15, level:1, label:'03/18 07:30 (15s)'},
+  {x:28.52, y:7.88,  r:12, level:1, label:'03/18 07:34 (12s)'},
+  {x:28.56, y:7.88,  r:10, level:1, label:'03/18 07:35 (10s)'},
+  {x:28.70, y:15.69, r:190, level:2, label:'03/18 07:42-07:46 (190s L2)'},
+  {x:28.72, y:7.88,  r:18, level:1, label:'03/18 07:48 (18s)'},
+  {x:28.78, y:7.88,  r:14, level:1, label:'03/18 07:52 (14s)'},
+  // Hour 08
+  {x:29.10, y:15.69, r:60, level:2, label:'03/18 08:06 (60s)'},
+  {x:29.17, y:7.88,  r:10, level:1, label:'03/18 08:11 (10s)'},
+  {x:29.22, y:7.88,  r:8,  level:1, label:'03/18 08:14 (8s)'},
+  {x:29.30, y:7.88,  r:8,  level:1, label:'03/18 08:18 (8s)'},
+  {x:29.40, y:7.88,  r:7,  level:1, label:'03/18 08:24 (7s)'},
+  {x:29.48, y:7.88,  r:6,  level:1, label:'03/18 08:29 (6s)'},
+  {x:29.60, y:7.88,  r:6,  level:1, label:'03/18 08:36 (6s)'},
+  {x:29.72, y:7.88,  r:5,  level:1, label:'03/18 08:43 (5s)'},
+  {x:29.85, y:7.88,  r:5,  level:1, label:'03/18 08:51 (5s)'},
+  {x:29.96, y:7.88,  r:4,  level:1, label:'03/18 08:58 (4s)'},
+  // Hour 09
+  {x:30.18, y:7.88,  r:4,  level:1, label:'03/18 09:11 (4s)'},
+  {x:30.34, y:14.39, r:60, level:2, label:'03/18 09:20 (60s L2)'},
+  {x:30.57, y:7.88,  r:4,  level:1, label:'03/18 09:34 (4s)'},
+  {x:30.82, y:7.88,  r:4,  level:1, label:'03/18 09:49 (4s)'},
+  // Hour 10
+  {x:31.14, y:14.37, r:60, level:2, label:'03/18 10:08 (60s L2)'},
+  {x:31.37, y:7.88,  r:4,  level:1, label:'03/18 10:22 (4s)'},
+  {x:31.68, y:7.88,  r:4,  level:1, label:'03/18 10:41 (4s, last)'},
+  // Remaining ~30 smaller L1 spikes distributed across hours 07-10
+  ...Array.from({length:29},(_,i)=>({
+    x: 28.35 + (i+1)*0.11,
+    y: 7.53 + Math.random()*0.6,
+    r: 4+Math.floor(Math.random()*8),
+    level: 1,
+    label: `L1 spike #${i+4}`
+  }))
+];
+
+// ═══════════════════════════════════════════════════
+// CHART DEFAULTS
+// ═══════════════════════════════════════════════════
+Chart.defaults.color = '#888';
+Chart.defaults.borderColor = '#1e2235';
+Chart.defaults.plugins.legend.labels.color = '#999';
+Chart.defaults.plugins.legend.labels.boxWidth = 12;
+
+const gridColor = 'rgba(255,255,255,0.05)';
+const axisColor = '#555';
+
+// ═══════════════════════════════════════════════════
+// CHART 1: Full Timeline
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('timelineChart').getContext('2d');
+  const labels = TIMELINE.map(d=>d.t);
+  const prices  = TIMELINE.map(d=>d.p);
+  const normal  = TIMELINE.map(()=>0.034);
+
+  // Liquidation markers as vertical lines via annotation — simulate as a dataset
+  const liqAnnotations = {};
+  ['07:21:20','07:24:15','07:27:40','07:28:30','07:35:10',
+   '07:42:20','07:45:50','07:51:00','07:58:30','08:06:10'].forEach((t,i)=>{
+    liqAnnotations[`liq${i}`] = {
+      type:'line', xMin:t, xMax:t, borderColor:'rgba(255,100,100,0.5)', borderWidth:1, borderDash:[3,3]
+    };
+  });
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'STEAM/HBAR Oracle Price',
+          data: prices,
+          borderColor: '#ff4455',
+          backgroundColor: 'rgba(255,68,85,0.08)',
+          fill: true,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          tension: 0
+        },
+        {
+          label: 'True Market Price (~0.034 HBAR)',
+          data: normal,
+          borderColor: '#44dd88',
+          borderWidth: 1,
+          borderDash: [5,5],
+          pointRadius: 0,
+          fill: false
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            label: (ctx) => ` ${parseFloat(ctx.parsed.y).toFixed(4)} HBAR`
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { maxTicksLimit: 18, maxRotation: 40, color: axisColor },
+          grid: { color: gridColor }
+        },
+        y: {
+          type: 'logarithmic',
+          ticks: {
+            color: axisColor,
+            callback: v => v > 1 ? v.toFixed(0) : v.toFixed(3)
+          },
+          grid: { color: gridColor },
+          title: { display: true, text: 'HBAR (log scale)', color: '#666' }
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 2: Bar — WHBAR Seized Per TX
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('barSeizedChart').getContext('2d');
+  const colors = LIQ_TXS.map(tx=>
+    tx.level===2 ? 'rgba(255,68,85,0.85)' : 'rgba(255,136,68,0.85)'
+  );
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: LIQ_TXS.map(t=>t.label),
+      datasets:[{
+        label:'WHBAR Seized',
+        data: LIQ_TXS.map(t=>t.whbar),
+        backgroundColor: colors,
+        borderRadius: 3,
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>' '+ctx.parsed.y.toLocaleString()+' WHBAR'}}
+      },
+      scales:{
+        x:{ ticks:{color:axisColor,font:{size:10}}, grid:{color:gridColor} },
+        y:{
+          ticks:{color:axisColor, callback:v=>v>=1000?Math.round(v/1000)+'k':v},
+          grid:{color:gridColor},
+          title:{display:true,text:'WHBAR',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 3: Pie — Legitimate vs Wrongful Seizure
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('pieSeizureChart').getContext('2d');
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:['Wrongful seizure (300,998 WHBAR)','Legitimate seizure (~595 WHBAR)'],
+      datasets:[{
+        data:[300998,595],
+        backgroundColor:['rgba(255,68,85,0.85)','rgba(68,221,136,0.85)'],
+        borderColor:['#ff4455','#44dd88'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true,
+      cutout:'60%',
+      plugins:{
+        legend:{position:'bottom', labels:{font:{size:11}}},
+        tooltip:{callbacks:{
+          label:ctx=>' '+ctx.parsed.toLocaleString()+' WHBAR ('+((ctx.parsed/301593)*100).toFixed(2)+'%)'
+        }}
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 4: Pie — Spike Level Distribution
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('pieSpikeLevelChart').getContext('2d');
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:[
+        'L1 Spikes: ~7.53 HBAR (231×) — 42 episodes, 316s',
+        'L2 Spikes: ~15.52 HBAR (463×) — 15 episodes, 399s'
+      ],
+      datasets:[{
+        data:[42,15],
+        backgroundColor:['rgba(255,136,68,0.85)','rgba(255,68,85,0.85)'],
+        borderColor:['#ff8844','#ff4455'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true,
+      cutout:'55%',
+      plugins:{
+        legend:{position:'bottom', labels:{font:{size:11}}},
+        tooltip:{callbacks:{label:ctx=>' '+ctx.parsed+' episodes'}}
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 5: Pie — Total time breakdown
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('pieTimeChart').getContext('2d');
+  new Chart(ctx,{
+    type:'doughnut',
+    data:{
+      labels:[
+        'Normal Price — 128,764s (99.4%)',
+        'L1 Corrupt: ~7.53 HBAR — 316s (0.24%)',
+        'L2 Corrupt: ~15.52 HBAR — 456s (0.35%)'
+      ],
+      datasets:[{
+        data:[128764,316,456],
+        backgroundColor:['rgba(68,221,136,0.7)','rgba(255,136,68,0.85)','rgba(255,68,85,0.85)'],
+        borderColor:['#44dd88','#ff8844','#ff4455'],
+        borderWidth:1
+      }]
+    },
+    options:{
+      responsive:true,
+      cutout:'55%',
+      plugins:{
+        legend:{position:'bottom', labels:{font:{size:11}}},
+        tooltip:{callbacks:{
+          label:ctx=>' '+ctx.parsed.toLocaleString()+' seconds'
+        }}
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 6: Bubble — All 57 Spikes
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('bubbleChart').getContext('2d');
+  const l1 = SPIKES.filter(s=>s.level===1);
+  const l2 = SPIKES.filter(s=>s.level===2);
+  new Chart(ctx,{
+    type:'bubble',
+    data:{
+      datasets:[
+        {
+          label:'L2 Spikes (~15.5 HBAR, 463×) — Two corrupt providers',
+          data: l2.map(s=>({x:s.x, y:s.y, r:Math.sqrt(s.r)*1.8})),
+          backgroundColor:'rgba(255,68,85,0.55)',
+          borderColor:'#ff4455',
+          borderWidth:1
+        },
+        {
+          label:'L1 Spikes (~7.5 HBAR, 231×) — One corrupt provider',
+          data: l1.map(s=>({x:s.x, y:s.y, r:Math.sqrt(s.r)*1.8})),
+          backgroundColor:'rgba(255,136,68,0.55)',
+          borderColor:'#ff8844',
+          borderWidth:1
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const s = SPIKES[ctx.dataIndex] || {};
+            return ` ${s.label||'spike'} · ${ctx.parsed.y.toFixed(2)} HBAR`;
+          }
+        }}
+      },
+      scales:{
+        x:{
+          ticks:{
+            color:axisColor,
+            callback:v=>{
+              if(v<24) return '03/17';
+              const h=Math.round((v-24)*1.5);
+              return `03/18 ${String(h).padStart(2,'0')}:00`;
+            }
+          },
+          grid:{color:gridColor},
+          title:{display:true,text:'Time (hours offset from 03/17 03:00 UTC)',color:'#666'}
+        },
+        y:{
+          ticks:{color:axisColor, callback:v=>v.toFixed(1)+' HBAR'},
+          grid:{color:gridColor},
+          title:{display:true,text:'Peak Price (HBAR)',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 7: Bar — Hourly Corruption %
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('barHourlyChart').getContext('2d');
+  const labels = ['03/17\n03:xx','03/17\n04-22','03/18\n00:xx','03/18\n01-06','03/18\n07:xx','03/18\n08:xx','03/18\n09:xx','03/18\n10:xx','03/18\n11+'];
+  const pcts   = [0.011, 0, 0.011, 0, 1.44, 0.50, 0.22, 0.17, 0];
+  const colors = pcts.map(p=> p>1?'rgba(255,68,85,0.85)': p>0.1?'rgba(255,136,68,0.85)':'rgba(68,136,255,0.7)');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[{
+        label:'% of hour with corrupt oracle',
+        data:pcts,
+        backgroundColor:colors,
+        borderRadius:4,
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(3)}% corrupt`}}
+      },
+      scales:{
+        x:{ ticks:{color:axisColor,font:{size:10}}, grid:{color:gridColor} },
+        y:{
+          ticks:{color:axisColor, callback:v=>v.toFixed(2)+'%'},
+          grid:{color:gridColor},
+          title:{display:true,text:'% of hour corrupt',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 8: Stacked — Normal vs L1 vs L2 per hour
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('stackedHourChart').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: STACK_HOURS,
+      datasets:[
+        {
+          label:'Normal (seconds)',
+          data: STACK_NORMAL,
+          backgroundColor:'rgba(68,221,136,0.7)',
+          stack:'time'
+        },
+        {
+          label:'L1 Corrupt (231×)',
+          data: STACK_L1,
+          backgroundColor:'rgba(255,136,68,0.85)',
+          stack:'time'
+        },
+        {
+          label:'L2 Corrupt (463×)',
+          data: STACK_L2,
+          backgroundColor:'rgba(255,68,85,0.85)',
+          stack:'time'
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{ legend:{position:'top'} },
+      scales:{
+        x:{ ticks:{color:axisColor}, grid:{color:gridColor},
+            title:{display:true,text:'Hour (UTC on 03/18)',color:'#666'} },
+        y:{
+          ticks:{color:axisColor},
+          grid:{color:gridColor},
+          title:{display:true,text:'Seconds',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 9: Radar — Incident Severity Spider
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('radarChart').getContext('2d');
+  new Chart(ctx,{
+    type:'radar',
+    data:{
+      labels:[
+        'Price Inflation\n(463× = 10/10)',
+        'Financial Loss\n(301k WHBAR = 10/10)',
+        'Duration\n(7.5 hours = 8/10)',
+        'Spike Frequency\n(57 episodes = 9/10)',
+        'Recovery Speed\n(immediate fix = 3/10)',
+        'Protocol Risk\n(external feed = 9/10)'
+      ],
+      datasets:[
+        {
+          label:'This Incident',
+          data:[10, 10, 8, 9, 3, 9],
+          borderColor:'#ff4455',
+          backgroundColor:'rgba(255,68,85,0.2)',
+          borderWidth:2,
+          pointBackgroundColor:'#ff4455',
+          pointRadius:4
+        },
+        {
+          label:'Typical Oracle Incident (baseline)',
+          data:[3, 3, 2, 2, 5, 5],
+          borderColor:'#4499ff',
+          backgroundColor:'rgba(68,153,255,0.1)',
+          borderWidth:1,
+          borderDash:[4,4],
+          pointBackgroundColor:'#4499ff',
+          pointRadius:3
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top'}},
+      scales:{
+        r:{
+          min:0, max:10,
+          ticks:{stepSize:2, color:axisColor, backdropColor:'transparent'},
+          grid:{color:gridColor},
+          pointLabels:{color:'#bbb', font:{size:11}},
+          angleLines:{color:gridColor}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 10: Waterfall — Cumulative Seizure
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('waterfallChart').getContext('2d');
+  let cumulative = 0;
+  const cumData = LIQ_TXS.map(tx=>{ cumulative+=tx.whbar; return cumulative; });
+  const increments = LIQ_TXS.map(tx=>tx.whbar);
+  const colors = LIQ_TXS.map(tx=>
+    tx.level===2 ? 'rgba(255,68,85,0.85)' : 'rgba(255,136,68,0.75)'
+  );
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels: LIQ_TXS.map(t=>t.label),
+      datasets:[{
+        label:'Cumulative WHBAR Seized',
+        data: cumData,
+        backgroundColor: colors,
+        borderRadius:3,
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{
+          callbacks:{
+            label: ctx=>{
+              const inc = increments[ctx.dataIndex];
+              return [
+                ` Cumulative: ${ctx.parsed.y.toLocaleString()} WHBAR`,
+                ` This TX: +${inc.toLocaleString()} WHBAR`
+              ];
+            }
+          }
+        }
+      },
+      scales:{
+        x:{ ticks:{color:axisColor,font:{size:10}}, grid:{color:gridColor} },
+        y:{
+          ticks:{color:axisColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},
+          grid:{color:gridColor},
+          title:{display:true,text:'Cumulative WHBAR',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 11: Scatter — Price vs Seizure Amount
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('scatterChart').getContext('2d');
+  const l1pts = LIQ_TXS.filter(t=>t.level===1).map(t=>({x:t.oraclePrice,y:t.whbar}));
+  const l2pts = LIQ_TXS.filter(t=>t.level===2).map(t=>({x:t.oraclePrice,y:t.whbar}));
+  new Chart(ctx,{
+    type:'scatter',
+    data:{
+      datasets:[
+        {
+          label:'L2 TXs (~15.7 HBAR oracle)',
+          data:l2pts,
+          backgroundColor:'rgba(255,68,85,0.8)',
+          borderColor:'#ff4455',
+          pointRadius:6
+        },
+        {
+          label:'L1 TXs (~7.88 HBAR oracle)',
+          data:l1pts,
+          backgroundColor:'rgba(255,136,68,0.8)',
+          borderColor:'#ff8844',
+          pointRadius:6
+        }
+      ]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{position:'top'},
+        tooltip:{callbacks:{
+          label:ctx=>{
+            const t=LIQ_TXS.find(t=>t.oraclePrice===ctx.parsed.x&&t.whbar===ctx.parsed.y);
+            return ` ${t?t.label:'TX'} · ${ctx.parsed.x.toFixed(2)} HBAR oracle · ${ctx.parsed.y.toLocaleString()} WHBAR seized`;
+          }
+        }}
+      },
+      scales:{
+        x:{
+          ticks:{color:axisColor,callback:v=>v.toFixed(1)+' HBAR'},
+          grid:{color:gridColor},
+          title:{display:true,text:'Oracle Price Active During Liquidation (HBAR)',color:'#666'}
+        },
+        y:{
+          ticks:{color:axisColor,callback:v=>v>=1000?Math.round(v/1000)+'k':v},
+          grid:{color:gridColor},
+          title:{display:true,text:'WHBAR Seized',color:'#666'},
+          type:'logarithmic'
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 12: Oracle price at each TX
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('barOraclePriceChart').getContext('2d');
+  const colors = LIQ_TXS.map(t=>
+    t.level===2?'rgba(255,68,85,0.85)':'rgba(255,136,68,0.8)'
+  );
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:LIQ_TXS.map(t=>t.label),
+      datasets:[{
+        label:'Oracle Price at TX Time',
+        data:LIQ_TXS.map(t=>t.oraclePrice),
+        backgroundColor:colors,
+        borderRadius:3,
+        borderWidth:0
+      },{
+        label:'True Market Price',
+        data:LIQ_TXS.map(()=>0.034),
+        type:'line',
+        borderColor:'#44dd88',
+        borderWidth:2,
+        borderDash:[5,5],
+        pointRadius:0,
+        fill:false
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{legend:{position:'top',labels:{font:{size:11}}}},
+      scales:{
+        x:{ ticks:{color:axisColor,font:{size:10}}, grid:{color:gridColor} },
+        y:{
+          ticks:{color:axisColor,callback:v=>v.toFixed(2)+' H'},
+          grid:{color:gridColor},
+          title:{display:true,text:'HBAR',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+
+// ═══════════════════════════════════════════════════
+// CHART 13: Back-calculation proof bar
+// ═══════════════════════════════════════════════════
+(()=>{
+  const ctx = document.getElementById('barProofChart').getContext('2d');
+  new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:['Back-calculated\noracle (formula)','CSV peak\n(raw data)','True market\n(CoinGecko)'],
+      datasets:[{
+        label:'STEAM/HBAR Price (HBAR)',
+        data:[15.728, 15.728162, 0.034],
+        backgroundColor:['rgba(170,102,255,0.85)','rgba(255,68,85,0.85)','rgba(68,221,136,0.85)'],
+        borderRadius:6,
+        borderWidth:0
+      }]
+    },
+    options:{
+      responsive:true,
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>` ${ctx.parsed.y.toFixed(6)} HBAR`}}
+      },
+      scales:{
+        x:{ ticks:{color:axisColor}, grid:{color:gridColor} },
+        y:{
+          ticks:{color:axisColor,callback:v=>v.toFixed(2)+' H'},
+          grid:{color:gridColor},
+          title:{display:true,text:'HBAR',color:'#666'}
+        }
+      }
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+{
+  "bipId": "SMOKE-001",
+  "targetSafe": "executor",
+  "description": "C-3 smoke bundle: +1% reserveFactor on testnet USDC.",
+  "actions": [
+    {
+      "kind": "setReserveFactor",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "reserveFactor": 1100
+      }
+    }
+  ]
+}

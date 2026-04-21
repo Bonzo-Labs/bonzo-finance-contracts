@@ -1,0 +1,14 @@
+{
+  "bipId": "SMOKE-001-ROLLBACK",
+  "targetSafe": "executor",
+  "description": "Inverse of smoke-reserve-factor.json — restore USDC reserveFactor to 1000.",
+  "actions": [
+    {
+      "kind": "setReserveFactor",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "reserveFactor": 1000
+      }
+    }
+  ]
+}

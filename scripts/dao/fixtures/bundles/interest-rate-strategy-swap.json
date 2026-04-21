@@ -1,0 +1,14 @@
+{
+  "bipId": "C4-IR-001",
+  "targetSafe": "executor",
+  "description": "C-4 IR strategy swap: point USDC at a throwaway DefaultReserveInterestRateStrategy. Replace strategy addr before use.",
+  "actions": [
+    {
+      "kind": "setReserveInterestRateStrategy",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "strategy": "0x0000000000000000000000000000000000000001"
+      }
+    }
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "bipId": "C4-LIFECYCLE-FREEZE",
+  "targetSafe": "executor",
+  "description": "C-4 lifecycle: freeze USDC reserve.",
+  "actions": [
+    { "kind": "freezeReserve", "args": { "asset": "0x0000000000000000000000000000000000001549" } }
+  ]
+}

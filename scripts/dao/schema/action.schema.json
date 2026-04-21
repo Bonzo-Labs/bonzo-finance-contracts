@@ -1,0 +1,309 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://bonzo.finance/dao/action.schema.json",
+  "title": "DAO Action",
+  "description": "Discriminated union over every supported action kind.",
+  "type": "object",
+  "required": ["kind", "args"],
+  "properties": {
+    "kind": { "type": "string" },
+    "target": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+    "args": { "type": "object" }
+  },
+  "oneOf": [
+    {
+      "properties": {
+        "kind": { "const": "setLtv" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "ltv"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "ltv": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setLiquidationThreshold" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "threshold"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "threshold": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setLiquidationBonus" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "bonus"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "bonus": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setReserveFactor" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "reserveFactor"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "reserveFactor": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "configureReserveAsCollateral" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "ltv", "liquidationThreshold", "liquidationBonus"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "ltv": { "type": ["number", "string"] },
+            "liquidationThreshold": { "type": ["number", "string"] },
+            "liquidationBonus": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setReserveInterestRateStrategy" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "strategy"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "strategy": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": {
+          "enum": [
+            "activateReserve",
+            "deactivateReserve",
+            "freezeReserve",
+            "unfreezeReserve",
+            "disableBorrowingOnReserve",
+            "enableReserveStableRate",
+            "disableReserveStableRate"
+          ]
+        },
+        "args": {
+          "type": "object",
+          "required": ["asset"],
+          "properties": { "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" } }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "enableBorrowingOnReserve" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "stableBorrowRateEnabled"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "stableBorrowRateEnabled": { "type": "boolean" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setSupplyCap" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "supplyCap"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "supplyCap": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setBorrowCap" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "borrowCap"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "borrowCap": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setSupplyBorrowCaps" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "supplyCap", "borrowCap"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "supplyCap": { "type": ["number", "string"] },
+            "borrowCap": { "type": ["number", "string"] }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "batchInitReserve" },
+        "args": {
+          "type": "object",
+          "required": ["inputs"],
+          "properties": { "inputs": { "type": "array", "minItems": 1 } }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "initReserveFromMarketConfig" },
+        "args": { "type": "object", "required": ["symbol", "underlyingAsset"] }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "enum": ["updateAToken", "updateVariableDebtToken", "updateStableDebtToken"] },
+        "args": {
+          "type": "object",
+          "required": ["asset", "implementation", "name", "symbol", "incentivesController"],
+          "properties": {
+            "asset": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "implementation": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": {
+          "enum": [
+            "setPoolAdmin",
+            "setEmergencyAdmin",
+            "setLendingPoolImpl",
+            "setLendingPoolConfiguratorImpl",
+            "setLendingPoolCollateralManager",
+            "setPriceOracle",
+            "setLendingRateOracle",
+            "transferProviderOwnership"
+          ]
+        },
+        "args": { "type": "object" }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setAddress" },
+        "args": {
+          "type": "object",
+          "required": ["id", "newAddress"],
+          "properties": {
+            "id": { "type": "string" },
+            "newAddress": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setAddressAsProxy" },
+        "args": {
+          "type": "object",
+          "required": ["id", "impl"],
+          "properties": {
+            "id": { "type": "string" },
+            "impl": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "aaveOracleSetAssetSources" },
+        "args": {
+          "type": "object",
+          "required": ["assets", "sources"],
+          "properties": {
+            "assets": { "type": "array", "items": { "type": "string" }, "minItems": 1 },
+            "sources": { "type": "array", "items": { "type": "string" }, "minItems": 1 }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "aaveOracleSetFallbackOracle" },
+        "args": {
+          "type": "object",
+          "required": ["fallbackOracle"],
+          "properties": {
+            "fallbackOracle": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "lendingRateOracleSetMarketRate" },
+        "args": {
+          "type": "object",
+          "required": ["asset", "rate"]
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "aTokenSweepToTreasury" },
+        "args": {
+          "type": "object",
+          "required": ["aToken", "tokens"],
+          "properties": {
+            "aToken": { "type": "string", "pattern": "^0x[a-fA-F0-9]{40}$" },
+            "tokens": { "type": "array", "items": { "type": "string" } }
+          }
+        }
+      }
+    },
+    {
+      "properties": {
+        "kind": {
+          "enum": [
+            "stakingSetRewardRate",
+            "stakingSetRewardsDuration",
+            "stakingRecoverERC20"
+          ]
+        },
+        "args": { "type": "object" }
+      }
+    },
+    {
+      "properties": {
+        "kind": { "const": "setPoolPause" },
+        "args": {
+          "type": "object",
+          "required": ["val"],
+          "properties": { "val": { "type": "boolean" } }
+        }
+      }
+    }
+  ]
+}

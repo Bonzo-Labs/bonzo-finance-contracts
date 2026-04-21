@@ -1,0 +1,15 @@
+{
+  "bipId": "C4-CAPS-001",
+  "targetSafe": "executor",
+  "description": "C-4 caps: set USDC supply cap to 10M, borrow cap to 8M.",
+  "actions": [
+    {
+      "kind": "setSupplyCap",
+      "args": { "asset": "0x0000000000000000000000000000000000001549", "supplyCap": 10000000 }
+    },
+    {
+      "kind": "setBorrowCap",
+      "args": { "asset": "0x0000000000000000000000000000000000001549", "borrowCap": 8000000 }
+    }
+  ]
+}

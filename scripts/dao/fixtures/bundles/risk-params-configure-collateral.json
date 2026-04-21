@@ -1,0 +1,16 @@
+{
+  "bipId": "C4-RISK-001",
+  "targetSafe": "executor",
+  "description": "C-4 risk params: configure USDC as collateral (LTV 70%, liq threshold 75%, liq bonus 5%).",
+  "actions": [
+    {
+      "kind": "configureReserveAsCollateral",
+      "args": {
+        "asset": "0x0000000000000000000000000000000000001549",
+        "ltv": 7000,
+        "liquidationThreshold": 7500,
+        "liquidationBonus": 10500
+      }
+    }
+  ]
+}

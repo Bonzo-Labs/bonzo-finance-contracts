@@ -1,0 +1,6 @@
+{
+  "bipId": "C4-GUARDIAN-PAUSE-ON",
+  "targetSafe": "guardian",
+  "description": "Guardian pause ON.",
+  "actions": [{ "kind": "setPoolPause", "args": { "val": true } }]
+}
