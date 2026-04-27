@@ -9,6 +9,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { utils } from 'ethers';
 require('dotenv').config();
 
 import { resolveChainType, getAddresses, assertNoFork, assertNetworkConsistent } from './config';
@@ -35,6 +36,11 @@ const main = async () => {
   console.log(`\n=== Encoded bundle ${bundle.bipId} (${chain_type}) ===\n`);
   console.log(asStdoutBlock(actions));
 
+  const multiSendPayload =
+    actions.length > 1 && addresses.multiSendCallOnly
+      ? { to: addresses.multiSendCallOnly, data: encodeMultiSend(actions).data }
+      : null;
+
   if (actions.length > 1) {
     const needsMultiSend = !addresses.multiSendCallOnly;
     if (needsMultiSend) {
@@ -44,16 +50,41 @@ const main = async () => {
       console.log(
         '    Paste each action individually via the Safe UI, or populate MULTI_SEND_ADDRESSES to use a single MultiSend tx.'
       );
-    } else {
-      const encoded = encodeMultiSend(actions);
+    } else if (multiSendPayload) {
       console.log('\n=== MultiSend payload ===');
-      console.log(`  to:   ${addresses.multiSendCallOnly}`);
-      console.log(`  data: ${encoded.data}`);
+      console.log(`  to:   ${multiSendPayload.to}`);
+      console.log(`  data: ${multiSendPayload.data}`);
     }
   }
 
   console.log('\n=== Safe UI copy-paste block ===');
   console.log(asSafeUiBlock(actions));
+
+  const rawSafeAddr =
+    bundle.targetSafe === 'executor' ? addresses.executorSafe : addresses.guardianSafe;
+  const safeAddress = rawSafeAddr ? utils.getAddress(rawSafeAddr) : '';
+
+  let safeExecution: {
+    to: string;
+    value: string;
+    data: string;
+    operation: number;
+  } | null = null;
+  if (actions.length === 1) {
+    safeExecution = {
+      to: utils.getAddress(actions[0].to),
+      value: actions[0].value,
+      data: actions[0].data,
+      operation: 0,
+    };
+  } else if (multiSendPayload) {
+    safeExecution = {
+      to: utils.getAddress(multiSendPayload.to),
+      value: '0',
+      data: multiSendPayload.data,
+      operation: 0,
+    };
+  }
 
   // Write artifact
   const outDir = path.resolve(__dirname, 'output');
@@ -63,11 +94,10 @@ const main = async () => {
     chainType: chain_type,
     encodedAt: new Date().toISOString(),
     targetSafe: bundle.targetSafe,
+    safeAddress,
     actions,
-    multiSend:
-      actions.length > 1 && addresses.multiSendCallOnly
-        ? { to: addresses.multiSendCallOnly, data: encodeMultiSend(actions).data }
-        : null,
+    multiSend: multiSendPayload,
+    safeExecution,
   };
   const outPath = path.join(outDir, `${bundle.bipId}.${chain_type}.encoded.json`);
   fs.writeFileSync(outPath, JSON.stringify(artifact, null, 2));

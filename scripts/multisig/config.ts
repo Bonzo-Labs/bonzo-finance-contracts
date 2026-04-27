@@ -13,7 +13,7 @@
  *   - GUARDIAN_OWNER_KEY_{1..3} / _MAINNET_{1..3} — Safe owner signing keys
  *
  * This file reads ZERO private keys directly. Owner keys are resolved inside
- * smoke/transferHbar.ts from the env vars above.
+ * smoke/transferHbar.ts and execDaoEncoded.ts from the env vars above.
  */
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
@@ -166,7 +166,7 @@ export const getExecutorWallet = (
   const pk =
     chain_type === 'hedera_testnet'
       ? process.env.PRIVATE_KEY || process.env.PRIVATE_KEY2 || ''
-      : process.env.GUARDIAN_OWNER_KEY_MAINNET_1 || '';
+      : process.env.PRIVATE_KEY_MAINNET || process.env.PRIVATE_KEY || '';
   if (!pk) {
     throw new Error(
       `Missing gas-paying private key for ${chain_type}. Set ${

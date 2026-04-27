@@ -22,3 +22,7 @@ claude.md
 docs/.obsidian/
 scripts/multisig/output/
 
+.claude/
+npm
+scripts/dao/integration/output/
+scripts/dao/integration/logs/

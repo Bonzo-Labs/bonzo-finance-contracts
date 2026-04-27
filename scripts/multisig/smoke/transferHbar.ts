@@ -43,12 +43,8 @@ import {
   THRESHOLDS,
 } from '../config';
 import { runPreflight } from '../lib/preflight';
-import {
-  buildPreApprovedSignatures,
-  buildValueTransferTx,
-  computeTxHash,
-  execTransaction,
-} from '../lib/safe';
+import { runPreApprovalsAndExec } from '../lib/execWithPreApprovals';
+import { buildValueTransferTx } from '../lib/safe';
 
 // Owner private keys are read from the environment, NOT from this file.
 // This keeps secrets out of git diffs and honours the repo-wide "never commit
@@ -178,10 +174,6 @@ const main = async () => {
       `\n⚠️  SAFE_TX_GAS=${safeTxGasOverride.toString()} — diagnostic mode. Inner-call failures will NOT revert with GS013; they will surface as an ExecutionFailure event with status=1. Use this to decouple signature/auth issues from value-transfer issues.\n`
     );
   }
-  const safeTxHash = await computeTxHash(safe, tx);
-  console.log(`\nSafe nonce: ${nonce.toString()}`);
-  console.log(`safeTxHash: ${safeTxHash}`);
-
   // Resolve approver wallets
   const approverWallets = ownerKeys.slice(0, threshold).map((pk) => new Wallet(pk, provider));
   const approverAddrs = approverWallets.map((w) => w.address);
@@ -189,65 +181,29 @@ const main = async () => {
     `Planned approvers (${approverWallets.length}/${threshold}):\n  - ${approverAddrs.join('\n  - ')}`
   );
 
-  if (dryRun) {
-    const sigsPreview = buildPreApprovedSignatures(approverAddrs);
-    console.log(`\n[DRY-RUN] Planned signature blob (${sigsPreview.length / 2 - 1} bytes):`);
-    console.log(`  ${sigsPreview}`);
-    console.log(`\n[DRY-RUN] Planned call:`);
-    console.log(`  safe.execTransaction(${receiverAddr}, ${amount.toString()}, 0x, 0, 0, 0, 0, 0x0, 0x0, <sigs>)`);
-    console.log(`\n[DRY-RUN] Exiting without sending transactions.\n`);
-    return;
-  }
+  const gasLimit = BigNumber.from(process.env.GAS_LIMIT || '0').gt(0)
+    ? BigNumber.from(process.env.GAS_LIMIT)
+    : undefined;
 
-  // Collect approveHash on-chain
-  console.log('\nCollecting on-chain approvals...');
-  const approvalTxs: { owner: string; txHash: string }[] = [];
-  for (const approver of approverWallets) {
-    const existing = await safe.approvedHashes(approver.address, safeTxHash);
-    if (existing.toNumber() === 1) {
-      console.log(`  ${approver.address} already approved — skipping`);
-      continue;
-    }
-    const connected = safe.connect(approver);
-    const t = await connected.approveHash(safeTxHash, { gasLimit: 500_000 });
-    console.log(`  ${approver.address} → approveHash tx=${t.hash}`);
-    await t.wait();
-    approvalTxs.push({ owner: approver.address, txHash: t.hash });
-  }
+  let safeTxHash: string;
+  let approvalTxs: { owner: string; txHash: string }[] = [];
+  let execTx: { hash: string } | null = null;
 
-  // Re-check approvals meet threshold
-  let count = 0;
-  for (const w of approverWallets) {
-    const v = await safe.approvedHashes(w.address, safeTxHash);
-    if (v.toNumber() === 1) count++;
-  }
-  if (count < threshold) {
-    throw new Error(`Only ${count}/${threshold} approvals on-chain after approveHash loop`);
-  }
-  console.log(`  approvals: ${count}/${threshold} ✅`);
-
-  // Execute
-  console.log('\nExecuting transaction...');
-  const sigs = buildPreApprovedSignatures(approverAddrs);
-  const safeAsExecutor = safe.connect(executor);
-
-  // Simulate first via callStatic so any Safe revert code (GS0xx) is decoded
-  // and surfaced BEFORE we spend gas on a failing transaction.
   try {
-    await safeAsExecutor.callStatic.execTransaction(
-      tx.to,
-      tx.value,
-      tx.data,
-      tx.operation,
-      tx.safeTxGas,
-      tx.baseGas,
-      tx.gasPrice,
-      tx.gasToken,
-      tx.refundReceiver,
-      sigs,
-      { gasLimit: 2_000_000 }
-    );
-    console.log('  callStatic simulation: OK');
+    const result = await runPreApprovalsAndExec({
+      safe,
+      safeAddr,
+      tx,
+      approverWallets,
+      threshold,
+      executor,
+      dryRun,
+      gasLimit,
+      dryRunExecSummary: `safe.execTransaction(${receiverAddr}, ${amount.toString()}, 0x, 0, 0, 0, 0, 0x0, 0x0, <sigs>)`,
+    });
+    safeTxHash = result.safeTxHash;
+    approvalTxs = result.approvalTxs;
+    execTx = result.execTx;
   } catch (e: any) {
     const reason =
       e?.errorArgs?.[0] ||
@@ -257,63 +213,22 @@ const main = async () => {
       e?.data ||
       e?.message ||
       String(e);
-    console.error(
-      '\n❌ callStatic.execTransaction reverted — refusing to broadcast the tx.\n' +
-        `   Safe revert reason: ${reason}\n\n` +
-        '   Safe v1.4.1 error codes (common):\n' +
-        '     GS013  — inner call returned false (receiver rejected HBAR, OR\n' +
-        '              Hedera receiver_sig_required=true, OR receiver is a\n' +
-        '              contract whose receive/fallback reverts)\n' +
-        '     GS020  — signatures data too short\n' +
-        '     GS025  — hash not approved by this signer (msg.sender mismatch?)\n' +
-        '     GS026  — invalid owner or signatures not sorted ascending\n' +
-        '   Diagnostics:\n' +
-        `     safeTxHash:        ${safeTxHash}\n` +
-        `     approvers (sorted): ${[...approverAddrs].sort((a, b) => (a.toLowerCase() < b.toLowerCase() ? -1 : 1)).join(', ')}\n` +
-        `     msg.sender (gas):  ${executor.address}\n` +
-        `     receiver:          ${receiverAddr}\n` +
-        `     amountTinybar:     ${amount.toString()} (${utils.formatUnits(amount, 8)} HBAR)\n` +
-        `     sigs blob:         ${sigs}\n`
-    );
-    if (reason === 'GS013') {
+    const reasonStr = String(reason);
+    if (reasonStr === 'GS013' || reasonStr.includes('GS013')) {
       console.error(
-        '   GS013 means the inner CALL returned false. On Hedera, the most\n' +
-          '   likely causes, in order:\n' +
-          `     1. Unit mismatch. Hedera EVM CALL value is in tinybar (1 HBAR = 1e8), NOT 18-dec wei.\n` +
-          `        Current amount: ${amount.toString()} tinybar (${utils.formatUnits(amount, 8)} HBAR).\n` +
-          `        If this looks ~1e10 too large, you likely used parseEther instead of parseUnits(x, 8)\n` +
-          `        in scripts/multisig/config.ts SMOKE_TRANSFER.\n` +
-          `     2. Receiver has receiver_sig_required=true on mainnet:\n` +
-          `        ${mirrorBase}/api/v1/accounts/${receiverAddr.toLowerCase()}\n` +
-          `        If true, pick a different receiver or clear the flag via HashPack.\n` +
-          '     3. Safe HBAR was credited via a Hedera-native CryptoTransfer (HashPack, exchange withdrawal).\n' +
-          '        The balance shows up but EVM CALL cannot spend it. Re-fund the Safe via a plain EVM tx.\n' +
-          '     4. Receiver is a contract whose receive()/fallback() reverts.\n'
+        '   GS013 (HBAR smoke): inner CALL returned false. On Hedera, common causes:\n' +
+          `     1. Unit mismatch — value must be tinybar (1 HBAR = 1e8): ${amount.toString()} tinybar (${utils.formatUnits(amount, 8)} HBAR).\n` +
+          `     2. receiver_sig_required: ${mirrorBase}/api/v1/accounts/${receiverAddr.toLowerCase()}\n` +
+          '     3. Safe funded via Hedera-native CryptoTransfer — re-fund via plain EVM tx.\n' +
+          '     4. Receiver contract receive()/fallback reverts.\n'
       );
     }
     throw e;
   }
 
-  const execTx = await execTransaction(safeAsExecutor, tx, sigs);
-  console.log(`  execTransaction tx=${execTx.hash}`);
-  const receipt = await execTx.wait();
-  console.log(`  status: ${receipt.status === 1 ? 'OK' : 'FAILED'}`);
-
-  // Look for Safe's ExecutionSuccess / ExecutionFailure events. When
-  // safeTxGas > 0, the Safe does NOT revert on inner-call failure — it just
-  // emits ExecutionFailure and the outer tx reports status=1. Surface this
-  // so operators never mistake "outer tx ok" for "value actually moved".
-  const EXEC_SUCCESS_TOPIC = utils.id('ExecutionSuccess(bytes32,uint256)');
-  const EXEC_FAILURE_TOPIC = utils.id('ExecutionFailure(bytes32,uint256)');
-  const safeEvent = receipt.logs.find(
-    (l: any) =>
-      l.address.toLowerCase() === safeAddr.toLowerCase() &&
-      (l.topics[0] === EXEC_SUCCESS_TOPIC || l.topics[0] === EXEC_FAILURE_TOPIC)
-  );
-  const innerSucceeded = safeEvent?.topics[0] === EXEC_SUCCESS_TOPIC;
-  console.log(
-    `  Safe inner call: ${innerSucceeded ? '✅ ExecutionSuccess' : '❌ ExecutionFailure'} (event from Safe)`
-  );
+  if (dryRun) {
+    return;
+  }
 
   // Assertions. Note the unit bridge: getBalance returns weibar (18-dec) but
   // `amount` is tinybar (8-dec). Convert the Safe delta to tinybar for the
@@ -336,18 +251,6 @@ const main = async () => {
 
   if (!nonceAfter.eq(nonce.add(1))) {
     throw new Error(`Safe nonce did not increment: ${nonce.toString()} → ${nonceAfter.toString()}`);
-  }
-  if (!innerSucceeded) {
-    throw new Error(
-      'Safe emitted ExecutionFailure — the outer execTransaction succeeded but the inner call returned false. ' +
-        'Common Hedera causes:\n' +
-        '  1. Unit mismatch: `value` arg is wei-scaled (1e18) instead of tinybar-scaled (1e8). ' +
-        'Safe forwards value verbatim to CALL, which on Hedera EVM expects tinybar. ' +
-        'Check that SMOKE_TRANSFER uses parseUnits(x, 8), not parseEther(x).\n' +
-        '  2. Bucket: Safe was funded via a Hedera-native CryptoTransfer (e.g. HashPack). ' +
-        'Re-fund via a plain EVM transaction (send HBAR to the Safe from an EOA using Hardhat / MetaMask) and retry.\n' +
-        '  3. Receiver has receiver_sig_required=true on the Hedera mirror node.'
-    );
   }
   // Check Safe's outflow directly — independent of gas costs on the receiver
   // side (receiver may also be a signer paying for approveHash). Compared in
@@ -375,7 +278,7 @@ const main = async () => {
         amountTinybar: amount.toString(),
         safeTxHash,
         approvals: approvalTxs,
-        executionTxId: execTx.hash,
+        executionTxId: execTx!.hash,
         executedAt: new Date().toISOString(),
         before: {
           safeBalance: safeBalBefore.toString(),

@@ -13,6 +13,7 @@ End-to-end proof that the Palmera-deployed Gnosis Safes work in both threshold c
    - `SMOKE_TRANSFER.hedera_*.{receiver, amountTinybar}` — note tinybar (1 HBAR = 1e8), not wei
 3. **Fund** each Safe with enough HBAR to cover `amountTinybar` plus gas. Prefer funding via a plain EVM transaction (Hardhat `signer.sendTransaction`, MetaMask) so the balance lands in the EVM-spendable bucket. Hedera-native `CryptoTransfer` deposits (HashPack's default) can leave the Safe's balance inaccessible to the EVM `CALL` op.
 4. **Set owner private keys in your `.env`** — never in code. Per network + per Safe:
+
    ```
    # testnet
    EXECUTOR_OWNER_KEY_1=0x…
@@ -25,7 +26,9 @@ End-to-end proof that the Palmera-deployed Gnosis Safes work in both threshold c
    EXECUTOR_OWNER_KEY_MAINNET_1=0x…
    …
    ```
+
    Only the first `threshold` keys per list need to be set. The script filters empty/missing env vars and preflight asserts every resolved key belongs to an on-chain owner. The gas-paying wallet is the existing `PRIVATE_KEY` / `PRIVATE_KEY_MAINNET` — it does **not** need to be a Safe owner.
+
 5. **Dry-run** each target:
    ```bash
    DRY_RUN=true CHAIN_TYPE=hedera_testnet TARGET_SAFE=guardian \
@@ -45,6 +48,30 @@ End-to-end proof that the Palmera-deployed Gnosis Safes work in both threshold c
 
 Every successful run writes `output/transfer-hbar.<chain_type>.<target>.json` with the Safe txHash, approval tx hashes, execution tx hash, and before/after balances.
 
+## Executing a DAO encode artifact (`safeExecution`)
+
+After `npm run dao:encode`, the output JSON includes `safeExecution` (single calldata the Safe should run) and `safeAddress` for drift checks against this repo’s `SAFE_ADDRESSES`.
+
+1. Run `dao:preflight` and `dao:simulate` on the same bundle/network as usual.
+2. **`TARGET_SAFE`** must equal `artifact.targetSafe` (`executor` or `guardian`).
+3. Dry-run (no txs):
+
+   ```bash
+   DRY_RUN=true CHAIN_TYPE=hedera_testnet TARGET_SAFE=guardian \
+     ENCODED_JSON=scripts/dao/output/<bipId>.hedera_testnet.encoded.json \
+     npm run multisig:exec-dao-encoded -- --network hedera_testnet
+   ```
+
+4. Live run: same command without `DRY_RUN=true`. Owner keys and gas payer env vars match the smoke section above (`PRIVATE_KEY` / `PRIVATE_KEY_MAINNET` pays gas for `execTransaction` only).
+
+**Env overrides**
+
+- `GAS_LIMIT` — if set to a positive integer, used for `callStatic` + `execTransaction` (default `2000000`). Use for heavy MultiSend batches on Hedera.
+- `SAFE_TX_GAS` — same diagnostic meaning as smoke (`transferHbar`): when `>0`, inner-call failures may not revert the outer tx.
+- `SAFE_TX_OPERATION` — defaults from the artifact (`0` for Bonzo DAO + MultiSendCallOnly). Override only if you know what you are doing.
+
+Successful runs write `output/dao-encoded.<chain_type>.<targetSafe>.<bipId>.json`.
+
 ## How the multisig is signed
 
 - The script uses **pre-approved signatures**: each owner calls `approveHash(safeTxHash)` on-chain, then the script assembles a v=1 signature blob and calls `execTransaction(...)` with it.
@@ -62,8 +89,10 @@ Every successful run writes `output/transfer-hbar.<chain_type>.<target>.json` wi
 ```
 scripts/multisig/
 ├── config.ts               # Safe addresses, owners, smoke target — all in-file consts
+├── execDaoEncoded.ts       # execute DAO encode artifact (safeExecution) via Safe
 ├── lib/
 │   ├── preflight.ts        # chainId, owner-set, threshold, key-matches-owner checks
+│   ├── execWithPreApprovals.ts  # approveHash → callStatic → execTransaction
 │   └── safe.ts             # Safe v1.4.1 ABI + helpers (getTransactionHash, exec, sig blob)
 ├── smoke/
 │   └── transferHbar.ts     # 2-of-3 + 3-of-5 end-to-end smoke test
@@ -73,10 +102,10 @@ scripts/multisig/
 
 ## Troubleshooting
 
-- **"SMOKE_TRANSFER.*.receiver is empty"** — fill `receiver` in `config.ts`.
+- **"SMOKE_TRANSFER.\*.receiver is empty"** — fill `receiver` in `config.ts`.
 - **"at least threshold owner keys supplied"** fails preflight — fewer than `threshold` of the `EXECUTOR_OWNER_KEY_*` / `GUARDIAN_OWNER_KEY_*` env vars resolved. Check your `.env` for the expected names (mainnet uses `_MAINNET_` infix).
 - **"every supplied owner key resolves to an on-chain owner" fails** — the private keys don't match owners that Palmera actually deployed with. Recheck `getOwners()` vs `OWNERS`.
 - **`execTransaction` reverts with "GS025"** — signatures are not sorted. The script sorts ascending by address; double-check nothing upstream reordered them.
 - **`execTransaction` reverts with "GS026"** — an owner's `approveHash` isn't in place. The script re-reads `approvedHashes` before executing; if your approver wallet disagrees with the on-chain owner set, that check will catch it first.
-- **`execTransaction` reverts with "GS013"** — Safe's outer call ran but the *inner* `to.call{value}("")` returned false. On Hedera the usual culprit is a **unit mismatch**: the EVM `CALL` opcode interprets `value` in **tinybar (1e8)**, not 18-dec wei. If `SMOKE_TRANSFER.amountTinybar` was built with `parseEther(x)` instead of `parseUnits(x, 8)`, the Safe is asked to forward ~1e10× more HBAR than intended and the call fails. Other causes: receiver has `receiver_sig_required=true`, the Safe's HBAR was deposited via a Hedera-native `CryptoTransfer` (not spendable by the EVM `CALL` op), or the receiver is a contract whose `receive()`/`fallback()` reverts. The script's error output points you at the mirror node entry for the receiver.
+- **`execTransaction` reverts with "GS013"** — Safe's outer call ran but the _inner_ `to.call{value}("")` returned false. On Hedera the usual culprit is a **unit mismatch**: the EVM `CALL` opcode interprets `value` in **tinybar (1e8)**, not 18-dec wei. If `SMOKE_TRANSFER.amountTinybar` was built with `parseEther(x)` instead of `parseUnits(x, 8)`, the Safe is asked to forward ~1e10× more HBAR than intended and the call fails. Other causes: receiver has `receiver_sig_required=true`, the Safe's HBAR was deposited via a Hedera-native `CryptoTransfer` (not spendable by the EVM `CALL` op), or the receiver is a contract whose `receive()`/`fallback()` reverts. The script's error output points you at the mirror node entry for the receiver.
 - **Hashio rate limits** on mainnet — set `PROVIDER_URL_MAINNET` to a paid RPC.

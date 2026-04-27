@@ -59,6 +59,27 @@ export const buildValueTransferTx = (
   nonce,
 });
 
+/** Generic Safe tx (contract call, MultiSend, etc.) with zero gas-token refund params. */
+export const buildSafeTx = (params: {
+  to: string;
+  value: BigNumber;
+  data: string;
+  operation: 0 | 1;
+  nonce: BigNumber;
+  safeTxGas?: BigNumber;
+}): SafeTx => ({
+  to: utils.getAddress(params.to),
+  value: params.value,
+  data: params.data,
+  operation: params.operation,
+  safeTxGas: params.safeTxGas ?? BigNumber.from(0),
+  baseGas: BigNumber.from(0),
+  gasPrice: BigNumber.from(0),
+  gasToken: ZERO,
+  refundReceiver: ZERO,
+  nonce: params.nonce,
+});
+
 export const computeTxHash = async (safe: Contract, tx: SafeTx): Promise<string> =>
   safe.getTransactionHash(
     tx.to,
