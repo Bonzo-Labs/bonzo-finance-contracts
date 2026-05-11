@@ -5,7 +5,7 @@ import {
   buildDirectPoolAdminHandoff,
   buildGuardianPoolAdminReturnArtifact,
   preflightPoolAdmin,
-} from '../scripts/dao/integration/poolAdminHandoff';
+} from '../scripts/dao/integration/admin/poolAdminHandoff';
 import { ILendingPoolAddressesProvider } from '../scripts/dao/actions/_interfaces';
 
 describe('pool admin handoff integration helpers', () => {
@@ -29,7 +29,7 @@ describe('pool admin handoff integration helpers', () => {
     );
     expect(utils.getAddress(decoded[0])).to.equal(guardianSafe);
     expect(built.files.payloadFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-POOL-ADMIN-TO-GUARDIAN\.payload\.json$/
+      /POOL-ADMIN-TO-GUARDIAN\.2026-04-27_12-59-00\.hedera_testnet\.integration\.payload\.json$/
     );
   });
 
@@ -52,7 +52,7 @@ describe('pool admin handoff integration helpers', () => {
     );
     expect(utils.getAddress(decoded[0])).to.equal(ACCOUNT2_ADMIN.evmAddress);
     expect(built.files.encodedFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-POOL-ADMIN-BACK-TO-ACCOUNT2\.hedera_testnet\.encoded\.json$/
+      /POOL-ADMIN-BACK-TO-ACCOUNT2\.2026-04-27_12-59-00\.hedera_testnet\.integration\.encoded\.json$/
     );
   });
 

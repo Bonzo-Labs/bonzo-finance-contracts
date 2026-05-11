@@ -1,31 +1,31 @@
 /**
- * Vertical integration: set a Hedera testnet reserve supply cap via the Guardian Safe.
+ * Vertical integration: set a Hedera testnet reserve borrow cap via the Guardian Safe.
  *
- * Before running, edit SUPPLY_CAP_INTEGRATION_CONFIG below. This mirrors
+ * Before running, edit BORROW_CAP_INTEGRATION_CONFIG below. This mirrors
  * scripts/supplyBorrowCaps.ts: pick the reserve from outputReserveData.json and
- * set the supply cap number manually in the script.
+ * set the borrow cap number manually in the script.
  *
  * Run from repo root:
- *   CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-supply-cap -- --network hedera_testnet
+ *   CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-borrow-cap -- --network hedera_testnet
  *
  * Dry-run without sending approval/execution transactions:
- *   DRY_RUN=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-supply-cap -- --network hedera_testnet
+ *   DRY_RUN=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-borrow-cap -- --network hedera_testnet
  *
  * End-to-end Guardian multisig smoke mode: still writes JSON/log artifacts, but
- * executes a plain 0.1 HBAR Guardian Safe transfer instead of the supply-cap call.
- *   GUARDIAN_HBAR_SMOKE=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-supply-cap -- --network hedera_testnet
+ * executes a plain 0.1 HBAR Guardian Safe transfer instead of the borrow-cap call.
+ *   GUARDIAN_HBAR_SMOKE=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-borrow-cap -- --network hedera_testnet
  *
  * Payload only (no RPC, no multisig executor): writes bundle + encoded JSON and
  * logs Safe UI fields for copy-paste. Use multisig.hedera.foundation (or your Safe
  * app) as the sending Safe at safeAddress in the encoded file.
- *   INTEGRATION_SAFE_UI_PAYLOAD_ONLY=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-supply-cap -- --network hedera_testnet
+ *   INTEGRATION_SAFE_UI_PAYLOAD_ONLY=true CHAIN_TYPE=hedera_testnet npm run dao:integration:sauce-borrow-cap -- --network hedera_testnet
  *
  * Required live-run env:
  *   PRIVATE_KEY or PRIVATE_KEY2          gas-paying wallet
  *   GUARDIAN_OWNER_KEY_1..3             at least 2 keys matching scripts/multisig/config.ts
  *
  * This script intentionally routes this integration through the Guardian Safe
- * even though the general DAO registry treats setSupplyCap as an executor action.
+ * even though the general DAO registry treats setBorrowCap as an executor action.
  */
 import path from 'path';
 import { spawnSync, SpawnSyncReturns } from 'child_process';
@@ -33,9 +33,9 @@ import { utils } from 'ethers';
 require('dotenv').config();
 
 import reserveData from '../../outputReserveData.json';
-import setSupplyCap from '../actions/setSupplyCap';
+import setBorrowCap from '../actions/setBorrowCap';
 import { assertNetworkConsistent } from '../config';
-import type { Bundle, BuildContext, EncodedAction } from '../types';
+import type { Bundle, BuildContext } from '../types';
 import {
   getProvider,
   SAFE_ADDRESSES as MULTISIG_SAFE_ADDRESSES,
@@ -50,94 +50,52 @@ import {
   writeJson,
 } from './config/integrationTooling';
 import { preflightGuardianPoolAdmin } from './admin/poolAdminHandoff';
+import {
+  buildGuardianHbarSmokeIntegrationArtifacts,
+  buildMultisigExecCommand,
+  GUARDIAN_HBAR_SMOKE_CONFIG,
+  preflightSafeExecution,
+} from './sauceSupplyCapToOneMillion';
+import type {
+  IntegrationBuildResult,
+  IntegrationEncodedArtifact,
+} from './sauceSupplyCapToOneMillion';
 
 const INTEGRATION_DIR = __dirname;
 const REPO_ROOT = path.resolve(__dirname, '../../..');
 const OUTPUT_DIR = path.join(INTEGRATION_DIR, 'output');
 const LOG_DIR = path.join(INTEGRATION_DIR, 'logs');
 const TARGET_SAFE: TargetSafe = 'guardian';
-const MAX_VALID_SUPPLY_CAP = 68_719_476_735;
+const MAX_VALID_BORROW_CAP = 68_719_476_735;
 
-export type SupplyCapIntegrationConfig = {
+export type BorrowCapIntegrationConfig = {
   chainType: 'hedera_testnet';
   reserveSymbol: string;
-  supplyCap: number;
+  borrowCap: number;
 };
 
 // === Manual operator config ==================================================
 // Change these values before running, the same way scripts/supplyBorrowCaps.ts
-// changes `reserves` and `supplyCaps`.
-export const SUPPLY_CAP_INTEGRATION_CONFIG: SupplyCapIntegrationConfig = {
+// changes `reserves` and `borrowCaps`.
+export const BORROW_CAP_INTEGRATION_CONFIG: BorrowCapIntegrationConfig = {
   chainType: 'hedera_testnet' as const,
   reserveSymbol: 'SAUCE',
-  supplyCap: 1_300_000,
-};
-
-export const GUARDIAN_HBAR_SMOKE_CONFIG = {
-  enabled: process.env.GUARDIAN_HBAR_SMOKE === 'true',
-  receiver: '0xbe058ee0884696653e01cfc6f34678f2762d84db',
-  amountTinybar: '10000000', // 0.1 HBAR. Safe value args on Hedera use tinybar, not wei.
+  borrowCap: 500_000,
 };
 // =============================================================================
 
-type GuardianHbarSmokePayload = {
-  bipId: string;
-  targetSafe: TargetSafe;
-  description: string;
-  actions: {
-    kind: 'guardianHbarTransferSmoke';
-    args: {
-      receiver: string;
-      amountTinybar: string;
-    };
-  }[];
+const capSlug = (cap: number): string => {
+  if (cap % 1_000_000 === 0) return `${cap / 1_000_000}M`;
+  if (cap % 1_000 === 0) return `${cap / 1_000}K`;
+  return String(cap);
 };
 
-type IntegrationEncodedAction = Omit<EncodedAction, 'kind'> & { kind: string };
-
-export type IntegrationEncodedArtifact = {
-  bipId: string;
-  chainType: string;
-  encodedAt: string;
-  targetSafe: TargetSafe;
-  safeAddress: string;
-  integration: {
-    name: string;
-    symbol: string;
-    forcedGuardianSafe: true;
-    note: string;
-  };
-  actions: IntegrationEncodedAction[];
-  multiSend: null;
-  safeExecution: {
-    to: string;
-    value: string;
-    data: string;
-    operation: 0;
-  };
-};
-
-export type IntegrationBuildResult = {
-  bundle: Bundle | GuardianHbarSmokePayload;
-  encoded: IntegrationEncodedArtifact;
-  files: {
-    bundleFile: string;
-    encodedFile: string;
-    logFile: string;
-  };
-};
-
-const capSlug = (cap: number): string =>
-  cap % 1_000_000 === 0 ? `${cap / 1_000_000}M` : String(cap);
-
-const integrationBipId = (config: SupplyCapIntegrationConfig): string =>
-  `INTEGRATION-HEDERA-TESTNET-${config.reserveSymbol.toUpperCase()}-SUPPLY-CAP-${capSlug(
-    config.supplyCap
+const integrationBipId = (config: BorrowCapIntegrationConfig): string =>
+  `INTEGRATION-HEDERA-TESTNET-${config.reserveSymbol.toUpperCase()}-BORROW-CAP-${capSlug(
+    config.borrowCap
   )}`;
 
-const HBAR_SMOKE_BIP_ID = 'INTEGRATION-HEDERA-TESTNET-GUARDIAN-HBAR-SMOKE';
-
-const resolveReserveTokenAddress = (config: SupplyCapIntegrationConfig): string => {
+const resolveReserveTokenAddress = (config: BorrowCapIntegrationConfig): string => {
   const symbol = config.reserveSymbol.toUpperCase();
   const asset = (reserveData as any)[symbol]?.[config.chainType]?.token?.address;
   if (!asset || !utils.isAddress(asset)) {
@@ -148,85 +106,52 @@ const resolveReserveTokenAddress = (config: SupplyCapIntegrationConfig): string 
   return asset;
 };
 
-const assertSupplyCapConfig = (config: SupplyCapIntegrationConfig): void => {
+const assertBorrowCapConfig = (config: BorrowCapIntegrationConfig): void => {
   if (config.chainType !== 'hedera_testnet') {
     throw new Error(`This integration is testnet-only. Got chainType=${config.chainType}.`);
   }
   if (!config.reserveSymbol.trim()) {
-    throw new Error('SUPPLY_CAP_INTEGRATION_CONFIG.reserveSymbol must be set.');
+    throw new Error('BORROW_CAP_INTEGRATION_CONFIG.reserveSymbol must be set.');
   }
-  if (!Number.isInteger(config.supplyCap) || config.supplyCap < 0) {
-    throw new Error('SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap must be a non-negative integer.');
+  if (!Number.isInteger(config.borrowCap) || config.borrowCap < 0) {
+    throw new Error('BORROW_CAP_INTEGRATION_CONFIG.borrowCap must be a non-negative integer.');
   }
-  if (config.supplyCap > MAX_VALID_SUPPLY_CAP) {
+  if (config.borrowCap > MAX_VALID_BORROW_CAP) {
     throw new Error(
-      `SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap exceeds MAX_VALID_SUPPLY_CAP=${MAX_VALID_SUPPLY_CAP}.`
+      `BORROW_CAP_INTEGRATION_CONFIG.borrowCap exceeds MAX_VALID_BORROW_CAP=${MAX_VALID_BORROW_CAP}.`
     );
   }
 };
 
-export const buildMultisigExecCommand = (): { bin: string; args: string[] } => ({
-  bin: 'npx',
-  args: ['ts-node', '--transpile-only', 'scripts/multisig/execDaoEncoded.ts'],
-});
-
-export const preflightSafeExecution = async (
-  provider: {
-    call: (tx: { from: string; to: string; data: string; value: string }) => Promise<string>;
-  },
-  artifact: IntegrationEncodedArtifact
-): Promise<{ ok: true; ret: string } | { ok: false; error: string }> => {
-  try {
-    const ret = await provider.call({
-      from: artifact.safeAddress,
-      to: artifact.safeExecution.to,
-      data: artifact.safeExecution.data,
-      value: artifact.safeExecution.value,
-    });
-    return { ok: true, ret };
-  } catch (e: any) {
-    const error =
-      e?.errorArgs?.[0] ||
-      e?.error?.reason ||
-      e?.error?.message ||
-      e?.reason ||
-      e?.message ||
-      String(e);
-    return { ok: false, error: String(error) };
-  }
-};
-
-const sanitizeChildOutput = (value: string): string => value.split(REPO_ROOT + path.sep).join('');
-
-export const buildSupplyCapIntegrationArtifacts = (params: {
+export const buildBorrowCapIntegrationArtifacts = (params: {
   now?: Date;
   safeAddress: string;
   outputDir?: string;
   logDir?: string;
-  config?: SupplyCapIntegrationConfig;
+  config?: BorrowCapIntegrationConfig;
 }): IntegrationBuildResult => {
   const now = params.now ?? new Date();
   const outputDir = params.outputDir ?? OUTPUT_DIR;
   const logDir = params.logDir ?? LOG_DIR;
   const encodedAt = now.toISOString();
-  const config = params.config ?? SUPPLY_CAP_INTEGRATION_CONFIG;
-  assertSupplyCapConfig(config);
+  const config = params.config ?? BORROW_CAP_INTEGRATION_CONFIG;
+  assertBorrowCapConfig(config);
   const chainType = config.chainType;
   const symbol = config.reserveSymbol.toUpperCase();
-  const supplyCap = config.supplyCap;
+  const borrowCap = config.borrowCap;
   const asset = resolveReserveTokenAddress(config);
   const bipId = integrationBipId({ ...config, reserveSymbol: symbol });
-  const fileStem = `${symbol}-SUPPLY-CAP-${capSlug(supplyCap)}`;
+  const fileStem = `${symbol}-BORROW-CAP-${capSlug(borrowCap)}`;
   const fileBase = integrationArtifactBase(fileStem, chainType, now);
 
   const bundle: Bundle = {
     bipId,
     targetSafe: TARGET_SAFE,
-    description: `Integration-only Guardian Safe execution: set Hedera testnet ${symbol} supply cap to ${supplyCap}.`,
+    description: `Integration-only Guardian Safe execution: set Hedera testnet ${symbol} borrow cap to ${borrowCap}.`,
     actions: [
       {
-        kind: 'setSupplyCap',
-        args: { asset, supplyCap },
+        kind: 'setBorrowCap',
+        args: { asset, borrowCap },
       },
     ],
   };
@@ -250,7 +175,7 @@ export const buildSupplyCapIntegrationArtifacts = (params: {
     },
   };
 
-  const action = setSupplyCap.build({ asset, supplyCap }, ctx);
+  const action = setBorrowCap.build({ asset, borrowCap }, ctx);
   action.targetSafe = TARGET_SAFE;
   action.description = `${action.description} [guardian integration override]`;
 
@@ -261,10 +186,10 @@ export const buildSupplyCapIntegrationArtifacts = (params: {
     targetSafe: TARGET_SAFE,
     safeAddress: utils.getAddress(params.safeAddress),
     integration: {
-      name: 'guardianSupplyCapIntegration',
+      name: 'guardianBorrowCapIntegration',
       symbol,
       forcedGuardianSafe: true,
-      note: 'This artifact is generated by scripts/dao/integration and intentionally executes setSupplyCap via Guardian Safe for testnet integration coverage.',
+      note: 'This artifact is generated by scripts/dao/integration and intentionally executes setBorrowCap via Guardian Safe for testnet integration coverage.',
     },
     actions: [action],
     multiSend: null,
@@ -287,79 +212,7 @@ export const buildSupplyCapIntegrationArtifacts = (params: {
   };
 };
 
-export const buildGuardianHbarSmokeIntegrationArtifacts = (params: {
-  now?: Date;
-  safeAddress: string;
-  outputDir?: string;
-  logDir?: string;
-}): IntegrationBuildResult => {
-  const now = params.now ?? new Date();
-  const outputDir = params.outputDir ?? OUTPUT_DIR;
-  const logDir = params.logDir ?? LOG_DIR;
-  const encodedAt = now.toISOString();
-  const chainType = SUPPLY_CAP_INTEGRATION_CONFIG.chainType;
-  const fileBase = integrationArtifactBase('GUARDIAN-HBAR-SMOKE', chainType, now);
-  const receiver = utils.getAddress(GUARDIAN_HBAR_SMOKE_CONFIG.receiver);
-  const amountTinybar = GUARDIAN_HBAR_SMOKE_CONFIG.amountTinybar;
-
-  const bundle: GuardianHbarSmokePayload = {
-    bipId: HBAR_SMOKE_BIP_ID,
-    targetSafe: TARGET_SAFE,
-    description:
-      'Integration smoke: Guardian Safe transfers 0.1 HBAR to prove end-to-end multisig execution.',
-    actions: [
-      {
-        kind: 'guardianHbarTransferSmoke',
-        args: {
-          receiver: GUARDIAN_HBAR_SMOKE_CONFIG.receiver,
-          amountTinybar,
-        },
-      },
-    ],
-  };
-
-  const action: IntegrationEncodedAction = {
-    kind: 'guardianHbarTransferSmoke',
-    to: receiver,
-    value: amountTinybar,
-    data: '0x',
-    description: `Guardian Safe HBAR smoke transfer: ${amountTinybar} tinybar to ${receiver}`,
-    expectedEvents: ['ExecutionSuccess'],
-    targetSafe: TARGET_SAFE,
-  };
-
-  const encoded: IntegrationEncodedArtifact = {
-    bipId: HBAR_SMOKE_BIP_ID,
-    chainType,
-    encodedAt,
-    targetSafe: TARGET_SAFE,
-    safeAddress: utils.getAddress(params.safeAddress),
-    integration: {
-      name: 'guardianHbarTransferSmoke',
-      symbol: 'HBAR',
-      forcedGuardianSafe: true,
-      note: 'This smoke artifact is generated by scripts/dao/integration and intentionally executes a plain HBAR transfer via Guardian Safe.',
-    },
-    actions: [action],
-    multiSend: null,
-    safeExecution: {
-      to: receiver,
-      value: amountTinybar,
-      data: '0x',
-      operation: 0,
-    },
-  };
-
-  return {
-    bundle,
-    encoded,
-    files: {
-      bundleFile: path.join(outputDir, `${fileBase}.bundle.json`),
-      encodedFile: path.join(outputDir, `${fileBase}.encoded.json`),
-      logFile: path.join(logDir, `${fileBase}.log`),
-    },
-  };
-};
+const sanitizeChildOutput = (value: string): string => value.split(REPO_ROOT + path.sep).join('');
 
 const runMultisigExec = (
   encodedFile: string,
@@ -368,7 +221,7 @@ const runMultisigExec = (
   logger.step('Launch multisig executor', 'Collecting Guardian approvals and executing Safe tx');
   const env = {
     ...process.env,
-    CHAIN_TYPE: SUPPLY_CAP_INTEGRATION_CONFIG.chainType,
+    CHAIN_TYPE: BORROW_CAP_INTEGRATION_CONFIG.chainType,
     TARGET_SAFE,
     ENCODED_JSON: encodedFile,
   };
@@ -394,7 +247,7 @@ const runMultisigExec = (
 const main = async () => {
   const chainType = resolveChainType();
   assertNetworkConsistent(chainType);
-  if (chainType !== SUPPLY_CAP_INTEGRATION_CONFIG.chainType) {
+  if (chainType !== BORROW_CAP_INTEGRATION_CONFIG.chainType) {
     throw new Error(`This integration is testnet-only. Got CHAIN_TYPE=${chainType}.`);
   }
 
@@ -409,14 +262,14 @@ const main = async () => {
   const safeUiPayloadOnly = process.env.INTEGRATION_SAFE_UI_PAYLOAD_ONLY === 'true';
   const built = smokeMode
     ? buildGuardianHbarSmokeIntegrationArtifacts({ safeAddress })
-    : buildSupplyCapIntegrationArtifacts({ safeAddress });
+    : buildBorrowCapIntegrationArtifacts({ safeAddress });
   const logger = createIntegrationLogger(built.files.logFile);
 
   try {
     logger.banner(
       smokeMode
         ? 'Bonzo DAO Integration: Guardian HBAR Smoke Transfer → 0.1 HBAR'
-        : `Bonzo DAO Integration: ${SUPPLY_CAP_INTEGRATION_CONFIG.reserveSymbol.toUpperCase()} Supply Cap → ${SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap.toLocaleString()}`
+        : `Bonzo DAO Integration: ${BORROW_CAP_INTEGRATION_CONFIG.reserveSymbol.toUpperCase()} Borrow Cap → ${BORROW_CAP_INTEGRATION_CONFIG.borrowCap.toLocaleString()}`
     );
     logger.info(`Network: ${chainType}`);
     logger.info(`Guardian Safe: ${utils.getAddress(safeAddress)}`);
@@ -424,9 +277,9 @@ const main = async () => {
       logger.info(`Smoke receiver: ${utils.getAddress(GUARDIAN_HBAR_SMOKE_CONFIG.receiver)}`);
       logger.info(`Smoke amount: 0.1 HBAR (${GUARDIAN_HBAR_SMOKE_CONFIG.amountTinybar} tinybar)`);
     } else {
-      logger.info(`Reserve symbol: ${SUPPLY_CAP_INTEGRATION_CONFIG.reserveSymbol.toUpperCase()}`);
-      logger.info(`Asset: ${resolveReserveTokenAddress(SUPPLY_CAP_INTEGRATION_CONFIG)}`);
-      logger.info(`Supply cap: ${SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap.toLocaleString()}`);
+      logger.info(`Reserve symbol: ${BORROW_CAP_INTEGRATION_CONFIG.reserveSymbol.toUpperCase()}`);
+      logger.info(`Asset: ${resolveReserveTokenAddress(BORROW_CAP_INTEGRATION_CONFIG)}`);
+      logger.info(`Borrow cap: ${BORROW_CAP_INTEGRATION_CONFIG.borrowCap.toLocaleString()}`);
     }
     logger.info(
       `Mode: ${
@@ -438,7 +291,7 @@ const main = async () => {
       }`
     );
     logger.info(
-      `Payload type: ${smokeMode ? 'Guardian HBAR transfer smoke' : 'Supply cap update'}`
+      `Payload type: ${smokeMode ? 'Guardian HBAR transfer smoke' : 'Borrow cap update'}`
     );
 
     logger.step(
@@ -487,7 +340,7 @@ const main = async () => {
           'No owner approvals were requested by this run because the configurator call would fail authorization.'
         );
         logger.warn(
-          'Use GUARDIAN_HBAR_SMOKE=true to prove the integration/multisig path end-to-end, or route supply-cap updates through the Pool Admin Safe.'
+          'Use GUARDIAN_HBAR_SMOKE=true to prove the integration/multisig path end-to-end, or route borrow-cap updates through the Pool Admin Safe.'
         );
         throw new Error(admin.error);
       }
@@ -503,7 +356,7 @@ const main = async () => {
       logger.error(`safeExecution preflight reverted: ${preflight.error}`);
       if (!smokeMode) {
         logger.warn(
-          'Supply-cap payload failed as Guardian Safe. This usually means the Guardian Safe is not authorized as Pool Admin for LendingPoolConfigurator.'
+          'Borrow-cap payload failed as Guardian Safe. This usually means the Guardian Safe is not authorized as Pool Admin for LendingPoolConfigurator.'
         );
         logger.warn(
           'No owner approvals were requested by this run. Use GUARDIAN_HBAR_SMOKE=true to prove the integration/multisig path end-to-end.'
@@ -516,7 +369,7 @@ const main = async () => {
     logger.warn(
       smokeMode
         ? 'Using Guardian Safe for this integration smoke HBAR transfer'
-        : 'Using Guardian Safe for this integration-only setSupplyCap execution'
+        : 'Using Guardian Safe for this integration-only setBorrowCap execution'
     );
     const result = runMultisigExec(built.files.encodedFile, logger);
     if (result.error) throw result.error;

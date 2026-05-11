@@ -7,13 +7,15 @@ import {
   buildMultisigExecCommand,
   buildGuardianHbarSmokeIntegrationArtifacts,
   buildSupplyCapIntegrationArtifacts,
-  createIntegrationLogger,
-  formatIntegrationPath,
   GUARDIAN_HBAR_SMOKE_CONFIG,
-  preflightGuardianPoolAdmin,
   preflightSafeExecution,
   SUPPLY_CAP_INTEGRATION_CONFIG,
 } from '../scripts/dao/integration/sauceSupplyCapToOneMillion';
+import {
+  createIntegrationLogger,
+  formatIntegrationPath,
+} from '../scripts/dao/integration/config/integrationTooling';
+import { preflightGuardianPoolAdmin } from '../scripts/dao/integration/admin/poolAdminHandoff';
 
 describe('supply cap guardian integration helpers', () => {
   it('builds a guardian execution artifact from the manual top-of-file config', () => {
@@ -22,7 +24,7 @@ describe('supply cap guardian integration helpers', () => {
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });
 
-    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M');
+    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1000001');
     expect(built.bundle.targetSafe).to.equal('guardian');
     expect(built.bundle.actions).to.deep.equal([
       {
@@ -45,13 +47,13 @@ describe('supply cap guardian integration helpers', () => {
     });
     expect(built.encoded.actions[0].description).to.match(/guardian integration override/);
     expect(built.files.bundleFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M\.bundle\.json$/
+      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.bundle\.json$/
     );
     expect(built.files.encodedFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M\.hedera_testnet\.encoded\.json$/
+      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.encoded\.json$/
     );
     expect(built.files.logFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M\.20260427-095900\.log$/
+      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.log$/
     );
   });
 
@@ -82,18 +84,21 @@ describe('supply cap guardian integration helpers', () => {
     logger.close();
 
     const content = fs.readFileSync(logFile, 'utf8');
-    expect(lines).to.deep.equal(['🧭 Create payload — Writing guardian bundle JSON', '✅ Payload written']);
+    expect(lines).to.deep.equal([
+      '🧭 Create payload — Writing guardian bundle JSON',
+      '✅ Payload written',
+    ]);
     expect(content).to.equal(`${lines.join('\n')}\n`);
   });
 
   it('formats integration paths relative to the repository root', () => {
     const absolute = path.resolve(
       __dirname,
-      '../scripts/dao/integration/output/INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M.bundle.json'
+      '../scripts/dao/integration/output/SAUCE-SUPPLY-CAP-1000001.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json'
     );
 
     expect(formatIntegrationPath(absolute)).to.equal(
-      'scripts/dao/integration/output/INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1M.bundle.json'
+      'scripts/dao/integration/output/SAUCE-SUPPLY-CAP-1000001.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json'
     );
   });
 
@@ -133,7 +138,7 @@ describe('supply cap guardian integration helpers', () => {
       operation: 0,
     });
     expect(built.files.encodedFile).to.match(
-      /INTEGRATION-HEDERA-TESTNET-GUARDIAN-HBAR-SMOKE\.hedera_testnet\.encoded\.json$/
+      /GUARDIAN-HBAR-SMOKE\.2026-04-27_09-59-00\.hedera_testnet\.integration\.encoded\.json$/
     );
   });
 
