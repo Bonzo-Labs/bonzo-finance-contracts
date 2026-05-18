@@ -79,7 +79,7 @@ export type SupplyCapIntegrationConfig = {
 // changes `reserves` and `supplyCaps`.
 export const SUPPLY_CAP_INTEGRATION_CONFIG: SupplyCapIntegrationConfig = {
   reserveSymbol: 'SAUCE',
-  supplyCap: 1_300_000,
+  supplyCap: 1_900_000,
 };
 
 export const GUARDIAN_HBAR_SMOKE_CONFIG = {

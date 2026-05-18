@@ -15,7 +15,7 @@
  *   DRY_RUN=true npm run dao:integration:pool-admin-to-guardian -- --network hedera_mainnet
  *
  * Live:
- *   npm run dao:integration:pool-admin-to-guardian -- --network hedera_testnet
+ *   npm run dao:integration:pool-admin-to-guardian -- --network hedera_mainnet
  *
  * Required env (testnet):
  *   PRIVATE_KEY2  private key for ACCOUNT_ID2 / 0xbe058ee...
