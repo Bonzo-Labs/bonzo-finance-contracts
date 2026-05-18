@@ -1,8 +1,7 @@
-const hre = require('hardhat');
-const { ethers } = require('hardhat');
-require('dotenv').config();
+import hre, { ethers } from 'hardhat';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+require('dotenv').config();
 
 // WSTEAM testnet contract deployed to: 0x06da3554b380de078027157C4DDcef5E2056D82D
 // WSteam testnet Token: 0x00000000000000000000000000000000004d6427
@@ -11,6 +10,7 @@ const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 // WSteam mainnet Token: 0x0000000000000000000000000000000000737a3F
 
 async function main() {
+  const chain_type = resolveHederaNetwork(hre);
   let provider, owner, steamToken;
   if (chain_type === 'hedera_testnet') {
     provider = new ethers.providers.JsonRpcProvider(

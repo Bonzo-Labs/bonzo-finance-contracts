@@ -37,6 +37,7 @@ const {
 require('dotenv').config();
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_mainnet';
+const reserveForNetwork = (reserve: any) => reserve[chain_type];
 
 let provider, owner, contractAddress, spender;
 if (chain_type === 'hedera_testnet') {
@@ -168,7 +169,7 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it.skip('should deposit, borrow, withdraw and repay for USDC and SAUCE', async function () {
+  it('should deposit, borrow, withdraw and repay for USDC and SAUCE', async function () {
     const assets = [HBARX, USDC, SAUCE];
     const decimals = [8, 6, 6];
     // const assets = [SAUCE, BONZO];
@@ -334,7 +335,7 @@ describe('Lending Pool Contract Tests', function () {
     }
   });
 
-  it('should deposit, borrow, withdraw and repay for WETH', async function () {
+  it.skip('should deposit, borrow, withdraw and repay for WETH', async function () {
     const asset = WETH;
     const decimals = 18; // WETH uses 18 decimals
     console.log('In the test, owner:', owner.address);
@@ -503,18 +504,19 @@ describe('Lending Pool Contract Tests', function () {
   it.skip('should deposit, withdraw and borrow SAUCE tokens', async function () {
     console.log('In the test, owner:', owner.address);
     const depositAmount = 1000;
-    const erc20Contract = await setupContract('ERC20Wrapper', SAUCE.token.address);
-    console.log('Sauce atoken address = ', SAUCE.aToken.address);
+    const sauce = reserveForNetwork(SAUCE);
+    const erc20Contract = await setupContract('ERC20Wrapper', sauce.token.address);
+    console.log('Sauce atoken address = ', sauce.aToken.address);
     await approveAndDeposit(
       erc20Contract,
       owner,
       lendingPoolContract,
       depositAmount,
-      SAUCE.token.address,
+      sauce.token.address,
       lendingPoolContract
     );
 
-    const aTokenContract = await setupContract('AToken', SAUCE.aToken.address);
+    const aTokenContract = await setupContract('AToken', sauce.aToken.address);
     const balanceDeposit = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of SAUCE aTokens after depositing:', balanceDeposit.toString());
 
@@ -524,7 +526,7 @@ describe('Lending Pool Contract Tests', function () {
     console.log('aToken Approval:', aTokenApprove.hash);
 
     const withdrawTxn = await lendingPoolContract.withdraw(
-      SAUCE.token.address,
+      sauce.token.address,
       withdrawAmount,
       owner.address
     );
@@ -534,13 +536,13 @@ describe('Lending Pool Contract Tests', function () {
     const balanceWithdrawal = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of aTokens after withdrawal:', balanceWithdrawal.toString());
 
-    const debtTokenContract = await setupContract('VariableDebtToken', SAUCE.variableDebt.address);
+    const debtTokenContract = await setupContract('VariableDebtToken', sauce.variableDebt.address);
     const balanceOfBefore = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of debtTokenContract:', balanceOfBefore.toString());
 
     const borrowAmount = 10;
     const borrowTxn = await lendingPoolContract.borrow(
-      SAUCE.token.address,
+      sauce.token.address,
       borrowAmount,
       2,
       0,
@@ -764,23 +766,24 @@ describe('Lending Pool Contract Tests', function () {
 
   it.skip('should deposit and borrow USDC tokens and get back variableDebtTokens', async function () {
     const depositAmount = 1000;
-    const erc20Contract = await setupContract('ERC20Wrapper', USDC.token.address);
+    const usdc = reserveForNetwork(USDC);
+    const erc20Contract = await setupContract('ERC20Wrapper', usdc.token.address);
     await approveAndDeposit(
       erc20Contract,
       owner,
       lendingPoolContract,
       depositAmount,
-      USDC.token.address,
+      usdc.token.address,
       lendingPoolContract
     );
 
-    const aTokenContract = await setupContract('AToken', USDC.aToken.address);
+    const aTokenContract = await setupContract('AToken', usdc.aToken.address);
     const balanceOf = await aTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC aTokens:', balanceOf.toString());
 
     const borrowAmount = 15;
     const borrowTxn = await lendingPoolContract.borrow(
-      USDC.token.address,
+      usdc.token.address,
       borrowAmount,
       2,
       0,
@@ -789,7 +792,7 @@ describe('Lending Pool Contract Tests', function () {
     await borrowTxn.wait();
     console.log('Borrow Transaction hash: ', borrowTxn.hash);
 
-    const debtTokenContract = await setupContract('VariableDebtToken', USDC.variableDebt.address);
+    const debtTokenContract = await setupContract('VariableDebtToken', usdc.variableDebt.address);
     const balanceOf1 = await debtTokenContract.balanceOf(owner.address);
     console.log('Balance of USDC debtTokens:', balanceOf1.toString());
     expect(balanceOf).to.be.gt(0);

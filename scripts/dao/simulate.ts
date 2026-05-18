@@ -45,7 +45,7 @@ const main = async () => {
     bundle.targetSafe === 'executor' ? addresses.executorSafe : addresses.guardianSafe;
   if (!safe) {
     throw new Error(
-      `No ${bundle.targetSafe} Safe address configured for ${chain_type}. Fill SAFE_ADDRESSES in scripts/dao/config.ts.`
+      `No ${bundle.targetSafe} Safe address configured for ${chain_type}. Fill SAFE_ADDRESSES in scripts/multisig/config.ts (re-exported from scripts/dao/config.ts).`
     );
   }
 

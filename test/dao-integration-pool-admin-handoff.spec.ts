@@ -13,6 +13,7 @@ describe('pool admin handoff integration helpers', () => {
 
   it('builds direct ACCOUNT2 -> Guardian setPoolAdmin calldata', () => {
     const built = buildDirectPoolAdminHandoff({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T12:59:00.000Z'),
       guardianSafe,
     });
@@ -35,6 +36,7 @@ describe('pool admin handoff integration helpers', () => {
 
   it('builds Guardian -> ACCOUNT2 multisig return artifact', () => {
     const built = buildGuardianPoolAdminReturnArtifact({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T12:59:00.000Z'),
       guardianSafe,
     });
@@ -65,7 +67,7 @@ describe('pool admin handoff integration helpers', () => {
       },
     };
 
-    const result = await preflightPoolAdmin(provider, ACCOUNT2_ADMIN.evmAddress, 'ACCOUNT2');
+    const result = await preflightPoolAdmin(provider, 'hedera_testnet', ACCOUNT2_ADMIN.evmAddress, 'ACCOUNT2');
 
     expect(result).to.deep.equal({
       ok: true,
@@ -81,7 +83,7 @@ describe('pool admin handoff integration helpers', () => {
       call: async () => utils.defaultAbiCoder.encode(['address'], [guardianSafe]),
     };
 
-    const result = await preflightPoolAdmin(provider, ACCOUNT2_ADMIN.evmAddress, 'ACCOUNT2');
+    const result = await preflightPoolAdmin(provider, 'hedera_testnet', ACCOUNT2_ADMIN.evmAddress, 'ACCOUNT2');
 
     expect(result).to.deep.equal({
       ok: false,

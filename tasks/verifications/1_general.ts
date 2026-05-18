@@ -14,11 +14,14 @@ import {
   getLendingRateOracle,
   getProxy,
   getWalletProvider,
+  getWHBARGateway,
   getWETHGateway,
 } from '../../helpers/contracts-getters';
 import { verifyContract, getParamPerNetwork } from '../../helpers/contracts-helpers';
 import { DbEntry, getDb, notFalsyOrZeroAddress } from '../../helpers/misc-utils';
 import { eContractid, eNetwork, ICommonConfiguration } from '../../helpers/types';
+
+const outputReserveData = require('../../scripts/outputReserveData.json');
 
 task('verify:general', 'Verify contracts at Etherscan')
   .addFlag('all', 'Verify all contracts at Etherscan')
@@ -34,15 +37,17 @@ task('verify:general', 'Verify contracts at Etherscan')
     );
     for (var entry of entries) {
       const address = entry[1][network].address;
-      console.log(`\n- Verifying ${entry[0]} at ${address}...\n`);
       if (
         entry[0] === 'GenericLogic' ||
         entry[0] === 'ReserveLogic' ||
-        entry[0] === 'ValidationLogic'
+        entry[0] === 'ValidationLogic' ||
+        entry[0] === 'WETHGateway' ||
+        entry[0] === 'WHBARGateway'
       ) {
         continue;
       }
       if (address) {
+        console.log(`\n- Verifying ${entry[0]} at ${address}...\n`);
         await localDRE.run('verify', { address, relatedSources: true });
       }
     }
@@ -56,6 +61,7 @@ task('verify:general', 'Verify contracts at Etherscan')
       LendingPool,
       WethGateway,
     } = poolConfig as ICommonConfiguration;
+    const isHederaPool = pool === ConfigNames.Hedera;
 
     const registryAddress = getParamPerNetwork(ProviderRegistry, network);
     const addressesProvider = await getLendingPoolAddressesProvider();
@@ -103,11 +109,6 @@ task('verify:general', 'Verify contracts at Etherscan')
       const dataProvider = await getAaveProtocolDataProvider();
       const walletProvider = await getWalletProvider();
 
-      const wethGatewayAddress = getParamPerNetwork(WethGateway, network);
-      const wethGateway = notFalsyOrZeroAddress(wethGatewayAddress)
-        ? await getWETHGateway(wethGatewayAddress)
-        : await getWETHGateway();
-
       // Address Provider
       console.log('\n- Verifying address provider...\n');
       await verifyContract(eContractid.LendingPoolAddressesProvider, addressesProvider, [MarketId]);
@@ -146,11 +147,51 @@ task('verify:general', 'Verify contracts at Etherscan')
       console.log('\n- Verifying  Wallet Balance Provider...\n');
       await verifyContract(eContractid.WalletBalanceProvider, walletProvider, []);
 
-      // WETHGateway
-      console.log('\n- Verifying  WETHGateway...\n');
-      await verifyContract(eContractid.WETHGateway, wethGateway, [
-        await getWrappedNativeTokenAddress(poolConfig),
-      ]);
+      if (isHederaPool) {
+        if (!poolConfig.WhbarHelper) {
+          throw new Error(`WHBAR helper address is not configured for ${network}`);
+        }
+        const whbarHelper = getParamPerNetwork(poolConfig.WhbarHelper, network);
+        if (!notFalsyOrZeroAddress(whbarHelper)) {
+          throw new Error(`WHBAR helper address is not configured for ${network}`);
+        }
+
+        const whbarGatewayAddress = db
+          .get(`${eContractid.WHBARGateway}.${network}.address`)
+          .value();
+        const legacyWethGatewayAddress = db
+          .get(`${eContractid.WETHGateway}.${network}.address`)
+          .value();
+        const outputReserveGatewayAddress =
+          outputReserveData.WHBARGateway?.[network]?.address ||
+          outputReserveData.WETHGateway?.[network]?.address;
+        const gatewayAddress = notFalsyOrZeroAddress(whbarGatewayAddress)
+          ? whbarGatewayAddress
+          : notFalsyOrZeroAddress(legacyWethGatewayAddress)
+          ? legacyWethGatewayAddress
+          : outputReserveGatewayAddress;
+        const whbarGateway = notFalsyOrZeroAddress(gatewayAddress)
+          ? await getWHBARGateway(gatewayAddress)
+          : await getWHBARGateway();
+
+        // WHBARGateway
+        console.log('\n- Verifying  WHBARGateway...\n');
+        await verifyContract(eContractid.WHBARGateway, whbarGateway, [
+          whbarHelper,
+          addressesProvider.address,
+        ]);
+      } else {
+        const wethGatewayAddress = getParamPerNetwork(WethGateway, network);
+        const wethGateway = notFalsyOrZeroAddress(wethGatewayAddress)
+          ? await getWETHGateway(wethGatewayAddress)
+          : await getWETHGateway();
+
+        // WETHGateway
+        console.log('\n- Verifying  WETHGateway...\n');
+        await verifyContract(eContractid.WETHGateway, wethGateway, [
+          await getWrappedNativeTokenAddress(poolConfig),
+        ]);
+      }
     }
     // Lending Pool proxy
     console.log('\n- Verifying  Lending Pool Proxy...\n');

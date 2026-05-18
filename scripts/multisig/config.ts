@@ -99,8 +99,8 @@ export const SMOKE_TRANSFER: Record<ChainType, { receiver: string; amountTinybar
     amountTinybar: ethers.utils.parseUnits('0.01', 8).toString(), // 0.01 HBAR on testnet
   },
   hedera_mainnet: {
-    receiver: '0xaba50e992ab2df8f197aac4d3ec284f55b43af9c',
-    amountTinybar: ethers.utils.parseUnits('0.1', 8).toString(), // 0.1 HBAR on mainnet
+    receiver: '0x742D07aAf0f4CE15e473918742EFEb0620cd6327',
+    amountTinybar: ethers.utils.parseUnits('1', 8).toString(), // 1 HBAR on mainnet (tinybar)
   },
 };
 

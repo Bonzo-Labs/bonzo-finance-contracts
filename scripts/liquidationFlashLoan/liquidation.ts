@@ -1,11 +1,20 @@
 import { ethers, artifacts } from 'hardhat';
+import hre from 'hardhat';
 import dotenv from 'dotenv';
 dotenv.config(); // Load environment variables
-import {
-  LendingPool,
-  AaveProtocolDataProvider,
-  PriceOracle,
-} from '../outputReserveDataTestnet.json';
+import reserveData from '../outputReserveData.json';
+import reserveTestnet from '../outputReserveDataTestnet.json';
+import { resolveHederaNetwork, type HederaNetwork } from '../lib/resolveHederaNetwork';
+
+function protocolAddress(
+  key: 'LendingPool' | 'AaveProtocolDataProvider' | 'PriceOracle',
+  net: HederaNetwork
+): string {
+  if (net === 'hedera_testnet') {
+    return (reserveTestnet as any)[key].hedera_testnet.address;
+  }
+  return (reserveData as any)[key].hedera_mainnet.address;
+}
 import {
   ContractFunctionParameters,
   ContractExecuteTransaction,
@@ -38,7 +47,7 @@ let dataProviderContract;
 let supraOracleContract;
 let liquidationContract;
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 if (chain_type === 'hedera_testnet') {
   chainData = {
@@ -252,12 +261,12 @@ async function liquidate() {
 // Main function
 async function main() {
   // Initialize contracts inside main to avoid top-level await
-  lendingPool = await setupContract('LendingPool', LendingPool.hedera_testnet.address);
+  lendingPool = await setupContract('LendingPool', protocolAddress('LendingPool', chain_type));
   dataProviderContract = await setupContract(
     'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_testnet.address
+    protocolAddress('AaveProtocolDataProvider', chain_type)
   );
-  supraOracleContract = await setupContract('SupraOracle', PriceOracle.hedera_testnet.address);
+  supraOracleContract = await setupContract('SupraOracle', protocolAddress('PriceOracle', chain_type));
   liquidationContract = await setupContract('Liquidator', chainData.liquidatorContract);
 
   await liquidateWithScript();

@@ -1,20 +1,23 @@
 /**
- * DAO execution-layer runtime config.
+ * DAO execution-layer runtime config (protocol addresses from `outputReserveData.json`
+ * plus MultiSend addresses for multi-action bundles).
+ *
+ * **Executor / Guardian Safe EVM addresses** are the single object
+ * `SAFE_ADDRESSES` in `scripts/multisig/config.ts` and are re-exported from here
+ * so `getAddresses()` / `getRuntime()` can stay one import for encode / simulate /
+ * submit. Owner lists, thresholds, and multisig smoke settings live only under
+ * `scripts/multisig/`.
  *
  * CHAIN_TYPE is authoritative; --network must match for operator sanity and
- * artifact/runtime consistency. The convention mirrors scripts/supra-deploy.ts
- * and scripts/whbarGatewayDeploy.ts: each script reads CHAIN_TYPE, builds its
- * own JsonRpcProvider, and branches every address/key lookup on chain_type.
- *
- * Non-secret DAO values (Safe addresses, owner lists, factory addresses) live
- * here as top-level consts so diffs are reviewable. The only env reads are the
- * existing PRIVATE_KEY / PRIVATE_KEY_MAINNET / PROVIDER_URL_MAINNET vars the
- * rest of the repo already uses.
+ * artifact/runtime consistency (see `assertNetworkConsistent`).
  */
 import { ethers } from 'ethers';
 import * as hre from 'hardhat';
 import reserveData from '../outputReserveData.json';
 import type { ChainAddresses, ChainType, NetworkRuntime } from './types';
+import { SAFE_ADDRESSES } from '../multisig/config';
+
+export { SAFE_ADDRESSES };
 
 export const CHAIN_IDS: Record<ChainType, number> = {
   hedera_testnet: 296,
@@ -26,21 +29,8 @@ export const RPC_URLS: Record<ChainType, string> = {
   hedera_mainnet: process.env.PROVIDER_URL_MAINNET || '',
 };
 
-// DAO Executor + Guardian Safes. Filled in after deployMultisigs.ts runs.
-// These are the HederaGnosisSafe EVM addresses, NOT the MultisigDAO wrappers.
-export const SAFE_ADDRESSES: Record<ChainType, { executor: string; guardian: string }> = {
-  hedera_testnet: {
-    executor: '',
-    guardian: '',
-  },
-  hedera_mainnet: {
-    executor: '',
-    guardian: '',
-  },
-};
-
 // MultiSendCallOnly (pre-deployed by Safe/Palmera on Hedera).
-// Operator fills after §0.2.3 resolves.
+// Operator fills after §0.2.3 resolves. (Multisig-only settings stay in scripts/multisig/config.ts.)
 export const MULTI_SEND_ADDRESSES: Record<ChainType, string> = {
   hedera_testnet: '',
   hedera_mainnet: '',

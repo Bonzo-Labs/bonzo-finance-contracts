@@ -6,7 +6,7 @@ import {
   deploySupraOracle,
 } from '../../helpers/contracts-deployments';
 import { setInitialMarketRatesInRatesOracleByHelper } from '../../helpers/oracles-helpers';
-import { ICommonConfiguration, eNetwork, SymbolMap } from '../../helpers/types';
+import { ICommonConfiguration, eHederaNetwork, eNetwork, SymbolMap } from '../../helpers/types';
 import { waitForTx, notFalsyOrZeroAddress } from '../../helpers/misc-utils';
 import {
   ConfigNames,
@@ -21,7 +21,15 @@ import {
   getLendingRateOracle,
   getPairsTokenAggregator,
 } from '../../helpers/contracts-getters';
+import { ZERO_ADDRESS } from '../../helpers/constants';
 import { AaveOracle, LendingRateOracle } from '../../types';
+
+const requireFeedAddress = (feedName: string, address: string, network: eNetwork) => {
+  if (!notFalsyOrZeroAddress(address)) {
+    throw new Error(`Missing ${feedName} feed for ${network}`);
+  }
+  return address;
+};
 
 task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
   .addFlag('verify', 'Verify contracts at Etherscan')
@@ -61,14 +69,49 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
       let aaveOracle: AaveOracle;
       let lendingRateOracle: LendingRateOracle;
       let fallbackOracle;
+      let fallbackOracleAddressToUse = fallbackOracleAddress;
 
       if (!notFalsyOrZeroAddress(fallbackOracleAddress)) {
+        const supraOracleFeeds = poolConfig.SupraOracleFeeds
+          ? getParamPerNetwork(poolConfig.SupraOracleFeeds, network)
+          : {
+              SupraPriceFeed: poolConfig.SupraPriceFeed,
+              HbarUsdChainlinkFeed: poolConfig.SupraPriceFeed,
+              UsdcUsdChainlinkFeed: poolConfig.SupraPriceFeed,
+              EthUsdChainlinkFeed: poolConfig.SupraPriceFeed,
+            };
+        const supraPriceFeed = requireFeedAddress(
+          'Supra price',
+          supraOracleFeeds.SupraPriceFeed,
+          network
+        );
+        const hbarUsdChainlinkFeed = requireFeedAddress(
+          'HBAR/USD Chainlink',
+          supraOracleFeeds.HbarUsdChainlinkFeed,
+          network
+        );
+        const usdcUsdChainlinkFeed = requireFeedAddress(
+          'USDC/USD Chainlink',
+          supraOracleFeeds.UsdcUsdChainlinkFeed,
+          network
+        );
+        const ethUsdChainlinkFeed =
+          network === eHederaNetwork.hedera_testnet
+            ? supraOracleFeeds.EthUsdChainlinkFeed || ZERO_ADDRESS
+            : requireFeedAddress(
+                'ETH/USD Chainlink',
+                supraOracleFeeds.EthUsdChainlinkFeed,
+                network
+              );
+
         fallbackOracle = await deploySupraOracle(
-          poolConfig.SupraPriceFeed,
-          poolConfig.SupraPriceFeed,
-          poolConfig.SupraPriceFeed,
+          supraPriceFeed,
+          hbarUsdChainlinkFeed,
+          usdcUsdChainlinkFeed,
+          ethUsdChainlinkFeed,
           verify
         );
+        fallbackOracleAddressToUse = fallbackOracle.address;
         console.log('===== Deployed Fallback Oracle: %s', fallbackOracle.address);
       }
 
@@ -80,7 +123,7 @@ task('full:deploy-oracles', 'Deploy oracles for dev enviroment')
           [
             tokens,
             aggregators,
-            fallbackOracle.address,
+            fallbackOracleAddressToUse,
             await getQuoteCurrency(poolConfig),
             poolConfig.OracleQuoteUnit,
           ],

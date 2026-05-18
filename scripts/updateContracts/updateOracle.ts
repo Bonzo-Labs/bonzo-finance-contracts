@@ -2,10 +2,11 @@ import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
 import { LendingPoolAddressesProvider } from '../outputReserveData.json';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_mainnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let provider, owner;
 if (chain_type === 'hedera_testnet') {
@@ -14,7 +15,7 @@ if (chain_type === 'hedera_testnet') {
 } else if (chain_type === 'hedera_mainnet') {
   const url = process.env.PROVIDER_URL_MAINNET || '';
   provider = new ethers.providers.JsonRpcProvider(url);
-  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
 }
 
 async function setupContract(artifactName: string, contractAddress: string) {
@@ -25,7 +26,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateOracle(oracleAddress: string) {
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address
+    LendingPoolAddressesProvider[chain_type].address
   );
 
   const contractOwner = await lendingPoolAddressesProviderContract.owner();

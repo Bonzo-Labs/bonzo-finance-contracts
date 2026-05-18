@@ -1,11 +1,11 @@
 const hre = require('hardhat');
 import { ethers, network } from 'hardhat';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
-
 async function main() {
+  const chain_type = resolveHederaNetwork(hre);
   console.log(`\n=== Deploying SupraOracle for ${chain_type} ===\n`);
 
   let provider,

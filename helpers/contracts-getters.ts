@@ -32,6 +32,7 @@ import {
   WalletBalanceProviderFactory,
   WETH9MockedFactory,
   WETHGatewayFactory,
+  WHBARGatewayFactory,
   FlashLiquidationAdapterFactory,
   ValidationLogicFactory,
 } from '../types';
@@ -296,6 +297,15 @@ export const getWETHGateway = async (address?: tEthereumAddress) =>
     address ||
       (
         await getDb().get(`${eContractid.WETHGateway}.${DRE.network.name}`).value()
+      ).address,
+    await getFirstSigner()
+  );
+
+export const getWHBARGateway = async (address?: tEthereumAddress) =>
+  await WHBARGatewayFactory.connect(
+    address ||
+      (
+        await getDb().get(`${eContractid.WHBARGateway}.${DRE.network.name}`).value()
       ).address,
     await getFirstSigner()
   );

@@ -100,6 +100,7 @@ export enum eContractid {
   UiPoolDataProviderV2 = 'UiPoolDataProviderV2',
   UiPoolDataProviderV2V3 = 'UiPoolDataProviderV2V3',
   WETHGateway = 'WETHGateway',
+  WHBARGateway = 'WHBARGateway',
   WETH = 'WETH',
   WETHMocked = 'WETHMocked',
   SelfdestructTransferMock = 'SelfdestructTransferMock',
@@ -405,6 +406,13 @@ export interface ILendingRate {
   borrowRate: string;
 }
 
+export interface ISupraOracleFeeds {
+  SupraPriceFeed: tEthereumAddress;
+  HbarUsdChainlinkFeed: tEthereumAddress;
+  UsdcUsdChainlinkFeed: tEthereumAddress;
+  EthUsdChainlinkFeed: tEthereumAddress;
+}
+
 export interface IBaseConfiguration {
   MarketId: string;
   ATokenNamePrefix: string;
@@ -432,6 +440,7 @@ export interface IBaseConfiguration {
   WETH: iParamsPerNetwork<tEthereumAddress>;
   WrappedNativeToken: iParamsPerNetwork<tEthereumAddress>;
   WethGateway: iParamsPerNetwork<tEthereumAddress>;
+  WhbarHelper?: iParamsPerNetwork<tEthereumAddress>;
   ReserveFactorTreasuryAddress: iParamsPerNetwork<tEthereumAddress>;
   IncentivesController: iParamsPerNetwork<tEthereumAddress>;
   StableDebtTokenImplementation?: iParamsPerNetwork<tEthereumAddress>;
@@ -440,6 +449,7 @@ export interface IBaseConfiguration {
   OracleQuoteCurrency: string;
   OracleQuoteUnit: string;
   SupraPriceFeed: string;
+  SupraOracleFeeds?: iParamsPerNetwork<ISupraOracleFeeds>;
 }
 
 export interface ICommonConfiguration extends IBaseConfiguration {

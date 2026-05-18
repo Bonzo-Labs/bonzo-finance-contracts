@@ -7,7 +7,6 @@ import {
   deployUiPoolDataProviderV2,
 } from '../../helpers/contracts-deployments';
 import { loadPoolConfig, ConfigNames, getTreasuryAddress } from '../../helpers/configuration';
-import { getWETHGateway } from '../../helpers/contracts-getters';
 import { eNetwork, ICommonConfiguration } from '../../helpers/types';
 import { notFalsyOrZeroAddress, waitForTx } from '../../helpers/misc-utils';
 import { initReservesByHelper, configureReservesByHelper } from '../../helpers/init-helpers';
@@ -15,6 +14,8 @@ import { exit } from 'process';
 import {
   getAaveProtocolDataProvider,
   getLendingPoolAddressesProvider,
+  getWETHGateway,
+  getWHBARGateway,
 } from '../../helpers/contracts-getters';
 import { chainlinkAggregatorProxy, chainlinkEthUsdAggregatorProxy } from '../../helpers/constants';
 
@@ -104,15 +105,24 @@ task('full:initialize-lending-pool', 'Initialize lending pool configuration.')
 
       await deployWalletBalancerProvider(verify);
 
-      // TODO - fix this portion - it's giving an error
-      // const lendingPoolAddress = await addressesProvider.getLendingPool();
+      const lendingPoolAddress = await addressesProvider.getLendingPool();
 
-      // let gateWay = getParamPerNetwork(WethGateway, network);
-      // if (!notFalsyOrZeroAddress(gateWay)) {
-      //   gateWay = (await getWETHGateway()).address;
-      // }
-      // console.log('GateWay', gateWay);
-      // await authorizeWETHGateway(gateWay, lendingPoolAddress);
+      if (pool === ConfigNames.Hedera) {
+        const whbarGateway = await getWHBARGateway();
+        console.log('WHBARGateway', whbarGateway.address);
+        await waitForTx(await whbarGateway.authorizeLendingPool(lendingPoolAddress));
+        const authorizedLendingPool = await whbarGateway.lendingPool();
+        if (authorizedLendingPool.toLowerCase() !== lendingPoolAddress.toLowerCase()) {
+          throw new Error('Authorized LendingPool in WHBARGateway does not match expected pool');
+        }
+      } else {
+        let gateWay = getParamPerNetwork(WethGateway, network);
+        if (!notFalsyOrZeroAddress(gateWay)) {
+          gateWay = (await getWETHGateway()).address;
+        }
+        console.log('WETHGateway', gateWay);
+        await waitForTx(await authorizeWETHGateway(gateWay, lendingPoolAddress));
+      }
     } catch (err) {
       console.error(err);
       exit(1);

@@ -34,8 +34,9 @@ import {
   rateStrategyUSDCNew,
   rateStrategyWETH,
 } from '../../markets/hedera/rateStrategies';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 console.log('Chain is = ', chain_type);
 let reserves, assetConfigurations;
 let lendingPoolContract, lendingPoolConfiguratorContract;

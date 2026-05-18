@@ -37,13 +37,14 @@ import {
   strategyBONZO,
   strategyKBL,
 } from '../../markets/hedera/reservesConfigs';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
   return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let reserves, assetConfigurations;
 let lendingPoolContract, lendingPoolConfiguratorContract, dataProviderContract;

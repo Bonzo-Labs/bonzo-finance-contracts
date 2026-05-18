@@ -3,24 +3,33 @@ const { ethers } = hardhat;
 require('dotenv').config();
 
 const outputReserveData = require('./outputReserveData.json');
+const { HederaConfig } = require('../markets/hedera');
+const { resolveHederaNetwork } = require('./lib/resolveHederaNetwork');
 
-const chainType = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chainType = resolveHederaNetwork(hardhat);
+const reserveDataForChain = outputReserveData.WHBAR[chainType];
 
 async function deployWHBARGateway() {
-  let provider, owner, whbarHelper, lendingPool, addressesProvider;
+  let provider, owner, whbarHelper, lendingPool, addressesProvider, expectedWhbarToken;
 
   if (chainType === 'hedera_testnet') {
     provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
     owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
-    whbarHelper = process.env.WHBAR_HELPER_TESTNET || process.env.WHBAR_HELPER || '';
+    whbarHelper = HederaConfig.WhbarHelper[chainType];
     lendingPool = outputReserveData.LendingPool.hedera_testnet.address;
     addressesProvider = outputReserveData.LendingPoolAddressesProvider.hedera_testnet.address;
+    expectedWhbarToken = reserveDataForChain.token.address;
   } else if (chainType === 'hedera_mainnet') {
     provider = new hardhat.ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET);
     owner = new hardhat.ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
-    whbarHelper = process.env.WHBAR_HELPER_MAINNET || process.env.WHBAR_HELPER || '';
+    whbarHelper = HederaConfig.WhbarHelper[chainType];
     lendingPool = outputReserveData.LendingPool.hedera_mainnet.address;
     addressesProvider = outputReserveData.LendingPoolAddressesProvider.hedera_mainnet.address;
+    expectedWhbarToken = reserveDataForChain.token.address;
+  } else {
+    throw new Error(
+      `Unsupported chain type: ${chainType}. Must be 'hedera_testnet' or 'hedera_mainnet'`
+    );
   }
 
   try {
@@ -42,6 +51,9 @@ async function deployWHBARGateway() {
 
     const whbarAddr = await gateway.getWHBARAddress();
     console.log('WHBAR token address:', whbarAddr);
+    if (whbarAddr.toLowerCase() !== expectedWhbarToken.toLowerCase()) {
+      throw new Error(`WHBAR token mismatch: expected ${expectedWhbarToken}, got ${whbarAddr}`);
+    }
 
     console.log('Authorizing LendingPool...');
     const authTx = await gateway
@@ -52,9 +64,14 @@ async function deployWHBARGateway() {
 
     const lendingPoolInGateway = await gateway.getLendingPool();
     console.log('LendingPool in Gateway:', lendingPoolInGateway);
+    const authorizedLendingPool = await gateway.lendingPool();
+    console.log('Authorized LendingPool in Gateway:', authorizedLendingPool);
 
-    if (lendingPoolInGateway !== lendingPool) {
+    if (lendingPoolInGateway.toLowerCase() !== lendingPool.toLowerCase()) {
       throw new Error('LendingPool in Gateway does not match the expected lending pool');
+    }
+    if (authorizedLendingPool.toLowerCase() !== lendingPool.toLowerCase()) {
+      throw new Error('Authorized LendingPool in Gateway does not match the expected lending pool');
     }
 
     console.log('LendingPool in Gateway matches the expected lending pool');
@@ -69,3 +86,5 @@ deployWHBARGateway()
     console.error('An unexpected error occurred:', error);
     process.exit(1);
   });
+
+export {};

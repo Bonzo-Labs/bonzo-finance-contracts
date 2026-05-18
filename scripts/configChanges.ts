@@ -6,9 +6,10 @@ import {
   AaveProtocolDataProvider,
 } from './outputReserveData.json';
 import { SAUCE, HBARX, WHBAR } from './outputReserveData.json';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let provider, owner, newOwner;
 if (chain_type === 'hedera_testnet') {

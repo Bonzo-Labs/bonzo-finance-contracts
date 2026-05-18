@@ -17,11 +17,11 @@ import {
   STEAM,
   WETH,
 } from './outputReserveData.json';
-import { ST } from 'next/dist/shared/lib/utils';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let reserves, supplyCaps, borrowCaps;
 

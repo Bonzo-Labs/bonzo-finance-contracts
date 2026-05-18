@@ -1,15 +1,27 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
-import {
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AToken,
-} from '../outputReserveData.json';
+import { LendingPoolConfigurator } from '../outputReserveData.json';
 import HederaConfig from '../../markets/hedera/index';
+import { eHederaNetwork } from '../../helpers/types';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
-const provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
-const owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+require('dotenv').config();
+
+const chain_type = resolveHederaNetwork(hre);
+
+let provider, owner;
+if (chain_type === 'hedera_testnet') {
+  provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY || '', provider);
+} else {
+  const url = process.env.PROVIDER_URL_MAINNET || '';
+  provider = new ethers.providers.JsonRpcProvider(url);
+  owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET || '', provider);
+}
+
+const hederaNet =
+  chain_type === 'hedera_mainnet' ? eHederaNetwork.hedera_mainnet : eHederaNetwork.hedera_testnet;
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
@@ -19,7 +31,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateStableDebtToken(tokenAddress: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_testnet.address
+    LendingPoolConfigurator[chain_type].address
   );
 
   console.log('Owner:', owner.address);
@@ -42,7 +54,7 @@ async function updateStableDebtToken(tokenAddress: string) {
   const debtTokenInput: DebtTokenInput = {
     asset: tokenAddress,
     // @ts-ignore
-    incentivesController: HederaConfig.IncentivesController.hedera_testnet,
+    incentivesController: HederaConfig.IncentivesController[hederaNet],
     name: 'Bonzo stable debt Token WHBAR',
     symbol: 'stableDebtWHBAR',
     implementation: stableTokenImpl.address,

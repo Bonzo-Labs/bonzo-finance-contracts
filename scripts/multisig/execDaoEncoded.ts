@@ -138,7 +138,7 @@ const main = async () => {
     if (utils.getAddress(artifact.safeAddress) !== utils.getAddress(cfgSafe)) {
       throw new Error(
         `artifact.safeAddress (${artifact.safeAddress}) !== SAFE_ADDRESSES.${chain_type}.${targetSafe} (${cfgSafe}). ` +
-          'Align scripts/dao/config.ts and scripts/multisig/config.ts.'
+          'Update scripts/multisig/config.ts (canonical SAFE_ADDRESSES).'
       );
     }
   }

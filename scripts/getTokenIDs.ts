@@ -16,12 +16,13 @@ import {
   PACK,
   STEAM,
 } from './outputReserveData.json';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 const fs = require('fs');
 const path = require('path');
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 async function getTokenIDs() {
   const api_key = process.env.QUICKNODE_API_KEY;

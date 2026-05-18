@@ -1,13 +1,16 @@
 import { expect } from 'chai';
+import { utils } from 'ethers';
 import {
   buildBorrowCapIntegrationArtifacts,
   BORROW_CAP_INTEGRATION_CONFIG,
 } from '../scripts/dao/integration/sauceBorrowCap500k';
 import { preflightSafeExecution } from '../scripts/dao/integration/sauceSupplyCapToOneMillion';
+import { preflightGuardianPoolAdmin } from '../scripts/dao/integration/admin/poolAdminHandoff';
 
 describe('borrow cap guardian integration helpers', () => {
   it('builds a guardian execution artifact from the manual top-of-file config', () => {
     const built = buildBorrowCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });
@@ -45,11 +48,35 @@ describe('borrow cap guardian integration helpers', () => {
     );
   });
 
+  it('builds mainnet SAUCE borrow-cap artifacts when config targets hedera_mainnet', () => {
+    const built = buildBorrowCapIntegrationArtifacts({
+      chainType: 'hedera_mainnet',
+      now: new Date('2026-04-27T09:59:00.000Z'),
+      safeAddress: '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC',
+      operatorConfig: { reserveSymbol: 'SAUCE', borrowCap: 500_000 },
+    });
+
+    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-MAINNET-SAUCE-BORROW-CAP-500K');
+    expect(built.bundle.actions[0].args).to.deep.equal({
+      asset: '0x00000000000000000000000000000000000b2ad5',
+      borrowCap: 500_000,
+    });
+    expect(built.encoded.chainType).to.equal('hedera_mainnet');
+    expect(built.encoded.safeAddress).to.equal('0x9f90b8adF1bF47dc530b7d89013019438b61cfeC');
+    expect(built.files.bundleFile).to.match(
+      /SAUCE-BORROW-CAP-500K\.2026-04-27_09-59-00\.hedera_mainnet\.integration\.bundle\.json$/
+    );
+    expect(built.files.encodedFile).to.match(
+      /SAUCE-BORROW-CAP-500K\.2026-04-27_09-59-00\.hedera_mainnet\.integration\.encoded\.json$/
+    );
+  });
+
   it('can build a borrow-cap artifact for a different configured reserve and cap', () => {
     const built = buildBorrowCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
-      config: { chainType: 'hedera_testnet', reserveSymbol: 'USDC', borrowCap: 1_000_000 },
+      operatorConfig: { reserveSymbol: 'USDC', borrowCap: 1_000_000 },
     });
 
     expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-USDC-BORROW-CAP-1M');
@@ -61,8 +88,29 @@ describe('borrow cap guardian integration helpers', () => {
     expect(built.encoded.safeExecution.data).to.equal(built.encoded.actions[0].data);
   });
 
+  it('preflights Guardian Pool Admin against the correct AddressesProvider per chain', async () => {
+    const guardian = '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC';
+    const calls: any[] = [];
+    const provider = {
+      call: async (tx: any) => {
+        calls.push(tx);
+        return utils.defaultAbiCoder.encode(['address'], [guardian]);
+      },
+    };
+
+    const result = await preflightGuardianPoolAdmin(provider, 'hedera_mainnet', guardian);
+
+    expect(result).to.deep.equal({
+      ok: true,
+      poolAdmin: '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC',
+      guardianSafe: '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC',
+    });
+    expect(calls[0].to).to.equal('0x23d509d1B1f633482827d004a66f35797d0337f4');
+  });
+
   it('preflights safeExecution with the Safe as msg.sender before approvals', async () => {
     const built = buildBorrowCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });

@@ -50,6 +50,7 @@ import {
   WalletBalanceProviderFactory,
   WETH9MockedFactory,
   WETHGatewayFactory,
+  WHBARGatewayFactory,
   FlashLiquidationAdapterFactory,
   UiPoolDataProviderV2Factory,
   UiPoolDataProviderV2V3Factory,
@@ -265,15 +266,21 @@ export const deployPriceOracle = async (verify?: boolean) =>
   );
 
 export const deploySupraOracle = async (
-  valueFeed: string,
-  valueFeed2: string,
-  valueFeed3: string,
+  supraFeed: string,
+  hbarUsdFeed: string,
+  usdcUsdFeed: string,
+  ethUsdFeed: string,
   verify?: boolean
 ) =>
   withSaveAndVerify(
-    await new SupraOracleFactory(await getFirstSigner()).deploy(valueFeed, valueFeed2, valueFeed3),
+    await new SupraOracleFactory(await getFirstSigner()).deploy(
+      supraFeed,
+      hbarUsdFeed,
+      usdcUsdFeed,
+      ethUsdFeed
+    ),
     eContractid.PriceOracle,
-    [],
+    [supraFeed, hbarUsdFeed, usdcUsdFeed, ethUsdFeed],
     verify
   );
 
@@ -584,6 +591,17 @@ export const deployWETHGateway = async (args: [tEthereumAddress], verify?: boole
   withSaveAndVerify(
     await new WETHGatewayFactory(await getFirstSigner()).deploy(...args),
     eContractid.WETHGateway,
+    args,
+    verify
+  );
+
+export const deployWHBARGateway = async (
+  args: [tEthereumAddress, tEthereumAddress],
+  verify?: boolean
+) =>
+  withSaveAndVerify(
+    await new WHBARGatewayFactory(await getFirstSigner()).deploy(...args),
+    eContractid.WHBARGateway,
     args,
     verify
   );

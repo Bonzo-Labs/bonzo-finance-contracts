@@ -7,10 +7,11 @@ import {
   AaveProtocolDataProvider,
 } from './outputReserveData.json';
 import { SAUCE, WHBAR, USDC, KARATE, HBARX } from './outputReserveData.json';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let provider, owner;
 let dataProviderAddress;
@@ -36,15 +37,15 @@ async function lendingPool() {
   // Load the contract artifacts
   const lendingPoolContract = await setupContract(
     'LendingPool',
-    LendingPool.hedera_mainnet.address
+    LendingPool[chain_type].address
   );
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator[chain_type].address
   );
   const lendingPoolAddressesProviderContract = await setupContract(
     'LendingPoolAddressesProvider',
-    LendingPoolAddressesProvider.hedera_mainnet.address
+    LendingPoolAddressesProvider[chain_type].address
   );
   const dataProviderContract = await setupContract('AaveProtocolDataProvider', dataProviderAddress);
 

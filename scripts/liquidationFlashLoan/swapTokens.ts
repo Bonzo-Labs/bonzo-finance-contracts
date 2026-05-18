@@ -1,4 +1,4 @@
-import { ethers } from 'hardhat';
+import hre, { ethers } from 'hardhat';
 import {
   ContractFunctionParameters,
   ContractExecuteTransaction,
@@ -8,10 +8,11 @@ import {
   PrivateKey,
 } from '@hashgraph/sdk';
 import dotenv from 'dotenv';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
 dotenv.config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 interface ChainData {
   operatorPrKey: PrivateKey;

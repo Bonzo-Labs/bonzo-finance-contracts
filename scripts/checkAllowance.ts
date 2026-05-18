@@ -1,11 +1,12 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 import { WHBAR } from './outputReserveData.json';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
 // Configuration
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 const WHBAR_TOKEN_ADDRESS = '0x0000000000000000000000000000000000163b5a'; // Mainnet WHBAR token
 const WHBAR_CONTRACT_ADDRESS = '0x0000000000000000000000000000000000163b59'; // WHBAR contract (spender)
 

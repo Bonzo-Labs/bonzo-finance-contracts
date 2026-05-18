@@ -19,8 +19,9 @@ import {
   HST,
   STEAM,
 } from './outputReserveData.json';
+import { resolveHederaNetwork } from './lib/resolveHederaNetwork';
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 let provider, wallet, contractAddress, ReserveAssets;
 if (chain_type === 'hedera_testnet') {
   provider = new ethers.providers.JsonRpcProvider('https://testnet.hashio.io/api');

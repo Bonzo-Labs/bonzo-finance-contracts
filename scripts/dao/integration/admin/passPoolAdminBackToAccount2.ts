@@ -1,62 +1,78 @@
 /**
- * Pool Admin return: Guardian Safe -> ACCOUNT2 (direct, no multisig).
+ * Pool Admin return: Guardian Safe -> prior direct owner (ACCOUNT2 on testnet).
  *
  * Why direct (not via Guardian multisig):
  *   LendingPoolAddressesProvider.setPoolAdmin(...) is gated by `onlyOwner`,
- *   not by `getPoolAdmin()`. ACCOUNT2 is still the AddressesProvider owner
- *   (we only handed off the Pool Admin role, not ownership), so ACCOUNT2 can
- *   directly call setPoolAdmin(ACCOUNT2) to take the role back.
+ *   not by `getPoolAdmin()`. The AddressesProvider owner can directly call
+ *   setPoolAdmin(...) to take the role back from Guardian.
  *
  *   A Guardian-multisig path would require first calling
  *   AddressesProvider.transferOwnership(GuardianSafe), which is intentionally
  *   out of scope for this integration test — see passPoolAdminToGuardian.ts
  *   for the inverse direct flow.
  *
+ * Network selection matches `scripts/supra-prices.ts`: `resolveHederaNetwork(hre)` uses
+ * Hardhat `--network` when not `hardhat`, else `CHAIN_TYPE` (default `hedera_testnet`).
+ * Guardian Safe is `SAFE_ADDRESSES[chain].guardian` from `scripts/multisig/config.ts`.
+ *
+ * Testnet: owner is ACCOUNT2 (`PRIVATE_KEY2`). Mainnet: set `POOL_ADMIN_OWNER_EVM` and
+ * `PRIVATE_KEY_MAINNET` (see poolAdminHandoff.ts).
+ *
  * Dry-run:
- *   DRY_RUN=true CHAIN_TYPE=hedera_testnet npm run dao:integration:pool-admin-back-to-account2 -- --network hedera_testnet
+ *   DRY_RUN=true npm run dao:integration:pool-admin-back-to-account2 -- --network hedera_testnet
  *
  * Live:
- *   CHAIN_TYPE=hedera_testnet npm run dao:integration:pool-admin-back-to-account2 -- --network hedera_testnet
+ *   npm run dao:integration:pool-admin-back-to-account2 -- --network hedera_testnet
  *
- * Required env:
+ * Required env (testnet):
  *   PRIVATE_KEY2  private key for ACCOUNT_ID2 / 0xbe058ee...
  */
 require('dotenv').config();
 
+import hre from 'hardhat';
+import { resolveHederaNetwork } from '../../../lib/resolveHederaNetwork';
 import {
   assertNoFork,
   assertNetworkConsistent,
   getProvider,
-  resolveChainType,
   SAFE_ADDRESSES,
 } from '../../../multisig/config';
 import { createIntegrationLogger } from '../config/integrationTooling';
 import {
-  ACCOUNT2_ADMIN,
   buildDirectPoolAdminReturn,
+  getDirectPoolAdminOwner,
   runDirectAccount2PoolAdminIntegration,
 } from './poolAdminHandoff';
 
 const main = async () => {
   assertNoFork();
-  const chainType = resolveChainType();
-  assertNetworkConsistent(chainType);
-  if (chainType !== 'hedera_testnet') {
-    throw new Error(`This integration is testnet-only. Got CHAIN_TYPE=${chainType}.`);
+  const chain_type = resolveHederaNetwork(hre);
+  assertNetworkConsistent(chain_type);
+
+  let guardianSafe: string;
+  if (chain_type === 'hedera_testnet') {
+    guardianSafe = SAFE_ADDRESSES.hedera_testnet.guardian;
+  } else if (chain_type === 'hedera_mainnet') {
+    guardianSafe = SAFE_ADDRESSES.hedera_mainnet.guardian;
+  } else {
+    throw new Error(
+      `Unsupported chain_type: ${chain_type}. Must be 'hedera_testnet' or 'hedera_mainnet'.`
+    );
   }
+  if (!guardianSafe) throw new Error(`Missing SAFE_ADDRESSES.${chain_type}.guardian`);
 
-  const guardianSafe = SAFE_ADDRESSES[chainType].guardian;
-  if (!guardianSafe) throw new Error(`Missing SAFE_ADDRESSES.${chainType}.guardian`);
-
-  const built = buildDirectPoolAdminReturn({});
+  const built = buildDirectPoolAdminReturn({ chainType: chain_type });
   const logger = createIntegrationLogger(built.files.logFile);
+  const owner = getDirectPoolAdminOwner(chain_type);
 
   try {
-    logger.banner('Bonzo DAO Integration: Pool Admin Back → ACCOUNT2 (direct)');
-    logger.info(`Network: ${chainType}`);
+    logger.banner('Bonzo DAO Integration: Pool Admin Back → direct owner (ACCOUNT2 on testnet)');
+    logger.info(`Network: ${chain_type}`);
     logger.info(`Current expected Pool Admin: Guardian Safe ${guardianSafe}`);
-    logger.info(`Return account: ${ACCOUNT2_ADMIN.accountId}`);
-    logger.info(`Return EVM: ${ACCOUNT2_ADMIN.evmAddress}`);
+    if (owner.accountId) {
+      logger.info(`Return account: ${owner.accountId}`);
+    }
+    logger.info(`Return EVM: ${owner.evmAddress}`);
     logger.info(
       `Mode: ${
         process.env.DRY_RUN === 'true'
@@ -65,10 +81,11 @@ const main = async () => {
       }`
     );
 
-    const provider = getProvider(chainType);
+    const provider = getProvider(chain_type);
     await runDirectAccount2PoolAdminIntegration({
       logger,
       provider,
+      chainType: chain_type,
       built,
       guardianSafe,
       direction: 'guardian-to-account2',

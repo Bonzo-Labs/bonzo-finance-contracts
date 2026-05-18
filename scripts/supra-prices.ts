@@ -2,6 +2,7 @@ import { ethers } from 'ethers';
 import hre from 'hardhat';
 import { USDC, SAUCE, WETH, WHBAR } from './outputReserveData.json';
 import 'dotenv/config';
+import { resolveHederaNetwork, type HederaNetwork } from './lib/resolveHederaNetwork';
 
 interface NetworkConfig {
   providerUrl: string;
@@ -9,7 +10,7 @@ interface NetworkConfig {
   oracleAddress: string;
 }
 
-const networkConfigs: Record<string, NetworkConfig & { chainId: number }> = {
+const networkConfigs: Record<HederaNetwork, NetworkConfig & { chainId: number }> = {
   hedera_testnet: {
     providerUrl: 'https://testnet.hashio.io/api',
     ownerKey: process.env.PRIVATE_KEY2 || '',
@@ -46,9 +47,7 @@ const getAssetInfo = (assetData: any, networkName: string) => {
 };
 
 const checkSupraPrices = async () => {
-  // Use Hardhat's network name if available, otherwise fall back to CHAIN_TYPE env var
-  const networkName =
-    hre.network.name !== 'hardhat' ? hre.network.name : process.env.CHAIN_TYPE || 'hedera_testnet';
+  const networkName = resolveHederaNetwork(hre);
   if (!networkConfigs[networkName]) {
     throw new Error(`Configuration for network "${networkName}" not found.`);
   }
@@ -125,9 +124,7 @@ const checkSupraPrices = async () => {
 };
 
 const checkSaucePriceIndex = async () => {
-  // Use Hardhat's network name if available, otherwise fall back to CHAIN_TYPE env var
-  const networkName =
-    hre.network.name !== 'hardhat' ? hre.network.name : process.env.CHAIN_TYPE || 'hedera_testnet';
+  const networkName = resolveHederaNetwork(hre);
   if (!networkConfigs[networkName]) {
     console.log(`\n--- Skipping SAUCE price index (no config for ${networkName}) ---`);
     return;

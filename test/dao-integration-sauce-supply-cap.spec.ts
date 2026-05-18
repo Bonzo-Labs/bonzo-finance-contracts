@@ -11,6 +11,7 @@ import {
   preflightSafeExecution,
   SUPPLY_CAP_INTEGRATION_CONFIG,
 } from '../scripts/dao/integration/sauceSupplyCapToOneMillion';
+import { SMOKE_TRANSFER } from '../scripts/multisig/config';
 import {
   createIntegrationLogger,
   formatIntegrationPath,
@@ -18,13 +19,20 @@ import {
 import { preflightGuardianPoolAdmin } from '../scripts/dao/integration/admin/poolAdminHandoff';
 
 describe('supply cap guardian integration helpers', () => {
+  const supplyCapFileSlug = (cap: number): string =>
+    cap % 1_000_000 === 0 ? `${cap / 1_000_000}M` : String(cap);
+
   it('builds a guardian execution artifact from the manual top-of-file config', () => {
     const built = buildSupplyCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });
 
-    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-1000001');
+    const capSlug = supplyCapFileSlug(SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap);
+    expect(built.bundle.bipId).to.equal(
+      `INTEGRATION-HEDERA-TESTNET-SAUCE-SUPPLY-CAP-${capSlug}`
+    );
     expect(built.bundle.targetSafe).to.equal('guardian');
     expect(built.bundle.actions).to.deep.equal([
       {
@@ -47,21 +55,28 @@ describe('supply cap guardian integration helpers', () => {
     });
     expect(built.encoded.actions[0].description).to.match(/guardian integration override/);
     expect(built.files.bundleFile).to.match(
-      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.bundle\.json$/
+      new RegExp(
+        `SAUCE-SUPPLY-CAP-${capSlug}\\.2026-04-27_09-59-00\\.hedera_testnet\\.integration\\.bundle\\.json$`
+      )
     );
     expect(built.files.encodedFile).to.match(
-      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.encoded\.json$/
+      new RegExp(
+        `SAUCE-SUPPLY-CAP-${capSlug}\\.2026-04-27_09-59-00\\.hedera_testnet\\.integration\\.encoded\\.json$`
+      )
     );
     expect(built.files.logFile).to.match(
-      /SAUCE-SUPPLY-CAP-1000001\.2026-04-27_09-59-00\.hedera_testnet\.integration\.log$/
+      new RegExp(
+        `SAUCE-SUPPLY-CAP-${capSlug}\\.2026-04-27_09-59-00\\.hedera_testnet\\.integration\\.log$`
+      )
     );
   });
 
   it('can build a supply-cap artifact for a different configured reserve and cap', () => {
     const built = buildSupplyCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
-      config: { chainType: 'hedera_testnet', reserveSymbol: 'USDC', supplyCap: 2_500_000 },
+      operatorConfig: { reserveSymbol: 'USDC', supplyCap: 2_500_000 },
     });
 
     expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-USDC-SUPPLY-CAP-2500000');
@@ -92,13 +107,14 @@ describe('supply cap guardian integration helpers', () => {
   });
 
   it('formats integration paths relative to the repository root', () => {
+    const capSlug = supplyCapFileSlug(SUPPLY_CAP_INTEGRATION_CONFIG.supplyCap);
     const absolute = path.resolve(
       __dirname,
-      '../scripts/dao/integration/output/SAUCE-SUPPLY-CAP-1000001.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json'
+      `../scripts/dao/integration/output/SAUCE-SUPPLY-CAP-${capSlug}.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json`
     );
 
     expect(formatIntegrationPath(absolute)).to.equal(
-      'scripts/dao/integration/output/SAUCE-SUPPLY-CAP-1000001.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json'
+      `scripts/dao/integration/output/SAUCE-SUPPLY-CAP-${capSlug}.2026-04-27_09-59-00.hedera_testnet.integration.bundle.json`
     );
   });
 
@@ -116,6 +132,7 @@ describe('supply cap guardian integration helpers', () => {
     const built = buildGuardianHbarSmokeIntegrationArtifacts({
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
+      chainType: 'hedera_testnet',
     });
 
     expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-TESTNET-GUARDIAN-HBAR-SMOKE');
@@ -142,8 +159,43 @@ describe('supply cap guardian integration helpers', () => {
     );
   });
 
+  it('builds mainnet guardian HBAR smoke artifact using multisig SMOKE_TRANSFER', () => {
+    const built = buildGuardianHbarSmokeIntegrationArtifacts({
+      now: new Date('2026-04-27T09:59:00.000Z'),
+      safeAddress: '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC',
+      chainType: 'hedera_mainnet',
+    });
+
+    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-MAINNET-GUARDIAN-HBAR-SMOKE');
+    expect(built.encoded.chainType).to.equal('hedera_mainnet');
+    expect(built.encoded.safeExecution.to).to.equal(
+      utils.getAddress(SMOKE_TRANSFER.hedera_mainnet.receiver)
+    );
+    expect(built.encoded.safeExecution.value).to.equal(SMOKE_TRANSFER.hedera_mainnet.amountTinybar);
+    expect(built.files.encodedFile).to.match(
+      /GUARDIAN-HBAR-SMOKE\.2026-04-27_09-59-00\.hedera_mainnet\.integration\.encoded\.json$/
+    );
+  });
+
+  it('builds mainnet SAUCE supply-cap artifacts when config targets hedera_mainnet', () => {
+    const built = buildSupplyCapIntegrationArtifacts({
+      chainType: 'hedera_mainnet',
+      now: new Date('2026-04-27T09:59:00.000Z'),
+      safeAddress: '0x9f90b8adF1bF47dc530b7d89013019438b61cfeC',
+      operatorConfig: { reserveSymbol: 'SAUCE', supplyCap: 1_300_000 },
+    });
+
+    expect(built.bundle.bipId).to.equal('INTEGRATION-HEDERA-MAINNET-SAUCE-SUPPLY-CAP-1300000');
+    expect(built.bundle.actions[0].args).to.deep.equal({
+      asset: '0x00000000000000000000000000000000000b2ad5',
+      supplyCap: 1_300_000,
+    });
+    expect(built.encoded.chainType).to.equal('hedera_mainnet');
+  });
+
   it('preflights safeExecution with the Safe as msg.sender before approvals', async () => {
     const built = buildSupplyCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });
@@ -170,6 +222,7 @@ describe('supply cap guardian integration helpers', () => {
 
   it('returns the revert reason when preflight safeExecution fails', async () => {
     const built = buildSupplyCapIntegrationArtifacts({
+      chainType: 'hedera_testnet',
       now: new Date('2026-04-27T09:59:00.000Z'),
       safeAddress: '0xC2ab87Ce7F173F883eb29aA57bb26ea1f897f20f',
     });
@@ -194,7 +247,7 @@ describe('supply cap guardian integration helpers', () => {
       },
     };
 
-    const result = await preflightGuardianPoolAdmin(provider, guardian);
+    const result = await preflightGuardianPoolAdmin(provider, 'hedera_testnet', guardian);
 
     expect(result).to.deep.equal({
       ok: true,
@@ -212,7 +265,7 @@ describe('supply cap guardian integration helpers', () => {
       call: async () => utils.defaultAbiCoder.encode(['address'], [actualAdmin]),
     };
 
-    const result = await preflightGuardianPoolAdmin(provider, guardian);
+    const result = await preflightGuardianPoolAdmin(provider, 'hedera_testnet', guardian);
 
     expect(result).to.deep.equal({
       ok: false,

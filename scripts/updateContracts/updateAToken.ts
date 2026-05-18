@@ -1,16 +1,12 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 
-import {
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AToken,
-} from '../outputReserveData.json';
-import HederaConfig from '../../markets/hedera/index';
+import { LendingPoolConfigurator } from '../outputReserveData.json';
+import { resolveHederaNetwork } from '../lib/resolveHederaNetwork';
 
 require('dotenv').config();
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+const chain_type = resolveHederaNetwork(hre);
 
 let provider, owner;
 if (chain_type === 'hedera_testnet') {
@@ -29,7 +25,7 @@ async function setupContract(artifactName: string, contractAddress: string) {
 async function updateAToken(tokenAddress: string, tokenName: string) {
   const lendingPoolConfiguratorContract = await setupContract(
     'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
+    LendingPoolConfigurator[chain_type].address
   );
 
   console.log('Owner:', owner.address);
