@@ -94,6 +94,18 @@ export const rateStrategyDOVU: IInterestRateStrategyParams = {
   stableRateSlope2: new BigNumber(0.09).multipliedBy(oneRay).toFixed(),
 };
 
+// DOVU v2 - BIP-1 (DOVU Risk Parameter Update): Slope-2 raised 250% -> 300%.
+// All other parameters are preserved from rateStrategyDOVU.
+export const rateStrategyDOVUv2: IInterestRateStrategyParams = {
+  name: 'rateStrategyDOVUv2',
+  optimalUtilizationRate: new BigNumber(0.47).multipliedBy(oneRay).toFixed(),
+  baseVariableBorrowRate: new BigNumber(0.0).multipliedBy(oneRay).toFixed(),
+  variableRateSlope1: new BigNumber(0.09).multipliedBy(oneRay).toFixed(),
+  variableRateSlope2: new BigNumber(3).multipliedBy(oneRay).toFixed(),
+  stableRateSlope1: new BigNumber(0.09).multipliedBy(oneRay).toFixed(),
+  stableRateSlope2: new BigNumber(0.09).multipliedBy(oneRay).toFixed(),
+};
+
 export const rateStrategyPACK: IInterestRateStrategyParams = {
   name: 'rateStrategySAUCE',
   optimalUtilizationRate: new BigNumber(0.52).multipliedBy(oneRay).toFixed(),

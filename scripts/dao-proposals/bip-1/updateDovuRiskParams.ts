@@ -1,0 +1,282 @@
+/**
+ * BIP-1: DOVU Risk Parameter Update (Hedera Mainnet only)
+ * -------------------------------------------------------------------------
+ * Governance proposal: "DOVU Risk Parameter Update" (Bonzo Lend).
+ *
+ * This script applies the approved DOVU risk-parameter changes on Hedera
+ * Mainnet. It is intentionally step-gated in main() so each on-chain action
+ * can be reviewed and executed independently.
+ *
+ *   Parameter        Current                 Recommended
+ *   Supply Cap       19,379,844 DOVU         31,250,000 DOVU
+ *   Liq Threshold    59%   (5900)            45%    (4500)
+ *   Liq Bonus        6.66% (10666)           10%    (11000)
+ *   Borrow Cap       3,875,968 DOVU          15,625,000 DOVU
+ *   Reserve Factor   17.25% (1725)           25%    (2500)
+ *   Slope-2 (gamma)  250%  (2.5 * RAY)       300%   (3.0 * RAY)
+ *   LTV              20%   (2000)            20%    (2000, unchanged)
+ *   Close Factor     50%                     50%    (protocol-level, unchanged)
+ *
+ * Notes:
+ *  - LTV, Liquidation Threshold and Liquidation Bonus are all written in a
+ *    single configureReserveAsCollateral() call. LTV is unchanged (2000) but
+ *    must still be passed to preserve it.
+ *  - Liquidation Bonus is encoded as (100% + bonus): 10% bonus => 11000.
+ *  - Supply/Borrow caps are whole-token units (no decimals), matching the
+ *    LendingPoolConfigurator setSupplyCap/setBorrowCap convention.
+ *  - Slope-2 cannot be mutated in place. A new DefaultReserveInterestRateStrategy
+ *    must be deployed (deployNewRateStrategy) and then wired to the DOVU reserve
+ *    via setReserveInterestRateStrategyAddress(). Fill NEW_RATE_STRATEGY_ADDRESS
+ *    with the deployed address before running that step.
+ *  - Admin key: PRIVATE_KEY_MAINNET_ADMIN (pool admin). This script is written
+ *    for mainnet ONLY.
+ */
+import { ethers } from 'hardhat';
+const hre = require('hardhat');
+require('dotenv').config();
+
+import { ContractCreateFlow, ContractFunctionParameters } from '@hashgraph/sdk';
+const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
+
+import {
+  DOVU,
+  LendingPool,
+  LendingPoolAddressesProvider,
+  LendingPoolConfigurator,
+  AaveProtocolDataProvider,
+} from '../../outputReserveData.json';
+import { rateStrategyDOVUv2 } from '../../../markets/hedera/rateStrategies';
+
+// --------------------------------------------------------------------------
+// Network guard - this proposal targets Hedera Mainnet only.
+// --------------------------------------------------------------------------
+const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
+if (chain_type !== 'hedera_mainnet') {
+  throw new Error(
+    `BIP-1 is a mainnet-only proposal. Set CHAIN_TYPE=hedera_mainnet (got "${chain_type}").`
+  );
+}
+
+const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '');
+const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
+
+// --------------------------------------------------------------------------
+// DOVU target parameters (BIP-1)
+// --------------------------------------------------------------------------
+const DOVU_ADDRESS = DOVU.hedera_mainnet.token.address;
+
+const TARGET = {
+  supplyCap: 31_250_000, // whole DOVU tokens
+  borrowCap: 15_625_000, // whole DOVU tokens
+  ltv: 2000, // 20.00% (unchanged)
+  liquidationThreshold: 4500, // 45.00%
+  liquidationBonus: 11000, // 10.00% bonus (100% + 10%)
+  reserveFactor: 2500, // 25.00%
+};
+
+// Address of the new DOVU interest-rate strategy (Slope-2 = 300%).
+// Populate this AFTER running deployNewRateStrategy().
+const NEW_RATE_STRATEGY_ADDRESS = '';
+
+async function setupContract(artifactName: string, contractAddress: string) {
+  const artifact = await hre.artifacts.readArtifact(artifactName);
+  return new ethers.Contract(contractAddress, artifact.abi, owner);
+}
+
+async function configurator() {
+  return setupContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_mainnet.address
+  );
+}
+
+// --------------------------------------------------------------------------
+// Read + log current on-chain DOVU configuration.
+// --------------------------------------------------------------------------
+async function printCurrentParams(label: string) {
+  const configuratorContract = await configurator();
+  const dataProvider = await setupContract(
+    'AaveProtocolDataProvider',
+    AaveProtocolDataProvider.hedera_mainnet.address
+  );
+
+  const [supplyCap, borrowCap, config] = await Promise.all([
+    configuratorContract.getSupplyCap(DOVU_ADDRESS),
+    configuratorContract.getBorrowCap(DOVU_ADDRESS),
+    dataProvider.getReserveConfigurationData(DOVU_ADDRESS),
+  ]);
+
+  console.log(`\n=== DOVU reserve params (${label}) ===`);
+  console.log('Asset:', DOVU_ADDRESS);
+  console.log('Supply Cap:          ', supplyCap.toString());
+  console.log('Borrow Cap:          ', borrowCap.toString());
+  console.log('LTV:                 ', config.ltv.toString());
+  console.log('Liquidation Thresh.: ', config.liquidationThreshold.toString());
+  console.log('Liquidation Bonus:   ', config.liquidationBonus.toString());
+  console.log('Reserve Factor:      ', config.reserveFactor.toString());
+  console.log('========================================\n');
+}
+
+// --------------------------------------------------------------------------
+// Step 1: Deploy the new DOVU interest-rate strategy (Slope-2 = 300%).
+//   Mirrors scripts/updateContracts/deployNewStrategy.ts (Hedera SDK deploy).
+//   Copy the resulting Contract ID / EVM address into NEW_RATE_STRATEGY_ADDRESS.
+// --------------------------------------------------------------------------
+async function deployNewRateStrategy() {
+  const strategy = rateStrategyDOVUv2;
+  const deploymentArgs = {
+    provider: LendingPoolAddressesProvider.hedera_mainnet.address,
+    optimalUtilizationRate: strategy.optimalUtilizationRate,
+    baseVariableBorrowRate: strategy.baseVariableBorrowRate,
+    variableRateSlope1: strategy.variableRateSlope1,
+    variableRateSlope2: strategy.variableRateSlope2,
+    stableRateSlope1: strategy.stableRateSlope1,
+    stableRateSlope2: strategy.stableRateSlope2,
+  };
+  console.log('Deploying rateStrategyDOVUv2 with args:', deploymentArgs);
+
+  const artifact = await hre.artifacts.readArtifact('DefaultReserveInterestRateStrategy');
+  const functionParameters = new ContractFunctionParameters()
+    .addAddress(deploymentArgs.provider)
+    .addUint256(deploymentArgs.optimalUtilizationRate)
+    .addUint256(deploymentArgs.baseVariableBorrowRate)
+    .addUint256(deploymentArgs.variableRateSlope1)
+    .addUint256(deploymentArgs.variableRateSlope2)
+    .addUint256(deploymentArgs.stableRateSlope1)
+    .addUint256(deploymentArgs.stableRateSlope2);
+
+  const client = Client.forMainnet();
+  const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_MAINNET_ADMIN!);
+  const operatorAccountId = AccountId.fromString(process.env.MAINNET_ADMIN_ACCOUNT_ID!);
+  client.setOperator(operatorAccountId, operatorPrKey);
+
+  const contractCreateTx = new ContractCreateFlow()
+    .setGas(2_000_000)
+    .setBytecode(artifact.bytecode)
+    .setConstructorParameters(functionParameters);
+
+  const response = await contractCreateTx.execute(client);
+  const receipt = await response.getReceipt(client);
+  const newContractId = receipt.contractId;
+  if (!newContractId) {
+    throw new Error('Failed to retrieve new contract ID from receipt');
+  }
+  console.log(
+    `Deployed rateStrategyDOVUv2. Contract ID = ${newContractId.toString()}, ` +
+      `EVM address = 0x${newContractId.toSolidityAddress()}`
+  );
+  console.log('>> Set NEW_RATE_STRATEGY_ADDRESS to this EVM address before running Step 6.');
+}
+
+// --------------------------------------------------------------------------
+// Step 2: Supply cap  19,379,844 -> 31,250,000
+// --------------------------------------------------------------------------
+async function setSupplyCap() {
+  const c = await configurator();
+  console.log(`Setting DOVU supply cap to ${TARGET.supplyCap} ...`);
+  const txn = await c.setSupplyCap(DOVU_ADDRESS, TARGET.supplyCap);
+  await txn.wait();
+  console.log('New supply cap:', (await c.getSupplyCap(DOVU_ADDRESS)).toString());
+}
+
+// --------------------------------------------------------------------------
+// Step 3: Borrow cap  3,875,968 -> 15,625,000
+// --------------------------------------------------------------------------
+async function setBorrowCap() {
+  const c = await configurator();
+  console.log(`Setting DOVU borrow cap to ${TARGET.borrowCap} ...`);
+  const txn = await c.setBorrowCap(DOVU_ADDRESS, TARGET.borrowCap);
+  await txn.wait();
+  console.log('New borrow cap:', (await c.getBorrowCap(DOVU_ADDRESS)).toString());
+}
+
+// --------------------------------------------------------------------------
+// Step 4: Collateral config  LTV 20% (unchanged), LT 59%->45%, LB 6.66%->10%
+// --------------------------------------------------------------------------
+async function configureCollateral() {
+  const c = await configurator();
+  console.log(
+    `Configuring DOVU collateral: ltv=${TARGET.ltv}, ` +
+      `liquidationThreshold=${TARGET.liquidationThreshold}, ` +
+      `liquidationBonus=${TARGET.liquidationBonus} ...`
+  );
+  const txn = await c.configureReserveAsCollateral(
+    DOVU_ADDRESS,
+    TARGET.ltv,
+    TARGET.liquidationThreshold,
+    TARGET.liquidationBonus
+  );
+  await txn.wait();
+  console.log('DOVU collateral parameters updated.');
+}
+
+// --------------------------------------------------------------------------
+// Step 5: Reserve factor  17.25% -> 25%
+// --------------------------------------------------------------------------
+async function setReserveFactor() {
+  const c = await configurator();
+  console.log(`Setting DOVU reserve factor to ${TARGET.reserveFactor} ...`);
+  const txn = await c.setReserveFactor(DOVU_ADDRESS, TARGET.reserveFactor);
+  await txn.wait();
+  console.log('DOVU reserve factor updated.');
+}
+
+// --------------------------------------------------------------------------
+// Step 6: Wire the new interest-rate strategy (Slope-2 = 300%) to DOVU.
+//   Requires NEW_RATE_STRATEGY_ADDRESS populated from Step 1.
+// --------------------------------------------------------------------------
+async function setInterestRateStrategy() {
+  if (!NEW_RATE_STRATEGY_ADDRESS) {
+    throw new Error(
+      'NEW_RATE_STRATEGY_ADDRESS is empty. Run deployNewRateStrategy() first, then set it.'
+    );
+  }
+  const c = await configurator();
+  console.log(`Setting DOVU interest-rate strategy to ${NEW_RATE_STRATEGY_ADDRESS} ...`);
+  const txn = await c.setReserveInterestRateStrategyAddress(
+    DOVU_ADDRESS,
+    NEW_RATE_STRATEGY_ADDRESS
+  );
+  await txn.wait();
+  console.log('DOVU interest-rate strategy updated.');
+}
+
+async function main() {
+  console.log('Chain:', chain_type);
+  console.log('Pool admin signer:', owner.address);
+  console.log('LendingPool:', LendingPool.hedera_mainnet.address);
+
+  // Inspect current state before making any changes.
+  await printCurrentParams('BEFORE');
+
+  // Execute steps one at a time by uncommenting them (review each on-chain).
+  //
+  // Step 1 - deploy new interest-rate strategy (Slope-2 = 300%).
+  //          Copy the printed EVM address into NEW_RATE_STRATEGY_ADDRESS.
+  // await deployNewRateStrategy();
+  //
+  // Step 2 - supply cap.
+  // await setSupplyCap();
+  //
+  // Step 3 - borrow cap.
+  // await setBorrowCap();
+  //
+  // Step 4 - LTV / liquidation threshold / liquidation bonus.
+  // await configureCollateral();
+  //
+  // Step 5 - reserve factor.
+  // await setReserveFactor();
+  //
+  // Step 6 - attach new interest-rate strategy (needs Step 1 address).
+  // await setInterestRateStrategy();
+
+  // Verify the resulting state after applying the changes.
+  // await printCurrentParams('AFTER');
+}
+
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });
