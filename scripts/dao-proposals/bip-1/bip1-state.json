@@ -1,0 +1,35 @@
+{
+  "steps": {
+    "deployNewRateStrategy": {
+      "completed": true,
+      "address": "0x0000000000000000000000000000000000a21a9d",
+      "txHash": null,
+      "timestamp": "2026-07-06T12:14:21.414Z"
+    },
+    "setSupplyCap": {
+      "completed": true,
+      "txHash": "0x256850954db32ffe6218b9aa28d5925bc48e964eac1a4c5362779a547fb2f650",
+      "timestamp": "2026-07-06T12:17:09.460Z"
+    },
+    "setBorrowCap": {
+      "completed": true,
+      "txHash": "0xc0c518131bfb421dd5a294b1130bd5d3853904d244acad52919a0637c4a2f39a",
+      "timestamp": "2026-07-06T12:17:20.538Z"
+    },
+    "configureCollateral": {
+      "completed": true,
+      "txHash": "0xb506ea215bf6f4d81fb3389a702f1111ae60b11f76df663cb7e42edd6fd4c670",
+      "timestamp": "2026-07-06T12:22:47.744Z"
+    },
+    "setReserveFactor": {
+      "completed": true,
+      "txHash": "0xc21a2713284383e0caebec53e31d0f96c978869893fccdddb3e8e9b45d02d1b9",
+      "timestamp": "2026-07-06T12:27:46.975Z"
+    },
+    "setInterestRateStrategy": {
+      "completed": true,
+      "txHash": "0x84b6c958524d1fd82fcc55b8185a7ad2439f8670da245070bbf6d2975fa9afc9",
+      "timestamp": "2026-07-06T12:29:35.110Z"
+    }
+  }
+}

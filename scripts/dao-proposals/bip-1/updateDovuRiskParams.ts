@@ -26,17 +26,21 @@
  *    LendingPoolConfigurator setSupplyCap/setBorrowCap convention.
  *  - Slope-2 cannot be mutated in place. A new DefaultReserveInterestRateStrategy
  *    must be deployed (deployNewRateStrategy) and then wired to the DOVU reserve
- *    via setReserveInterestRateStrategyAddress(). Fill NEW_RATE_STRATEGY_ADDRESS
- *    with the deployed address before running that step.
+ *    via setReserveInterestRateStrategyAddress(). The deployed address is
+ *    recorded automatically in bip1-state.json and read back by that step.
  *  - Admin key: PRIVATE_KEY_MAINNET_ADMIN (pool admin). This script is written
  *    for mainnet ONLY.
+ *  - After each step, run verifyDovuRiskParams.ts to check the on-chain state
+ *    it just wrote against the target values in this file.
  */
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 require('dotenv').config();
 
-import { ContractCreateFlow, ContractFunctionParameters } from '@hashgraph/sdk';
+import { ContractCreateFlow, ContractFunctionParameters, Hbar } from '@hashgraph/sdk';
 const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
+const fs = require('fs');
+const path = require('path');
 
 import {
   DOVU,
@@ -75,27 +79,54 @@ const TARGET = {
 };
 
 // Address of the new DOVU interest-rate strategy (Slope-2 = 300%).
-// Populate this AFTER running deployNewRateStrategy().
-const NEW_RATE_STRATEGY_ADDRESS = '';
+// Auto-populated from bip1-state.json after deployNewRateStrategy() runs;
+// only needed as a manual fallback if the state file is unavailable.
+const NEW_RATE_STRATEGY_ADDRESS_OVERRIDE = '';
+
+// --------------------------------------------------------------------------
+// bip1-state.json - records what's actually been executed on-chain so far
+// (deployed addresses, tx hashes) so verifyDovuRiskParams.ts can check each
+// step independently as it's completed.
+// --------------------------------------------------------------------------
+const STATE_PATH = path.join(__dirname, 'bip1-state.json');
+
+function loadState() {
+  return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+}
+
+function saveStepState(step: string, data: Record<string, unknown>) {
+  const state = loadState();
+  state.steps[step] = { ...state.steps[step], ...data, completed: true };
+  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+}
 
 async function setupContract(artifactName: string, contractAddress: string) {
   const artifact = await hre.artifacts.readArtifact(artifactName);
   return new ethers.Contract(contractAddress, artifact.abi, owner);
 }
 
+// Read-only variant (no signer) for view calls. Hedera's JSON-RPC relay
+// resolves eth_call's `from` against a real Hedera account when the contract
+// is connected via a signer; owner's derived EVM address isn't indexed there,
+// so plain view reads must go through the provider instead.
+async function setupReadOnlyContract(artifactName: string, contractAddress: string) {
+  const artifact = await hre.artifacts.readArtifact(artifactName);
+  return new ethers.Contract(contractAddress, artifact.abi, provider);
+}
+
 async function configurator() {
-  return setupContract(
-    'LendingPoolConfigurator',
-    LendingPoolConfigurator.hedera_mainnet.address
-  );
+  return setupContract('LendingPoolConfigurator', LendingPoolConfigurator.hedera_mainnet.address);
 }
 
 // --------------------------------------------------------------------------
 // Read + log current on-chain DOVU configuration.
 // --------------------------------------------------------------------------
 async function printCurrentParams(label: string) {
-  const configuratorContract = await configurator();
-  const dataProvider = await setupContract(
+  const configuratorContract = await setupReadOnlyContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_mainnet.address
+  );
+  const dataProvider = await setupReadOnlyContract(
     'AaveProtocolDataProvider',
     AaveProtocolDataProvider.hedera_mainnet.address
   );
@@ -120,7 +151,7 @@ async function printCurrentParams(label: string) {
 // --------------------------------------------------------------------------
 // Step 1: Deploy the new DOVU interest-rate strategy (Slope-2 = 300%).
 //   Mirrors scripts/updateContracts/deployNewStrategy.ts (Hedera SDK deploy).
-//   Copy the resulting Contract ID / EVM address into NEW_RATE_STRATEGY_ADDRESS.
+//   The resulting address is recorded in bip1-state.json automatically.
 // --------------------------------------------------------------------------
 async function deployNewRateStrategy() {
   const strategy = rateStrategyDOVUv2;
@@ -149,6 +180,10 @@ async function deployNewRateStrategy() {
   const operatorPrKey = PrivateKey.fromStringECDSA(process.env.PRIVATE_KEY_MAINNET_ADMIN!);
   const operatorAccountId = AccountId.fromString(process.env.MAINNET_ADMIN_ACCOUNT_ID!);
   client.setOperator(operatorAccountId, operatorPrKey);
+  // ContractCreateFlow's internal FileCreate/FileAppend transactions fall back to the
+  // client's default max fee if none is set; at current HBAR pricing that default is
+  // too low for the file-append step and fails with INSUFFICIENT_TX_FEE.
+  client.setDefaultMaxTransactionFee(new Hbar(20));
 
   const contractCreateTx = new ContractCreateFlow()
     .setGas(2_000_000)
@@ -161,11 +196,13 @@ async function deployNewRateStrategy() {
   if (!newContractId) {
     throw new Error('Failed to retrieve new contract ID from receipt');
   }
+  const address = `0x${newContractId.toSolidityAddress()}`;
   console.log(
     `Deployed rateStrategyDOVUv2. Contract ID = ${newContractId.toString()}, ` +
-      `EVM address = 0x${newContractId.toSolidityAddress()}`
+      `EVM address = ${address}`
   );
-  console.log('>> Set NEW_RATE_STRATEGY_ADDRESS to this EVM address before running Step 6.');
+  saveStepState('deployNewRateStrategy', { address, timestamp: new Date().toISOString() });
+  console.log(`>> Recorded in ${STATE_PATH}. Step 6 will read it automatically.`);
 }
 
 // --------------------------------------------------------------------------
@@ -175,8 +212,16 @@ async function setSupplyCap() {
   const c = await configurator();
   console.log(`Setting DOVU supply cap to ${TARGET.supplyCap} ...`);
   const txn = await c.setSupplyCap(DOVU_ADDRESS, TARGET.supplyCap);
-  await txn.wait();
-  console.log('New supply cap:', (await c.getSupplyCap(DOVU_ADDRESS)).toString());
+  const receipt = await txn.wait();
+  const readOnly = await setupReadOnlyContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_mainnet.address
+  );
+  console.log('New supply cap:', (await readOnly.getSupplyCap(DOVU_ADDRESS)).toString());
+  saveStepState('setSupplyCap', {
+    txHash: receipt.transactionHash,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -186,8 +231,16 @@ async function setBorrowCap() {
   const c = await configurator();
   console.log(`Setting DOVU borrow cap to ${TARGET.borrowCap} ...`);
   const txn = await c.setBorrowCap(DOVU_ADDRESS, TARGET.borrowCap);
-  await txn.wait();
-  console.log('New borrow cap:', (await c.getBorrowCap(DOVU_ADDRESS)).toString());
+  const receipt = await txn.wait();
+  const readOnly = await setupReadOnlyContract(
+    'LendingPoolConfigurator',
+    LendingPoolConfigurator.hedera_mainnet.address
+  );
+  console.log('New borrow cap:', (await readOnly.getBorrowCap(DOVU_ADDRESS)).toString());
+  saveStepState('setBorrowCap', {
+    txHash: receipt.transactionHash,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -206,8 +259,12 @@ async function configureCollateral() {
     TARGET.liquidationThreshold,
     TARGET.liquidationBonus
   );
-  await txn.wait();
+  const receipt = await txn.wait();
   console.log('DOVU collateral parameters updated.');
+  saveStepState('configureCollateral', {
+    txHash: receipt.transactionHash,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -217,8 +274,12 @@ async function setReserveFactor() {
   const c = await configurator();
   console.log(`Setting DOVU reserve factor to ${TARGET.reserveFactor} ...`);
   const txn = await c.setReserveFactor(DOVU_ADDRESS, TARGET.reserveFactor);
-  await txn.wait();
+  const receipt = await txn.wait();
   console.log('DOVU reserve factor updated.');
+  saveStepState('setReserveFactor', {
+    txHash: receipt.transactionHash,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 // --------------------------------------------------------------------------
@@ -226,19 +287,24 @@ async function setReserveFactor() {
 //   Requires NEW_RATE_STRATEGY_ADDRESS populated from Step 1.
 // --------------------------------------------------------------------------
 async function setInterestRateStrategy() {
-  if (!NEW_RATE_STRATEGY_ADDRESS) {
+  const state = loadState();
+  const strategyAddress =
+    NEW_RATE_STRATEGY_ADDRESS_OVERRIDE || state.steps.deployNewRateStrategy.address;
+  if (!strategyAddress) {
     throw new Error(
-      'NEW_RATE_STRATEGY_ADDRESS is empty. Run deployNewRateStrategy() first, then set it.'
+      'No deployed strategy address found. Run deployNewRateStrategy() first ' +
+        '(it records the address in bip1-state.json), or set NEW_RATE_STRATEGY_ADDRESS_OVERRIDE.'
     );
   }
   const c = await configurator();
-  console.log(`Setting DOVU interest-rate strategy to ${NEW_RATE_STRATEGY_ADDRESS} ...`);
-  const txn = await c.setReserveInterestRateStrategyAddress(
-    DOVU_ADDRESS,
-    NEW_RATE_STRATEGY_ADDRESS
-  );
-  await txn.wait();
+  console.log(`Setting DOVU interest-rate strategy to ${strategyAddress} ...`);
+  const txn = await c.setReserveInterestRateStrategyAddress(DOVU_ADDRESS, strategyAddress);
+  const receipt = await txn.wait();
   console.log('DOVU interest-rate strategy updated.');
+  saveStepState('setInterestRateStrategy', {
+    txHash: receipt.transactionHash,
+    timestamp: new Date().toISOString(),
+  });
 }
 
 async function main() {
@@ -251,8 +317,10 @@ async function main() {
 
   // Execute steps one at a time by uncommenting them (review each on-chain).
   //
+  // After each step, run verifyDovuRiskParams.ts before uncommenting the next.
+  //
   // Step 1 - deploy new interest-rate strategy (Slope-2 = 300%).
-  //          Copy the printed EVM address into NEW_RATE_STRATEGY_ADDRESS.
+  //          Address is recorded in bip1-state.json automatically.
   // await deployNewRateStrategy();
   //
   // Step 2 - supply cap.
@@ -267,7 +335,8 @@ async function main() {
   // Step 5 - reserve factor.
   // await setReserveFactor();
   //
-  // Step 6 - attach new interest-rate strategy (needs Step 1 address).
+  // Step 6 - attach new interest-rate strategy (reads address from Step 1's
+  //          state file entry automatically).
   // await setInterestRateStrategy();
 
   // Verify the resulting state after applying the changes.
