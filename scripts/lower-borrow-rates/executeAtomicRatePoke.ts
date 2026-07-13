@@ -21,6 +21,8 @@ const fs = require('fs');
 const path = require('path');
 
 import { withRetry } from './rpcRetry';
+import { assertReviewedExecutorRuntime } from './atomicRatePokeVerification';
+import { assertTargetVariableCurve } from './rateTargets';
 import {
   WHBAR,
   USDC,
@@ -78,6 +80,8 @@ type DeploymentState = {
   chainId: number;
   executor: string;
   runtimeBytecodeHash: string;
+  reviewedRuntimeTemplateHash: string;
+  reviewedSourceHash: string;
   controller: string;
   originalEmergencyAdmin: string;
   poolAdmin: string;
@@ -103,17 +107,40 @@ function saveExecution(state: DeploymentState, update: Record<string, unknown>) 
   fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
 }
 
+function saveExecutionBestEffort(state: DeploymentState, update: Record<string, unknown>) {
+  try {
+    saveExecution(state, update);
+  } catch (error: any) {
+    console.error('Could not persist recovery state:', error?.message || error);
+  }
+}
+
 async function contractAs(name: string, address: string, signerOrProvider: any) {
   const artifact = await hre.artifacts.readArtifact(name);
   return new ethers.Contract(address, artifact.abi, signerOrProvider);
 }
 
-async function readRates(dp: any, assets: Array<[string, string]>) {
-  const rates: Record<string, string> = {};
+type ReserveSnapshot = {
+  liquidityRate: string;
+  stableBorrowRate: string;
+  variableBorrowRate: string;
+  liquidityIndex: string;
+  variableBorrowIndex: string;
+};
+
+async function readReserveSnapshots(dp: any, assets: Array<[string, string]>) {
+  const snapshots: Record<string, ReserveSnapshot> = {};
   for (const [symbol, asset] of assets) {
-    rates[symbol] = (await dp.getReserveData(asset)).variableBorrowRate.toString();
+    const reserve = await dp.getReserveData(asset);
+    snapshots[symbol] = {
+      liquidityRate: reserve.liquidityRate.toString(),
+      stableBorrowRate: reserve.stableBorrowRate.toString(),
+      variableBorrowRate: reserve.variableBorrowRate.toString(),
+      liquidityIndex: reserve.liquidityIndex.toString(),
+      variableBorrowIndex: reserve.variableBorrowIndex.toString(),
+    };
   }
-  return rates;
+  return snapshots;
 }
 
 async function preflight(state: DeploymentState) {
@@ -179,7 +206,13 @@ async function preflight(state: DeploymentState) {
   if (code === '0x' || ethers.utils.keccak256(code) !== state.runtimeBytecodeHash) {
     throw new Error('Executor runtime bytecode is missing or does not match deployment state.');
   }
-
+  const reviewedRuntime = await assertReviewedExecutorRuntime(hre, code);
+  if (
+    reviewedRuntime.reviewedRuntimeTemplateHash !== state.reviewedRuntimeTemplateHash ||
+    reviewedRuntime.reviewedSourceHash !== state.reviewedSourceHash
+  ) {
+    throw new Error('Executor does not match the reviewed runtime/source recorded at deployment.');
+  }
   const immutableChecks: Array<[string, string]> = [
     [await executor.CONTROLLER(), state.controller],
     [await executor.ADDRESSES_PROVIDER(), a.provider],
@@ -224,23 +257,81 @@ async function preflight(state: DeploymentState) {
         `${symbol}: live strategy ${reserve.interestRateStrategyAddress} != ${expectedStrategy}`
       );
     }
+    const strategy = await contractAs(
+      'DefaultReserveInterestRateStrategy',
+      expectedStrategy,
+      provider
+    );
+    const [base, slope1, slope2, max] = await Promise.all([
+      strategy.baseVariableBorrowRate(),
+      strategy.variableRateSlope1(),
+      strategy.variableRateSlope2(),
+      strategy.getMaxVariableBorrowRate(),
+    ]);
+    assertTargetVariableCurve(symbol, {
+      baseVariableBorrowRate: base,
+      variableRateSlope1: slope1,
+      variableRateSlope2: slope2,
+      maxVariableBorrowRate: max,
+    });
     const cfg = await dp.getReserveConfigurationData(asset);
     if (!cfg.isActive || !cfg.isFrozen || cfg.stableBorrowRateEnabled) {
       throw new Error(`${symbol}: expected active, frozen, and stable borrowing disabled`);
     }
-    const liquidity = await new ethers.Contract(
+    const underlying = new ethers.Contract(
       asset,
       ['function balanceOf(address) view returns (uint256)'],
       provider
-    ).balanceOf(reserve.aTokenAddress);
+    );
+    const aToken = new ethers.Contract(
+      reserve.aTokenAddress,
+      ['function totalSupply() view returns (uint256)'],
+      provider
+    );
+    const [liquidity, aTokenSupply] = await Promise.all([
+      underlying.balanceOf(reserve.aTokenAddress),
+      aToken.totalSupply(),
+    ]);
     if (liquidity.lt(1))
       throw new Error(`${symbol}: insufficient aToken liquidity for one atomic unit`);
+    if (aTokenSupply.isZero()) throw new Error(`${symbol}: aToken total supply is zero`);
   }
 
-  const beforeRates = await readRates(dp, assets);
+  const beforeRates = await readReserveSnapshots(dp, assets);
   console.log('Preflight passed. No transaction has been sent.');
   console.log('Stored variable rates before:', beforeRates);
   return { ap, pool, configurator, dp, executor, assets, beforeRates };
+}
+
+function readReserveUpdateEvents(receipt: any, pool: any, assets: Array<[string, string]>) {
+  const updates: Record<string, ReserveSnapshot> = {};
+  const symbolByAsset = new Map(assets.map(([symbol, asset]) => [asset.toLowerCase(), symbol]));
+
+  for (const log of receipt.logs || []) {
+    if (!eq(log.address, pool.address)) continue;
+    let parsed: any;
+    try {
+      parsed = pool.interface.parseLog(log);
+    } catch {
+      continue;
+    }
+    if (parsed.name !== 'ReserveDataUpdated') continue;
+    const symbol = symbolByAsset.get(parsed.args.reserve.toLowerCase());
+    if (!symbol) continue;
+    if (updates[symbol]) throw new Error(`${symbol}: duplicate ReserveDataUpdated event`);
+    updates[symbol] = {
+      liquidityRate: parsed.args.liquidityRate.toString(),
+      stableBorrowRate: parsed.args.stableBorrowRate.toString(),
+      variableBorrowRate: parsed.args.variableBorrowRate.toString(),
+      liquidityIndex: parsed.args.liquidityIndex.toString(),
+      variableBorrowIndex: parsed.args.variableBorrowIndex.toString(),
+    };
+  }
+
+  for (const [symbol] of assets) {
+    if (!updates[symbol]) throw new Error(`${symbol}: missing ReserveDataUpdated event`);
+  }
+  return updates;
 }
 
 async function main() {
@@ -259,10 +350,17 @@ async function main() {
 
   let executionError: unknown;
   let handoffSubmitted = false;
+  let executeReceipt: any;
+  let reserveUpdates: Record<string, ReserveSnapshot> | undefined;
   try {
     console.log('1/3 Assigning emergency admin to executor...');
-    const handoffTx = await c.ap.setEmergencyAdmin(state.executor);
+    // Mark BEFORE broadcasting. If setEmergencyAdmin reaches the relay but the
+    // await rejects (e.g. a dropped connection after the relay accepted it), the
+    // transaction can still mine and make the executor the emergency admin.
+    // Setting this flag first guarantees the finally block always runs the
+    // restoration path rather than skipping it and stranding the role.
     handoffSubmitted = true;
+    const handoffTx = await c.ap.setEmergencyAdmin(state.executor);
     saveExecution(state, { startedAt: new Date().toISOString(), handoffTxHash: handoffTx.hash });
     await handoffTx.wait();
     saveExecution(state, { handoffMined: true });
@@ -271,32 +369,94 @@ async function main() {
     await sleep(TX_DELAY_MS);
 
     console.log('2/3 Executing atomic unpause -> rate refresh -> pause...');
-    const executeTx = await c.executor.executeAtomicRefresh({
-      gasLimit: Number(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT || 6_000_000),
-    });
+    // This is the first point at which the executor holds emergency admin and
+    // the complete success path is reachable. A failed simulation is a hard
+    // stop: restore the role without broadcasting a guaranteed-revert call.
+    try {
+      await c.executor.callStatic.executeAtomicRefresh();
+    } catch (simulationError: any) {
+      throw new Error(
+        `executeAtomicRefresh simulation failed; refusing execution: ${
+          simulationError?.message || simulationError
+        }`
+      );
+    }
+
+    // The executor now holds emergency admin, so the full success path is
+    // reachable and can be measured. Use a buffered estimate, but never below
+    // the configured/default floor: Hedera HTS precompile gas can under-report,
+    // and under-provisioning a one-shot wastes the handoff transaction. A short
+    // limit reverts atomically and leaves the pool paused, so erring high is safe.
+    const fallbackGasLimit = Number(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT || 6_000_000);
+    let executeGasLimit = fallbackGasLimit;
+    try {
+      const estimatedGas = await c.executor.estimateGas.executeAtomicRefresh();
+      executeGasLimit = Math.max(estimatedGas.mul(150).div(100).toNumber(), fallbackGasLimit);
+      console.log(
+        `Estimated executeAtomicRefresh gas ${estimatedGas.toString()}; sending with ${executeGasLimit}.`
+      );
+    } catch (estimateError: any) {
+      console.warn(
+        `Gas estimation unavailable (${
+          estimateError?.message || estimateError
+        }); using fallback ${fallbackGasLimit}.`
+      );
+    }
+    const executeTx = await c.executor.executeAtomicRefresh({ gasLimit: executeGasLimit });
     saveExecution(state, { executeTxHash: executeTx.hash });
-    const executeReceipt = await executeTx.wait();
+    executeReceipt = await executeTx.wait();
     if (executeReceipt.status !== 1)
       throw new Error(`Execution transaction failed: ${executeTx.hash}`);
+    reserveUpdates = readReserveUpdateEvents(executeReceipt, c.pool, c.assets);
     if (!(await c.pool.paused())) throw new Error('Pool is not paused after atomic execution.');
     if (!(await c.executor.used()))
       throw new Error('Executor did not record successful one-shot use.');
     saveExecution(state, { executeCompleted: true, executeBlock: executeReceipt.blockNumber });
   } catch (error) {
     executionError = error;
-    saveExecution(state, { executeCompleted: false, error: `${(error as any)?.message || error}` });
+    saveExecutionBestEffort(state, {
+      executeCompleted: false,
+      error: `${(error as any)?.message || error}`,
+    });
   } finally {
-    // A submitted handoff is always paired with a restoration transaction,
-    // even if receipt or role reads fail after the handoff was accepted.
-    const liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
     if (handoffSubmitted) {
+      // Reads and rescue are best effort. Neither may prevent the unconditional
+      // owner-driven restoration transaction below.
+      let liveEmergencyAdmin: string | undefined;
+      let poolPaused: boolean | undefined;
       try {
-        if (eq(liveEmergencyAdmin, state.executor) && !(await c.pool.paused())) {
+        liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
+      } catch (adminReadError: any) {
+        console.error(
+          'Could not read the emergency admin; proceeding with unconditional restoration:',
+          adminReadError?.message || adminReadError
+        );
+        saveExecutionBestEffort(state, {
+          recoveryAdminReadError: `${adminReadError?.message || adminReadError}`,
+        });
+      }
+      try {
+        poolPaused = await c.pool.paused();
+      } catch (pauseReadError: any) {
+        console.error(
+          'Could not read the pool pause state before restoration:',
+          pauseReadError?.message || pauseReadError
+        );
+        saveExecutionBestEffort(state, {
+          recoveryPauseReadError: `${pauseReadError?.message || pauseReadError}`,
+        });
+      }
+
+      try {
+        if (
+          poolPaused === false &&
+          (!liveEmergencyAdmin || eq(liveEmergencyAdmin, state.executor))
+        ) {
           console.error(
             'Pool observed open. Attempting executor pause-only rescue before role restoration.'
           );
           const rescueTx = await c.executor.pauseOnly();
-          saveExecution(state, { pauseOnlyRescueTxHash: rescueTx.hash });
+          saveExecutionBestEffort(state, { pauseOnlyRescueTxHash: rescueTx.hash });
           await rescueTx.wait();
           await sleep(TX_DELAY_MS);
         } else {
@@ -310,30 +470,47 @@ async function main() {
           'CRITICAL: executor pause-only rescue failed:',
           rescueError?.message || rescueError
         );
-        saveExecution(state, { pauseOnlyRescueError: `${rescueError?.message || rescueError}` });
+        saveExecutionBestEffort(state, {
+          pauseOnlyRescueError: `${rescueError?.message || rescueError}`,
+        });
       }
 
       console.log('3/3 Restoring original emergency admin...');
       try {
         const restoreTx = await c.ap.setEmergencyAdmin(state.originalEmergencyAdmin);
-        saveExecution(state, { restoreTxHash: restoreTx.hash });
+        saveExecutionBestEffort(state, { restoreTxHash: restoreTx.hash });
         await restoreTx.wait();
         await waitForAddress(
           'Emergency-admin restoration',
           () => c.ap.getEmergencyAdmin(),
           state.originalEmergencyAdmin
         );
-        saveExecution(state, { restoreCompleted: true });
+        saveExecutionBestEffort(state, { restoreCompleted: true });
         await sleep(TX_DELAY_MS);
       } catch (restoreError: any) {
-        saveExecution(state, {
-          restoreCompleted: false,
-          restoreError: `${restoreError?.message || restoreError}`,
-        });
-        console.error(
-          'CRITICAL: emergency-admin restoration failed. Manual owner action is required.'
-        );
-        throw restoreError;
+        // A relay may reject after accepting the signed transaction. Reconcile
+        // the live role before declaring restoration failed.
+        try {
+          await waitForAddress(
+            'Emergency-admin restoration reconciliation',
+            () => c.ap.getEmergencyAdmin(),
+            state.originalEmergencyAdmin
+          );
+          saveExecutionBestEffort(state, {
+            restoreCompleted: true,
+            restoreReconciledAfterError: `${restoreError?.message || restoreError}`,
+          });
+        } catch (reconciliationError: any) {
+          saveExecutionBestEffort(state, {
+            restoreCompleted: false,
+            restoreError: `${restoreError?.message || restoreError}`,
+            restoreReconciliationError: `${reconciliationError?.message || reconciliationError}`,
+          });
+          console.error(
+            'CRITICAL: emergency-admin restoration failed. Manual owner action is required.'
+          );
+          throw restoreError;
+        }
       }
 
       if (!(await c.pool.paused())) {
@@ -341,33 +518,66 @@ async function main() {
           'Pool still open after role restoration. Sending direct emergency-admin pause.'
         );
         const pauseTx = await c.configurator.setPoolPause(true);
-        saveExecution(state, { fallbackPauseTxHash: pauseTx.hash });
+        saveExecutionBestEffort(state, { fallbackPauseTxHash: pauseTx.hash });
         await pauseTx.wait();
       }
-    } else if (!eq(liveEmergencyAdmin, state.originalEmergencyAdmin)) {
-      throw new Error(
-        `CRITICAL: unexpected emergency admin ${liveEmergencyAdmin}; expected executor or original EOA`
-      );
+    } else {
+      const liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
+      if (!eq(liveEmergencyAdmin, state.originalEmergencyAdmin)) {
+        throw new Error(
+          `CRITICAL: unexpected emergency admin ${liveEmergencyAdmin}; expected original EOA`
+        );
+      }
     }
   }
 
-  const finalEmergencyAdmin = await c.ap.getEmergencyAdmin();
-  const finalPoolAdmin = await c.ap.getPoolAdmin();
-  const finalPaused = await c.pool.paused();
+  const [finalProviderOwner, finalEmergencyAdmin, finalPoolAdmin, finalPaused] = await Promise.all([
+    c.ap.owner(),
+    c.ap.getEmergencyAdmin(),
+    c.ap.getPoolAdmin(),
+    c.pool.paused(),
+  ]);
+  if (!eq(finalProviderOwner, state.controller))
+    throw new Error('AddressesProvider owner changed unexpectedly.');
   if (!eq(finalEmergencyAdmin, state.originalEmergencyAdmin))
     throw new Error('Final emergency admin is incorrect.');
   if (!eq(finalPoolAdmin, state.poolAdmin)) throw new Error('Pool admin changed unexpectedly.');
   if (!finalPaused) throw new Error('Pool is not paused at final verification.');
 
   if (executionError) throw executionError;
+  if (!executeReceipt || !reserveUpdates) {
+    throw new Error('Execution receipt or ReserveDataUpdated events are unavailable.');
+  }
 
-  const afterRates = await readRates(c.dp, c.assets);
+  const afterRates = await readReserveSnapshots(c.dp, c.assets);
   for (const [symbol] of c.assets) {
-    if (!ethers.BigNumber.from(afterRates[symbol]).lt(c.beforeRates[symbol])) {
-      throw new Error(`${symbol}: stored variable rate did not decrease`);
+    const before = c.beforeRates[symbol];
+    const after = afterRates[symbol];
+    const eventUpdate = reserveUpdates[symbol];
+
+    if (ethers.BigNumber.from(after.variableBorrowRate).gt(before.variableBorrowRate)) {
+      throw new Error(
+        `${symbol}: stored variable rate increased (before ${before.variableBorrowRate}, after ${after.variableBorrowRate})`
+      );
+    }
+
+    for (const field of [
+      'liquidityRate',
+      'stableBorrowRate',
+      'variableBorrowRate',
+      'liquidityIndex',
+      'variableBorrowIndex',
+    ] as const) {
+      if (after[field] !== eventUpdate[field]) {
+        throw new Error(
+          `${symbol}: ${field} does not match ReserveDataUpdated event (${after[field]} != ${eventUpdate[field]})`
+        );
+      }
     }
   }
-  for (const [, asset] of c.assets) {
+
+  const allReserves: string[] = await c.pool.getReservesList();
+  for (const asset of allReserves) {
     const cfg = await c.dp.getReserveConfigurationData(asset);
     if (!cfg.isFrozen) throw new Error(`Reserve ${asset} is no longer frozen.`);
   }
@@ -376,10 +586,12 @@ async function main() {
     completedAt: new Date().toISOString(),
     beforeRates: c.beforeRates,
     afterRates,
+    reserveDataUpdatedEvents: reserveUpdates,
   });
   console.log('Atomic refresh completed and verified.');
-  console.log('Stored variable rates after:', afterRates);
+  console.log('Stored reserve rates after:', afterRates);
   console.log('Pool paused:', finalPaused);
+  console.log('AddressesProvider owner unchanged:', finalProviderOwner);
   console.log('Emergency admin restored:', finalEmergencyAdmin);
   console.log('Pool admin unchanged:', finalPoolAdmin);
 }

@@ -25,8 +25,15 @@ import {
   USDC,
   LendingPool,
   LendingPoolConfigurator,
+  AaveProtocolDataProvider,
 } from '../outputReserveData.json';
 import { oneRay } from '../../helpers/constants';
+import { withRetry } from './rpcRetry';
+import {
+  TARGET_BASE_VARIABLE_RATE_RAY,
+  TARGET_MAX_VARIABLE_RATE_RAY,
+  TARGET_VARIABLE_RATE_SLOPE_RAY,
+} from './rateTargets';
 
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
 if (chain_type !== 'hedera_mainnet') {
@@ -35,7 +42,9 @@ if (chain_type !== 'hedera_mainnet') {
   );
 }
 
-const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '');
+const provider = withRetry(
+  new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '')
+);
 
 const RESERVES: Record<'WHBAR' | 'USDC' | 'WETH', string> = {
   WHBAR: WHBAR.hedera_mainnet.token.address,
@@ -62,11 +71,18 @@ function reportRay(label: string, actual: unknown, expected: unknown) {
   const pass = actual?.toString() === expected?.toString();
   if (!pass) allPassed = false;
   console.log(
-    `   ${pass ? '✅' : '❌'} ${label}: on-chain=${formatRay(actual)} expected=${formatRay(expected)}`
+    `   ${pass ? '✅' : '❌'} ${label}: on-chain=${formatRay(actual)} expected=${formatRay(
+      expected
+    )}`
   );
 }
 function reportAddress(label: string, actual: unknown, expected: unknown) {
   const pass = actual?.toString().toLowerCase() === expected?.toString().toLowerCase();
+  if (!pass) allPassed = false;
+  console.log(`   ${pass ? '✅' : '❌'} ${label}: on-chain=${actual} expected=${expected}`);
+}
+function reportValue(label: string, actual: string, expected: string) {
+  const pass = actual.toLowerCase() === expected.toLowerCase();
   if (!pass) allPassed = false;
   console.log(`   ${pass ? '✅' : '❌'} ${label}: on-chain=${actual} expected=${expected}`);
 }
@@ -88,20 +104,41 @@ async function verifyReserve(symbol: 'WHBAR' | 'USDC' | 'WETH', entry: any) {
     return;
   }
   const deployed = entry.deploy.address;
+  const runtimeCode = await provider.getCode(deployed);
+  if (runtimeCode === '0x') {
+    allPassed = false;
+    console.log('   ❌ runtime bytecode: contract has no code');
+    return;
+  }
+  if (!entry.deploy.runtimeBytecodeHash) {
+    allPassed = false;
+    console.log('   ❌ runtimeBytecodeHash: missing from deployment state');
+  } else {
+    reportValue(
+      'runtimeBytecodeHash',
+      ethers.utils.keccak256(runtimeCode),
+      entry.deploy.runtimeBytecodeHash
+    );
+  }
   const strat = await setupContract('DefaultReserveInterestRateStrategy', deployed);
-  const [optimal, base, vSlope1, vSlope2, sSlope1, sSlope2] = await Promise.all([
+  const [optimal, base, vSlope1, vSlope2, sSlope1, sSlope2, maxVariableRate] = await Promise.all([
     strat.OPTIMAL_UTILIZATION_RATE(),
     strat.baseVariableBorrowRate(),
     strat.variableRateSlope1(),
     strat.variableRateSlope2(),
     strat.stableRateSlope1(),
     strat.stableRateSlope2(),
+    strat.getMaxVariableBorrowRate(),
   ]);
 
   console.log(`   Strategy address: ${deployed} (was ${entry.deploy.previousStrategy})`);
   // Overridden slopes must match the recorded target.
   reportRay('variableRateSlope1', vSlope1, entry.deploy.target.variableRateSlope1);
   reportRay('variableRateSlope2', vSlope2, entry.deploy.target.variableRateSlope2);
+  reportRay('approved target baseVariableBorrowRate', base, TARGET_BASE_VARIABLE_RATE_RAY);
+  reportRay('approved target variableRateSlope1', vSlope1, TARGET_VARIABLE_RATE_SLOPE_RAY);
+  reportRay('approved target variableRateSlope2', vSlope2, TARGET_VARIABLE_RATE_SLOPE_RAY);
+  reportRay('approved target maximum variable rate', maxVariableRate, TARGET_MAX_VARIABLE_RATE_RAY);
   // Non-slope params must equal what was preserved at deploy time.
   reportRay('optimalUtilizationRate', optimal, entry.deploy.preserved.optimalUtilizationRate);
   reportRay('baseVariableBorrowRate', base, entry.deploy.preserved.baseVariableBorrowRate);
@@ -120,7 +157,25 @@ async function verifyReserve(symbol: 'WHBAR' | 'USDC' | 'WETH', entry: any) {
   }
   const pool = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
   const reserveData = await pool.getReserveData(RESERVES[symbol]);
-  reportAddress('reserve.interestRateStrategyAddress', reserveData.interestRateStrategyAddress, deployed);
+  reportAddress(
+    'reserve.interestRateStrategyAddress',
+    reserveData.interestRateStrategyAddress,
+    deployed
+  );
+
+  // Stable borrowing must stay OFF (we never enable it; this catches drift).
+  const dp = await setupContract(
+    'AaveProtocolDataProvider',
+    AaveProtocolDataProvider.hedera_mainnet.address
+  );
+  const cfg = await dp.getReserveConfigurationData(RESERVES[symbol]);
+  const stableOff = cfg.stableBorrowRateEnabled === false;
+  if (!stableOff) allPassed = false;
+  console.log(
+    `   ${stableOff ? '✅' : '❌'} stableBorrowRateEnabled: on-chain=${
+      cfg.stableBorrowRateEnabled
+    } expected=false`
+  );
 }
 
 async function main() {
@@ -134,7 +189,11 @@ async function main() {
   }
 
   console.log(
-    `\n${allPassed ? '✅ All completed steps match target values.' : '❌ Some checks failed - see above.'}`
+    `\n${
+      allPassed
+        ? '✅ All completed steps match target values.'
+        : '❌ Some checks failed - see above.'
+    }`
   );
   if (!allPassed) process.exitCode = 1;
 }

@@ -14,6 +14,16 @@ interface IPoolPauseConfigurator {
   function setPoolPause(bool paused) external;
 }
 
+interface IAtomicRateStrategy {
+  function baseVariableBorrowRate() external view returns (uint256);
+
+  function variableRateSlope1() external view returns (uint256);
+
+  function variableRateSlope2() external view returns (uint256);
+
+  function getMaxVariableBorrowRate() external view returns (uint256);
+}
+
 /**
  * @notice One-shot executor for refreshing the stored WHBAR, USDC, and WETH
  * interest rates without exposing an inter-transaction unpause window.
@@ -28,6 +38,9 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
 
   address private constant HTS = address(0x167);
   int64 private constant HAPI_SUCCESS = 22;
+  uint256 private constant EXPECTED_BASE_VARIABLE_RATE = 0;
+  uint256 private constant EXPECTED_VARIABLE_RATE_SLOPE = 5e22; // 0.005% in ray
+  uint256 private constant EXPECTED_MAX_VARIABLE_RATE = 1e23; // 0.01% in ray
 
   ILendingPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
   ILendingPool public immutable override LENDING_POOL;
@@ -207,7 +220,25 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
 
     DataTypes.ReserveData memory reserve = LENDING_POOL.getReserveData(asset);
     require(reserve.interestRateStrategyAddress == expectedStrategy, 'EXECUTOR: strategy changed');
+    IAtomicRateStrategy strategy = IAtomicRateStrategy(expectedStrategy);
+    require(
+      strategy.baseVariableBorrowRate() == EXPECTED_BASE_VARIABLE_RATE,
+      'EXECUTOR: wrong base rate'
+    );
+    require(
+      strategy.variableRateSlope1() == EXPECTED_VARIABLE_RATE_SLOPE,
+      'EXECUTOR: wrong slope1'
+    );
+    require(
+      strategy.variableRateSlope2() == EXPECTED_VARIABLE_RATE_SLOPE,
+      'EXECUTOR: wrong slope2'
+    );
+    require(
+      strategy.getMaxVariableBorrowRate() == EXPECTED_MAX_VARIABLE_RATE,
+      'EXECUTOR: wrong max rate'
+    );
     require(reserve.aTokenAddress != address(0), 'EXECUTOR: reserve not initialized');
+    require(IERC20(reserve.aTokenAddress).totalSupply() > 0, 'EXECUTOR: zero aToken supply');
     require(IERC20(asset).balanceOf(reserve.aTokenAddress) >= 1, 'EXECUTOR: no liquidity');
   }
 }
