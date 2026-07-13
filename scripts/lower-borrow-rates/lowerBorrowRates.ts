@@ -47,6 +47,7 @@ import {
   AaveProtocolDataProvider,
 } from '../outputReserveData.json';
 import { oneRay } from '../../helpers/constants';
+import { withRetry } from './rpcRetry';
 
 // --------------------------------------------------------------------------
 // Network guard - mainnet only.
@@ -58,7 +59,9 @@ if (chain_type !== 'hedera_mainnet') {
   );
 }
 
-const provider = new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '');
+const provider = withRetry(
+  new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '')
+);
 const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
 
 // --------------------------------------------------------------------------
@@ -167,6 +170,17 @@ async function printCurrent(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   console.log('variableRateSlope2: ', rayToPct(s.vSlope2));
   console.log('stableRateSlope1:   ', rayToPct(s.sSlope1));
   console.log('stableRateSlope2:   ', rayToPct(s.sSlope2));
+  // Reserve-level flag (independent of the strategy's stable slopes) - must be off.
+  const dp = await setupReadOnlyContract(
+    'AaveProtocolDataProvider',
+    AaveProtocolDataProvider.hedera_mainnet.address
+  );
+  const cfg = await dp.getReserveConfigurationData(s.asset);
+  console.log(
+    'stableBorrowRateEnabled:',
+    cfg.stableBorrowRateEnabled,
+    cfg.stableBorrowRateEnabled ? '  ⚠️  SHOULD BE OFF' : ''
+  );
   console.log('==========================================\n');
 }
 
@@ -236,8 +250,13 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   client.setOperator(operatorAccountId, operatorPrKey);
   client.setDefaultMaxTransactionFee(new Hbar(20));
 
+  // Gas: this deploy uses ~791k gas. Hedera charges max(gasUsed, 80% * gasLimit),
+  // so an oversized limit is pure waste - 2,000,000 charged for 1,600,000 gas
+  // (~15 HBAR) vs ~7.6 HBAR when the 80% floor stays below actual usage. Keep the
+  // limit in [~800k, ~988k]: high enough not to run out, low enough that
+  // 0.8*limit <= actual so you pay for actual usage only.
   const contractCreateTx = new ContractCreateFlow()
-    .setGas(2_000_000)
+    .setGas(950_000)
     .setBytecode(artifact.bytecode)
     .setConstructorParameters(functionParameters);
 
@@ -304,7 +323,9 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   const state = loadState();
   const entry = state.reserves?.[symbol]?.deploy;
   if (!entry?.address) {
-    throw new Error(`No deployed strategy for ${symbol}. Run deployNewStrategy('${symbol}') first.`);
+    throw new Error(
+      `No deployed strategy for ${symbol}. Run deployNewStrategy('${symbol}') first.`
+    );
   }
   const deployed: string = entry.address;
 
@@ -313,8 +334,13 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     throw new Error(`${symbol}: state entry network ${entry.network} != ${chain_type}.`);
   }
   const liveProvider = LendingPoolAddressesProvider.hedera_mainnet.address;
-  if (entry.addressesProvider && entry.addressesProvider.toLowerCase() !== liveProvider.toLowerCase()) {
-    throw new Error(`${symbol}: state addressesProvider ${entry.addressesProvider} != ${liveProvider}.`);
+  if (
+    entry.addressesProvider &&
+    entry.addressesProvider.toLowerCase() !== liveProvider.toLowerCase()
+  ) {
+    throw new Error(
+      `${symbol}: state addressesProvider ${entry.addressesProvider} != ${liveProvider}.`
+    );
   }
 
   // (b) address has contract bytecode, and it matches the recorded hash.
@@ -381,6 +407,16 @@ async function wireStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     AaveProtocolDataProvider.hedera_mainnet.address
   );
   const before = await dp.getReserveData(asset);
+
+  // The strategy swap does NOT touch stableBorrowRateEnabled, but surface it -
+  // we want stable borrowing OFF everywhere.
+  const cfg = await dp.getReserveConfigurationData(asset);
+  if (cfg.stableBorrowRateEnabled) {
+    console.warn(
+      `⚠️  ${symbol}: stableBorrowRateEnabled is TRUE. This swap does not change it, ` +
+        `but stable borrowing should be OFF - disable via configurator.disableReserveStableRate.`
+    );
+  }
 
   const c = await configurator();
   console.log(`Wiring ${symbol} (${asset}): ${preSwapStrategy} -> ${deployed} ...`);
