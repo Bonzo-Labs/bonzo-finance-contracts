@@ -25,7 +25,7 @@ interface IAtomicRateStrategy {
 }
 
 /**
- * @notice One-shot executor for refreshing the stored WHBAR, USDC, WETH, BONZO, and HBARX
+ * @notice One-shot executor for refreshing every configured reserve's stored
  * interest rates without exposing an inter-transaction unpause window.
  *
  * The AddressesProvider owner temporarily assigns this contract as emergency
@@ -41,21 +41,14 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   uint256 private constant EXPECTED_BASE_VARIABLE_RATE = 0;
   uint256 private constant EXPECTED_VARIABLE_RATE_SLOPE = 5e22; // 0.005% in ray
   uint256 private constant EXPECTED_MAX_VARIABLE_RATE = 1e23; // 0.01% in ray
+  uint256 private constant RESERVE_COUNT = 14;
 
   ILendingPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
   ILendingPool public immutable override LENDING_POOL;
   IPoolPauseConfigurator public immutable CONFIGURATOR;
   address public immutable CONTROLLER;
-  address public immutable WHBAR;
-  address public immutable USDC;
-  address public immutable WETH;
-  address public immutable BONZO;
-  address public immutable HBARX;
-  address public immutable WHBAR_STRATEGY;
-  address public immutable USDC_STRATEGY;
-  address public immutable WETH_STRATEGY;
-  address public immutable BONZO_STRATEGY;
-  address public immutable HBARX_STRATEGY;
+  address[14] public ASSETS;
+  address[14] public STRATEGIES;
 
   bool public used;
 
@@ -70,15 +63,15 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   constructor(
     ILendingPoolAddressesProvider addressesProvider,
     address controller,
-    address[5] memory assets,
-    address[5] memory strategies
+    address[14] memory assets,
+    address[14] memory strategies
   ) public {
     require(address(addressesProvider) != address(0), 'EXECUTOR: zero provider');
     require(controller != address(0), 'EXECUTOR: zero controller');
-    for (uint256 i = 0; i < 5; i++) {
+    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
       require(assets[i] != address(0), 'EXECUTOR: zero asset');
       require(strategies[i] != address(0), 'EXECUTOR: zero strategy');
-      for (uint256 j = i + 1; j < 5; j++) {
+      for (uint256 j = i + 1; j < RESERVE_COUNT; j++) {
         require(assets[i] != assets[j], 'EXECUTOR: duplicate asset');
       }
     }
@@ -91,22 +84,16 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
     LENDING_POOL = ILendingPool(pool);
     CONFIGURATOR = IPoolPauseConfigurator(configurator);
     CONTROLLER = controller;
-    WHBAR = assets[0];
-    USDC = assets[1];
-    WETH = assets[2];
-    BONZO = assets[3];
-    HBARX = assets[4];
-    WHBAR_STRATEGY = strategies[0];
-    USDC_STRATEGY = strategies[1];
-    WETH_STRATEGY = strategies[2];
-    BONZO_STRATEGY = strategies[3];
-    HBARX_STRATEGY = strategies[4];
 
-    for (uint256 i = 0; i < 5; i++) _associateIfHts(assets[i]);
+    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
+      ASSETS[i] = assets[i];
+      STRATEGIES[i] = strategies[i];
+      _associateIfHts(assets[i]);
+    }
   }
 
   /**
-   * @notice Atomically unpauses, refreshes all five reserves through a
+   * @notice Atomically unpauses, refreshes all reserves through a
    * mode-zero flash loan, and pauses again. Any failure reverts the complete
    * transaction, including the initial unpause.
    */
@@ -122,11 +109,9 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
       'EXECUTOR: configurator changed'
     );
     require(LENDING_POOL.paused(), 'EXECUTOR: pool not paused');
-    _validateReserve(WHBAR, WHBAR_STRATEGY);
-    _validateReserve(USDC, USDC_STRATEGY);
-    _validateReserve(WETH, WETH_STRATEGY);
-    _validateReserve(BONZO, BONZO_STRATEGY);
-    _validateReserve(HBARX, HBARX_STRATEGY);
+    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
+      _validateReserve(ASSETS[i], STRATEGIES[i]);
+    }
 
     // Set before the external calls to prevent controller-driven re-entry. A
     // failure anywhere below reverts this write together with the unpause.
@@ -134,21 +119,13 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
     CONFIGURATOR.setPoolPause(false);
     require(!LENDING_POOL.paused(), 'EXECUTOR: unpause failed');
 
-    address[] memory assets = new address[](5);
-    assets[0] = WHBAR;
-    assets[1] = USDC;
-    assets[2] = WETH;
-    assets[3] = BONZO;
-    assets[4] = HBARX;
-
-    uint256[] memory amounts = new uint256[](5);
-    amounts[0] = 1;
-    amounts[1] = 1;
-    amounts[2] = 1;
-    amounts[3] = 1;
-    amounts[4] = 1;
-
-    uint256[] memory modes = new uint256[](5); // all mode 0: repay, never open debt
+    address[] memory assets = new address[](RESERVE_COUNT);
+    uint256[] memory amounts = new uint256[](RESERVE_COUNT);
+    uint256[] memory modes = new uint256[](RESERVE_COUNT); // mode 0: repay, never open debt
+    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
+      assets[i] = ASSETS[i];
+      amounts[i] = 1;
+    }
 
     LENDING_POOL.flashLoan(address(this), assets, amounts, modes, address(this), bytes(''), 0);
 
@@ -185,19 +162,14 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
     require(initiator == address(this), 'EXECUTOR: wrong initiator');
     require(used, 'EXECUTOR: execution not active');
     require(
-      assets.length == 5 && amounts.length == 5 && premiums.length == 5,
+      assets.length == RESERVE_COUNT &&
+        amounts.length == RESERVE_COUNT &&
+        premiums.length == RESERVE_COUNT,
       'EXECUTOR: wrong arrays'
     );
-    require(
-      assets[0] == WHBAR &&
-        assets[1] == USDC &&
-        assets[2] == WETH &&
-        assets[3] == BONZO &&
-        assets[4] == HBARX,
-      'EXECUTOR: wrong assets'
-    );
 
-    for (uint256 i = 0; i < 5; i++) {
+    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
+      require(assets[i] == ASSETS[i], 'EXECUTOR: wrong assets');
       require(amounts[i] == 1, 'EXECUTOR: wrong amount');
       require(premiums[i] == 0, 'EXECUTOR: non-zero premium');
       require(IERC20(assets[i]).approve(address(LENDING_POOL), 1), 'EXECUTOR: approval failed');

@@ -21,7 +21,7 @@ require('dotenv').config();
 const fs = require('fs');
 import {
   assertReviewedExecutorRuntime,
-  reviewedExecutorDeploymentGasEstimate,
+  assertReviewedExecutorDeploymentPayload,
 } from './atomicRatePokeVerification';
 import {
   ASSET_BY_SYMBOL,
@@ -33,6 +33,7 @@ import {
   RateSymbol,
   StrategyMap,
   assertApprovedVariableCurve,
+  assertConfiguredReserveSet,
   assertMainnet,
 } from './rateConfig';
 import { contractAs, eqAddress, readJson, withRetry, writeJson } from './scriptUtils';
@@ -56,14 +57,7 @@ const provider = withRetry(new ethers.providers.JsonRpcProvider(rpcUrl));
 const deployer = new ethers.Wallet(deployerKey, provider);
 const PUBLIC_HASHIO_MAINNET_RPC = 'https://mainnet.hashio.io/api';
 
-const ADDRESSES = {
-  ...PROTOCOL_ADDRESSES,
-  whbar: ASSET_BY_SYMBOL.WHBAR,
-  usdc: ASSET_BY_SYMBOL.USDC,
-  weth: ASSET_BY_SYMBOL.WETH,
-  bonzo: ASSET_BY_SYMBOL.BONZO,
-  hbarx: ASSET_BY_SYMBOL.HBARX,
-};
+const ADDRESSES = PROTOCOL_ADDRESSES;
 
 const eq = eqAddress;
 
@@ -179,6 +173,7 @@ async function preflight() {
   if (!paused) throw new Error('Pool is not paused. Refusing deployment workflow.');
 
   const reserves: string[] = await pool.getReservesList();
+  assertConfiguredReserveSet(reserves);
   const notFrozen: string[] = [];
   for (const asset of reserves) {
     const cfg = await dp.getReserveConfigurationData(asset);
@@ -187,13 +182,7 @@ async function preflight() {
   if (notFrozen.length) throw new Error(`Not all reserves are frozen: ${notFrozen.join(', ')}`);
 
   const rateState = readJson(RATE_STATE_PATH);
-  const strategies: StrategyMap = {
-    WHBAR: '',
-    USDC: '',
-    WETH: '',
-    BONZO: '',
-    HBARX: '',
-  };
+  const strategies = {} as StrategyMap;
   for (const symbol of RATE_SYMBOLS) {
     const asset = ASSET_BY_SYMBOL[symbol];
     const expected = rateState.reserves?.[symbol]?.deploy?.address;
@@ -253,39 +242,23 @@ async function validateDeployment(
     executor.ADDRESSES_PROVIDER(),
     executor.LENDING_POOL(),
     executor.CONFIGURATOR(),
-    executor.WHBAR(),
-    executor.USDC(),
-    executor.WETH(),
-    executor.BONZO(),
-    executor.HBARX(),
-    executor.WHBAR_STRATEGY(),
-    executor.USDC_STRATEGY(),
-    executor.WETH_STRATEGY(),
-    executor.BONZO_STRATEGY(),
-    executor.HBARX_STRATEGY(),
-    executor.used(),
   ]);
-  const expected = [
-    controllerAddress,
-    ADDRESSES.provider,
-    ADDRESSES.pool,
-    ADDRESSES.configurator,
-    ADDRESSES.whbar,
-    ADDRESSES.usdc,
-    ADDRESSES.weth,
-    ADDRESSES.bonzo,
-    ADDRESSES.hbarx,
-    strategies.WHBAR,
-    strategies.USDC,
-    strategies.WETH,
-    strategies.BONZO,
-    strategies.HBARX,
-  ];
+  const expected = [controllerAddress, ADDRESSES.provider, ADDRESSES.pool, ADDRESSES.configurator];
   for (let i = 0; i < expected.length; i++) {
     if (!eq(values[i], expected[i]))
-      throw new Error(`Immutable ${i} mismatch: ${values[i]} != ${expected[i]}`);
+      throw new Error(`Executor configuration ${i} mismatch: ${values[i]} != ${expected[i]}`);
   }
-  if (values[14] !== false) throw new Error('Fresh executor is unexpectedly marked used.');
+  for (let i = 0; i < RATE_SYMBOLS.length; i++) {
+    const symbol = RATE_SYMBOLS[i];
+    const [asset, strategy] = await Promise.all([executor.ASSETS(i), executor.STRATEGIES(i)]);
+    if (!eq(asset, ASSET_BY_SYMBOL[symbol])) {
+      throw new Error(`${symbol}: executor asset ${asset} != ${ASSET_BY_SYMBOL[symbol]}`);
+    }
+    if (!eq(strategy, strategies[symbol])) {
+      throw new Error(`${symbol}: executor strategy ${strategy} != ${strategies[symbol]}`);
+    }
+  }
+  if (await executor.used()) throw new Error('Fresh executor is unexpectedly marked used.');
 
   // Before the emergency-admin handoff the executor is NOT the emergency admin,
   // so executeAtomicRefresh must revert. Simulate AS the controller (via an
@@ -417,10 +390,7 @@ async function main() {
     if (!unsignedDeployment.data) throw new Error('Executor deployment has no creation payload.');
     // Lock the compiled creation bytecode before broadcast. Constructor values
     // come from the live-checked addresses and approved rate-update state above.
-    const reviewedGasEstimate = reviewedExecutorDeploymentGasEstimate(
-      unsignedDeployment.data,
-      factory.bytecode
-    );
+    assertReviewedExecutorDeploymentPayload(unsignedDeployment.data, factory.bytecode);
     // The configured relay can read and broadcast successfully but rejects
     // contract-creation eth_estimateGas calls. Use public Hashio solely for this
     // read-only estimate so that relay defect cannot block deployment.
@@ -428,26 +398,11 @@ async function main() {
       new ethers.providers.JsonRpcProvider(PUBLIC_HASHIO_MAINNET_RPC),
       2
     );
-    let estimatedGas = await estimateDeploymentGas(
+    const estimatedGas = await estimateDeploymentGas(
       publicHashioProvider,
       unsignedDeployment,
       'Public Hashio RPC'
     );
-    let estimateSource = 'public Hashio RPC';
-
-    if (!estimatedGas) {
-      estimatedGas = reviewedGasEstimate;
-      estimateSource = 'reviewed bytecode-locked Hashio calibration';
-    }
-
-    const minimumSaneEstimate = reviewedGasEstimate.mul(95).div(100);
-    const maximumSaneEstimate = reviewedGasEstimate.mul(105).div(100);
-    if (estimatedGas.lt(minimumSaneEstimate) || estimatedGas.gt(maximumSaneEstimate)) {
-      throw new Error(
-        `Relay gas estimate ${estimatedGas.toString()} is outside 5% of the reviewed ` +
-          `${reviewedGasEstimate.toString()} calibration. Refusing deployment.`
-      );
-    }
 
     const configuredGasLimit = process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT
       ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT)
@@ -455,17 +410,27 @@ async function main() {
     // Hedera charges at least 80% of the supplied gas limit. Keep the automatic
     // headroom below 25% so the floor remains below the live estimate and does
     // not turn unused buffer into extra cost.
-    const bufferedEstimate = estimatedGas.mul(110).div(100);
-    if (configuredGasLimit && configuredGasLimit.lt(estimatedGas.mul(105).div(100))) {
+    if (!estimatedGas && !configuredGasLimit) {
+      throw new Error(
+        'Cannot estimate executor deployment gas. Retry Hashio or provide ' +
+          'ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT explicitly.'
+      );
+    }
+    if (
+      estimatedGas &&
+      configuredGasLimit &&
+      configuredGasLimit.lt(estimatedGas.mul(105).div(100))
+    ) {
       throw new Error(
         `ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT ${configuredGasLimit.toString()} is below the required ` +
           `5% safety buffer over estimate ${estimatedGas.toString()}.`
       );
     }
-    const deploymentGasLimit = configuredGasLimit || bufferedEstimate;
+    const deploymentGasLimit = configuredGasLimit || estimatedGas!.mul(110).div(100);
     console.log(
-      `Executor deployment gas: estimate=${estimatedGas.toString()} ` +
-        `source=${estimateSource} limit=${deploymentGasLimit.toString()}.`
+      `Executor deployment gas: estimate=${estimatedGas?.toString() || 'unavailable'} ` +
+        `source=${estimatedGas ? 'public Hashio RPC' : 'explicit override'} ` +
+        `limit=${deploymentGasLimit.toString()}.`
     );
     const executor = await factory.deploy(...constructorArguments, {
       gasLimit: deploymentGasLimit,
@@ -510,7 +475,7 @@ async function main() {
     originalEmergencyAdmin: roles.emergencyAdmin,
     poolAdmin: roles.poolAdmin,
     strategies: roles.strategies,
-    addresses: ADDRESSES,
+    addresses: { ...ADDRESSES, assets: ASSET_BY_SYMBOL },
   };
   writeJson(EXECUTOR_STATE_PATH, state);
   console.log('Executor:', executorAddress);

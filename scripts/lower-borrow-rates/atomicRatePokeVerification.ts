@@ -1,13 +1,12 @@
 import fs from 'fs';
 import path from 'path';
-import { BigNumber, BytesLike, utils } from 'ethers';
+import { BytesLike, utils } from 'ethers';
 
 export const EXECUTOR_SOURCE_NAME = 'scripts/lower-borrow-rates/AtomicRatePokeExecutor.sol';
 export const EXECUTOR_CONTRACT_NAME = 'AtomicRatePokeExecutor';
 export const EXECUTOR_FQN = `${EXECUTOR_SOURCE_NAME}:${EXECUTOR_CONTRACT_NAME}`;
 export const REVIEWED_EXECUTOR_CREATION_BYTECODE_HASH =
-  '0x781b462bdd1958d56ae4f62a65e3756087e25d83ec19ec2d08bee9345e2f4ae2';
-export const REVIEWED_EXECUTOR_DEPLOYMENT_GAS_ESTIMATE = BigNumber.from('5428786');
+  '0x92d44e41208d2f36c9b40a14c06bab96a8a4186dc4791478d22e10909d5e78bf';
 
 type ImmutableReference = { start: number; length: number };
 type ImmutableReferences = Record<string, ImmutableReference[]>;
@@ -19,10 +18,10 @@ function normalizeBytecode(bytecode: string) {
   return bytecode.toLowerCase();
 }
 
-export function reviewedExecutorDeploymentGasEstimate(
+export function assertReviewedExecutorDeploymentPayload(
   initCode: BytesLike,
   creationBytecode: BytesLike
-): BigNumber {
+) {
   const initCodeHex = utils.hexlify(initCode).toLowerCase();
   const creationBytecodeHex = utils.hexlify(creationBytecode).toLowerCase();
   const creationBytecodeHash = utils.keccak256(creationBytecodeHex);
@@ -37,7 +36,6 @@ export function reviewedExecutorDeploymentGasEstimate(
       'Executor deployment payload does not start with the reviewed creation bytecode.'
     );
   }
-  return REVIEWED_EXECUTOR_DEPLOYMENT_GAS_ESTIMATE;
 }
 
 export function maskImmutableReferences(

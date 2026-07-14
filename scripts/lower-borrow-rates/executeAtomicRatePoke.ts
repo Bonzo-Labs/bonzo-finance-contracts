@@ -7,7 +7,7 @@
  * Transactions:
  *   1. AddressesProvider owner -> setEmergencyAdmin(executor)
  *   2. Controller -> executor.executeAtomicRefresh()
- *      Internally: unpause -> five-asset mode-0 flash loan -> pause
+ *      Internally: unpause -> all-reserve mode-0 flash loan -> pause
  *   3. AddressesProvider owner -> setEmergencyAdmin(original EOA)
  *
  * Step 3 is attempted in finally after any submitted handoff, even if step 2 fails. If the pool is ever
@@ -29,6 +29,7 @@ import {
   RateSymbol,
   StrategyMap,
   assertApprovedVariableCurve,
+  assertConfiguredReserveSet,
   assertMainnet,
 } from './rateConfig';
 import { contractAs, eqAddress, readJson, sleep, withRetry, writeJson } from './scriptUtils';
@@ -45,14 +46,7 @@ const provider = withRetry(new ethers.providers.JsonRpcProvider(rpcUrl));
 const owner = new ethers.Wallet(adminKey, provider);
 const TX_DELAY_MS = Number(process.env.TX_DELAY_MS || 3000);
 const eq = eqAddress;
-const EXPECTED_ADDRESSES = {
-  ...PROTOCOL_ADDRESSES,
-  whbar: ASSET_BY_SYMBOL.WHBAR,
-  usdc: ASSET_BY_SYMBOL.USDC,
-  weth: ASSET_BY_SYMBOL.WETH,
-  bonzo: ASSET_BY_SYMBOL.BONZO,
-  hbarx: ASSET_BY_SYMBOL.HBARX,
-};
+const EXPECTED_ADDRESSES = PROTOCOL_ADDRESSES;
 
 async function waitForAddress(
   label: string,
@@ -85,11 +79,7 @@ type DeploymentState = {
     pool: string;
     configurator: string;
     dataProvider: string;
-    whbar: string;
-    usdc: string;
-    weth: string;
-    bonzo: string;
-    hbarx: string;
+    assets: StrategyMap;
   };
   execution?: Record<string, unknown>;
 };
@@ -152,6 +142,11 @@ async function preflight(state: DeploymentState) {
       throw new Error(`Deployment state address mismatch for ${key}: ${a[key]}`);
     }
   }
+  for (const symbol of RATE_SYMBOLS) {
+    if (!eq(a.assets[symbol], ASSET_BY_SYMBOL[symbol])) {
+      throw new Error(`Deployment state asset mismatch for ${symbol}: ${a.assets[symbol]}`);
+    }
+  }
   const ap = await contractAs(hre, 'LendingPoolAddressesProvider', a.provider, owner);
   const pool = await contractAs(hre, 'LendingPool', a.pool, provider);
   const configurator = await contractAs(hre, 'LendingPoolConfigurator', a.configurator, owner);
@@ -209,23 +204,24 @@ async function preflight(state: DeploymentState) {
     [await executor.ADDRESSES_PROVIDER(), a.provider],
     [await executor.LENDING_POOL(), a.pool],
     [await executor.CONFIGURATOR(), a.configurator],
-    [await executor.WHBAR(), a.whbar],
-    [await executor.USDC(), a.usdc],
-    [await executor.WETH(), a.weth],
-    [await executor.BONZO(), a.bonzo],
-    [await executor.HBARX(), a.hbarx],
-    [await executor.WHBAR_STRATEGY(), state.strategies.WHBAR],
-    [await executor.USDC_STRATEGY(), state.strategies.USDC],
-    [await executor.WETH_STRATEGY(), state.strategies.WETH],
-    [await executor.BONZO_STRATEGY(), state.strategies.BONZO],
-    [await executor.HBARX_STRATEGY(), state.strategies.HBARX],
   ];
   for (const [actual, expected] of immutableChecks) {
     if (!eq(actual, expected))
       throw new Error(`Executor immutable mismatch: ${actual} != ${expected}`);
   }
+  for (let i = 0; i < RATE_SYMBOLS.length; i++) {
+    const symbol = RATE_SYMBOLS[i];
+    const [asset, strategy] = await Promise.all([executor.ASSETS(i), executor.STRATEGIES(i)]);
+    if (!eq(asset, a.assets[symbol])) {
+      throw new Error(`${symbol}: executor asset ${asset} != ${a.assets[symbol]}`);
+    }
+    if (!eq(strategy, state.strategies[symbol])) {
+      throw new Error(`${symbol}: executor strategy ${strategy} != ${state.strategies[symbol]}`);
+    }
+  }
 
   const reserves: string[] = await pool.getReservesList();
+  assertConfiguredReserveSet(reserves);
   const notFrozen: string[] = [];
   for (const asset of reserves) {
     const cfg = await dp.getReserveConfigurationData(asset);
@@ -234,16 +230,9 @@ async function preflight(state: DeploymentState) {
   if (notFrozen.length) throw new Error(`Not all reserves are frozen: ${notFrozen.join(', ')}`);
 
   const rateState = readJson(RATE_STATE_PATH);
-  const assetBySymbol: Record<RateSymbol, string> = {
-    WHBAR: a.whbar,
-    USDC: a.usdc,
-    WETH: a.weth,
-    BONZO: a.bonzo,
-    HBARX: a.hbarx,
-  };
   const assets: Array<[RateSymbol, string]> = RATE_SYMBOLS.map((symbol) => [
     symbol,
-    assetBySymbol[symbol],
+    a.assets[symbol],
   ]);
   for (const [symbol, asset] of assets) {
     const expectedStrategy = rateState.reserves?.[symbol]?.deploy?.address;
@@ -373,26 +362,37 @@ async function main() {
       );
     }
 
-    // The executor now holds emergency admin, so the full success path is
-    // reachable and can be measured. Use a buffered estimate, but never below
-    // the configured/default floor: Hedera HTS precompile gas can under-report,
-    // and under-provisioning a one-shot wastes the handoff transaction. A short
-    // limit reverts atomically and leaves the pool paused, so erring high is safe.
-    const fallbackGasLimit = Number(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT || 6_000_000);
-    let executeGasLimit = fallbackGasLimit;
+    // The executor now holds emergency admin, so the complete path can be
+    // estimated. Keep automatic headroom to 10% to avoid an expensive buffer.
+    const configuredGasLimit = process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT
+      ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT)
+      : undefined;
+    let estimatedGas: any;
     try {
-      const estimatedGas = await c.executor.estimateGas.executeAtomicRefresh();
-      executeGasLimit = Math.max(estimatedGas.mul(150).div(100).toNumber(), fallbackGasLimit);
-      console.log(
-        `Estimated executeAtomicRefresh gas ${estimatedGas.toString()}; sending with ${executeGasLimit}.`
-      );
+      estimatedGas = await c.executor.estimateGas.executeAtomicRefresh();
     } catch (estimateError: any) {
-      console.warn(
-        `Gas estimation unavailable (${
-          estimateError?.message || estimateError
-        }); using fallback ${fallbackGasLimit}.`
+      if (!configuredGasLimit) {
+        throw new Error(
+          `Gas estimation unavailable (${estimateError?.message || estimateError}). ` +
+            'Set ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT explicitly only after reviewing a simulation.'
+        );
+      }
+    }
+    if (
+      estimatedGas &&
+      configuredGasLimit &&
+      configuredGasLimit.lt(estimatedGas.mul(105).div(100))
+    ) {
+      throw new Error(
+        `ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT ${configuredGasLimit.toString()} is below 105% of ` +
+          `estimate ${estimatedGas.toString()}.`
       );
     }
+    const executeGasLimit = configuredGasLimit || estimatedGas.mul(110).div(100);
+    console.log(
+      `executeAtomicRefresh gas: estimate=${estimatedGas?.toString() || 'unavailable'} ` +
+        `limit=${executeGasLimit.toString()}.`
+    );
     const executeTx = await c.executor.executeAtomicRefresh({ gasLimit: executeGasLimit });
     saveExecution(state, { executeTxHash: executeTx.hash });
     executeReceipt = await executeTx.wait();
