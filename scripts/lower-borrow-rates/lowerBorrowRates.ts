@@ -1,8 +1,8 @@
 /**
- * Lower Borrow Rates: WHBAR / WETH / USDC (Hedera Mainnet only)
+ * Lower Borrow Rates: WHBAR / WETH / USDC / BONZO / HBARX (Hedera Mainnet only)
  * -------------------------------------------------------------------------
- * Reduces variableRateSlope1 and variableRateSlope2 for the WHBAR, WETH and
- * USDC reserves by deploying a fresh DefaultReserveInterestRateStrategy per
+ * Reduces variableRateSlope1 and variableRateSlope2 for the WHBAR, WETH, USDC,
+ * BONZO and HBARX reserves by deploying a fresh DefaultReserveInterestRateStrategy per
  * reserve (slopes are immutable, so they cannot be mutated in place) and
  * wiring it to the reserve via setReserveInterestRateStrategyAddress().
  *
@@ -23,41 +23,38 @@
  *
  * Step-gated in main(): deploy + wire each reserve independently, verifying
  * between steps. Deployed addresses + tx hashes are recorded in
- * rate-update-state.json and read back by verifyBorrowRates.ts.
+ * rate-update-state.json and read back by the built-in verify action.
  *
  * Admin key: PRIVATE_KEY_MAINNET_ADMIN (pool admin) + MAINNET_ADMIN_ACCOUNT_ID.
  */
 import { ethers } from 'hardhat';
+import { BigNumberish } from 'ethers';
 const hre = require('hardhat');
 require('dotenv').config();
 
 import { ContractCreateFlow, ContractFunctionParameters, Hbar } from '@hashgraph/sdk';
 const { Client, PrivateKey, AccountId } = require('@hashgraph/sdk');
-const fs = require('fs');
-const path = require('path');
 import BigNumber from 'bignumber.js';
 
-import {
-  WHBAR,
-  WETH,
-  USDC,
-  LendingPool,
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-} from '../outputReserveData.json';
 import { oneRay } from '../../helpers/constants';
-import { withRetry } from './rpcRetry';
+import {
+  ASSET_BY_SYMBOL,
+  PROTOCOL_ADDRESSES,
+  RATE_STATE_PATH,
+  TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+  RATE_SYMBOLS,
+  RateSymbol,
+  assertApprovedVariableCurve,
+  assertMainnet,
+} from './rateConfig';
+import { contractAs, readJson, recordRateUpdateStep, withRetry, writeJson } from './scriptUtils';
 
 // --------------------------------------------------------------------------
 // Network guard - mainnet only.
 // --------------------------------------------------------------------------
 const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
-if (chain_type !== 'hedera_mainnet') {
-  throw new Error(
-    `This is a mainnet-only operation. Set CHAIN_TYPE=hedera_mainnet (got "${chain_type}").`
-  );
-}
+assertMainnet(chain_type);
 
 const provider = withRetry(
   new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '')
@@ -65,77 +62,116 @@ const provider = withRetry(
 const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', provider);
 
 // --------------------------------------------------------------------------
-// TARGET SLOPES (human decimals; 0.06 = 6%). Expressed as the NEW value for
-// each reserve's variable-rate curve. Everything else is preserved from the
-// live on-chain strategy.
+// APPROVED TARGET CURVE (exact decimal strings; 0.00005 = 0.005%). The base
+// and both variable slopes are fixed centrally in rateConfig.ts. Optimal
+// utilization and stable slopes are preserved from the live strategy.
 //
-//   >>> EDIT THESE. They are pre-filled with the CURRENT on-chain values, so
-//   >>> as-is the guard will refuse to deploy ("not a reduction"). Set each to
-//   >>> the approved lower value before running the corresponding deploy step.
-//
-// Current on-chain (read 2026-07-11):
-//   WHBAR  base 0%   slope1 6.0%   slope2 150%
-//   USDC   base 2%   slope1 13.0%  slope2 50%
-//   WETH   base 0%   slope1 3.3%   slope2 85%
-//
-// newBaseVariableBorrowRate is optional: omit to preserve the live base;
-// provide it (e.g. USDC 0) to override.
+// The currently wired intermediate strategies use base 0%, slope1 1%, and
+// slope2 1%. This replacement run reduces each reserve to base 0%, slope1
+// 0.005%, and slope2 0.005%, for a maximum variable rate of 0.01%.
 // --------------------------------------------------------------------------
 type Target = {
-  newVariableRateSlope1: number;
-  newVariableRateSlope2: number;
-  newBaseVariableBorrowRate?: number;
+  newVariableRateSlope1: string;
+  newVariableRateSlope2: string;
+  newBaseVariableBorrowRate: string;
 };
 
-const TARGETS: Record<'WHBAR' | 'USDC' | 'WETH', Target> = {
-  WHBAR: { newVariableRateSlope1: 0.01, newVariableRateSlope2: 0.01 }, // 1% / 1%  (from 6% / 150%)
-  USDC: { newVariableRateSlope1: 0.01, newVariableRateSlope2: 0.01, newBaseVariableBorrowRate: 0 }, // 1% / 1%, base 2%->0%
-  WETH: { newVariableRateSlope1: 0.01, newVariableRateSlope2: 0.01 }, // 1% / 1%  (from 3.3% / 85%)
-};
-
-const RESERVES: Record<'WHBAR' | 'USDC' | 'WETH', string> = {
-  WHBAR: WHBAR.hedera_mainnet.token.address,
-  USDC: USDC.hedera_mainnet.token.address,
-  WETH: WETH.hedera_mainnet.token.address,
+const TARGETS: Record<RateSymbol, Target> = {
+  WHBAR: {
+    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  },
+  USDC: {
+    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  },
+  WETH: {
+    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  },
+  BONZO: {
+    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  },
+  HBARX: {
+    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
+    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
+  },
 };
 
 // --------------------------------------------------------------------------
 // State file (deployed addresses, preserved params, tx hashes).
 // --------------------------------------------------------------------------
-const STATE_PATH = path.join(__dirname, 'rate-update-state.json');
+const EMPTY_RUNTIME_HASH = ethers.utils.keccak256('0x');
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function loadState() {
-  return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+  return readJson(RATE_STATE_PATH);
 }
-function saveStepState(symbol: string, phase: string, data: Record<string, unknown>) {
+function saveStepState(symbol: string, phase: 'deploy' | 'wire', data: Record<string, unknown>) {
   const state = loadState();
-  state.reserves[symbol] = state.reserves[symbol] || {};
-  state.reserves[symbol][phase] = { ...state.reserves[symbol][phase], ...data, completed: true };
-  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+  // A replacement deployment invalidates the previous wire record. Keep the
+  // audit trail, but do not let downstream scripts mistake old wiring for the
+  // newly deployed strategy.
+  recordRateUpdateStep(state, symbol, phase, data);
+  writeJson(RATE_STATE_PATH, state);
 }
 
-const toRay = (dec: number) => new BigNumber(dec).multipliedBy(oneRay).toFixed(0);
-const rayToPct = (ray: ethers.BigNumberish) =>
+function saveReconciledRuntimeHash(symbol: string, address: string, runtimeBytecodeHash: string) {
+  const state = loadState();
+  const deploy = state.reserves?.[symbol]?.deploy;
+  if (!deploy || deploy.address?.toLowerCase() !== address.toLowerCase()) {
+    throw new Error(`${symbol}: deployment state changed while reconciling runtime bytecode`);
+  }
+  deploy.runtimeBytecodeHash = runtimeBytecodeHash;
+  deploy.runtimeBytecodeObservedAt = new Date().toISOString();
+  deploy.runtimeBytecodeStatus = 'confirmed';
+  writeJson(RATE_STATE_PATH, state);
+}
+
+async function waitForRuntimeCode(address: string, attempts = 30) {
+  let previousCode = '';
+  for (let attempt = 1; attempt <= attempts; attempt++) {
+    const code = await provider.getCode(address);
+    if (code !== '0x') {
+      if (code === previousCode) return code;
+      previousCode = code;
+    } else {
+      previousCode = '';
+    }
+    if (attempt < attempts) await sleep(2000);
+  }
+  throw new Error(
+    `Runtime bytecode for ${address} did not become stable after ${attempts} attempts. ` +
+      `The deployment may still have succeeded; reconcile it before deploying a replacement.`
+  );
+}
+
+const toRay = (dec: string) => new BigNumber(dec).multipliedBy(oneRay).toFixed(0);
+const rayToPct = (ray: BigNumberish) =>
   `${new BigNumber(ray.toString()).dividedBy(oneRay).multipliedBy(100).toFixed(3)}%`;
 
 async function setupContract(artifactName: string, contractAddress: string) {
-  const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, owner);
+  return contractAs(hre, artifactName, contractAddress, owner);
 }
 // Read-only (through provider). Hedera's relay resolves eth_call `from` against
 // a real account; owner's derived EVM address isn't indexed, so views go here.
 async function setupReadOnlyContract(artifactName: string, contractAddress: string) {
-  const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, provider);
+  return contractAs(hre, artifactName, contractAddress, provider);
 }
 async function configurator() {
-  return setupContract('LendingPoolConfigurator', LendingPoolConfigurator.hedera_mainnet.address);
+  return setupContract('LendingPoolConfigurator', PROTOCOL_ADDRESSES.configurator);
 }
 
 // Read the live strategy address + its six parameters for a reserve.
-async function readLiveStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
-  const asset = RESERVES[symbol];
-  const pool = await setupReadOnlyContract('LendingPool', LendingPool.hedera_mainnet.address);
+async function readLiveStrategy(symbol: RateSymbol) {
+  const asset = ASSET_BY_SYMBOL[symbol];
+  const pool = await setupReadOnlyContract('LendingPool', PROTOCOL_ADDRESSES.pool);
   const reserveData = await pool.getReserveData(asset);
   const strategyAddress: string = reserveData.interestRateStrategyAddress;
   const strat = await setupReadOnlyContract('DefaultReserveInterestRateStrategy', strategyAddress);
@@ -159,7 +195,7 @@ async function readLiveStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   };
 }
 
-async function printCurrent(symbol: 'WHBAR' | 'USDC' | 'WETH') {
+async function printCurrent(symbol: RateSymbol) {
   const s = await readLiveStrategy(symbol);
   console.log(`\n=== ${symbol} current interest-rate strategy ===`);
   console.log('Asset:              ', s.asset);
@@ -173,7 +209,7 @@ async function printCurrent(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   // Reserve-level flag (independent of the strategy's stable slopes) - must be off.
   const dp = await setupReadOnlyContract(
     'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_mainnet.address
+    PROTOCOL_ADDRESSES.dataProvider
   );
   const cfg = await dp.getReserveConfigurationData(s.asset);
   console.log(
@@ -187,15 +223,13 @@ async function printCurrent(symbol: 'WHBAR' | 'USDC' | 'WETH') {
 // --------------------------------------------------------------------------
 // Deploy a new strategy for `symbol`: preserve all params, override slopes.
 // --------------------------------------------------------------------------
-async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
+async function deployNewStrategy(symbol: RateSymbol) {
   const live = await readLiveStrategy(symbol);
   const target = TARGETS[symbol];
 
   const newV1 = toRay(target.newVariableRateSlope1);
   const newV2 = toRay(target.newVariableRateSlope2);
-  // base: override if provided, else preserve live base.
-  const baseOverridden = target.newBaseVariableBorrowRate !== undefined;
-  const newBase = baseOverridden ? toRay(target.newBaseVariableBorrowRate!) : live.base;
+  const newBase = toRay(target.newBaseVariableBorrowRate);
 
   // Guard: reject anything that is not a genuine reduction (never increase).
   const curV1 = ethers.BigNumber.from(live.vSlope1);
@@ -218,7 +252,7 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   }
 
   const deploymentArgs = {
-    provider: LendingPoolAddressesProvider.hedera_mainnet.address,
+    provider: PROTOCOL_ADDRESSES.provider,
     optimalUtilizationRate: live.optimal, // preserved
     baseVariableBorrowRate: newBase, // override or preserved
     variableRateSlope1: newV1, // NEW
@@ -227,9 +261,7 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     stableRateSlope2: live.sSlope2, // preserved
   };
   console.log(`\nDeploying new ${symbol} strategy:`);
-  if (baseOverridden) {
-    console.log(`  baseVariableBorrowRate: ${rayToPct(curBase)} -> ${rayToPct(newBase)}`);
-  }
+  console.log(`  baseVariableBorrowRate: ${rayToPct(curBase)} -> ${rayToPct(newBase)}`);
   console.log(`  variableRateSlope1: ${rayToPct(curV1)} -> ${rayToPct(newV1)}`);
   console.log(`  variableRateSlope2: ${rayToPct(curV2)} -> ${rayToPct(newV2)}`);
   console.log('  (optimalUtilization + stable slopes preserved from', live.strategyAddress + ')');
@@ -272,14 +304,15 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     `Deployed ${symbol} strategy. Contract ID=${newContractId.toString()} EVM=${address}`
   );
 
-  // Full audit record: identity, provenance and an integrity hash of the
-  // deployed runtime bytecode (so the wire step can detect tampering).
-  const runtimeCode = await provider.getCode(address);
+  // Hedera JSON-RPC can briefly return 0x after a successful SDK deployment.
+  // Hash only after two consecutive non-empty reads agree; hashing 0x would
+  // record the empty-code hash and incorrectly block the later wire step.
+  const runtimeCode = await waitForRuntimeCode(address);
   const runtimeBytecodeHash = ethers.utils.keccak256(runtimeCode);
 
   saveStepState(symbol, 'deploy', {
     network: chain_type,
-    addressesProvider: LendingPoolAddressesProvider.hedera_mainnet.address,
+    addressesProvider: PROTOCOL_ADDRESSES.provider,
     address,
     contractId: newContractId.toString(),
     evmAddress: address,
@@ -288,6 +321,8 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     deployerAccountId: operatorAccountId.toString(),
     deployerEvm: owner.address,
     runtimeBytecodeHash,
+    runtimeBytecodeObservedAt: new Date().toISOString(),
+    runtimeBytecodeStatus: 'confirmed',
     constructorParams: {
       provider: deploymentArgs.provider,
       optimalUtilizationRate: deploymentArgs.optimalUtilizationRate,
@@ -311,7 +346,7 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     previousStrategy: live.strategyAddress,
     timestamp: new Date().toISOString(),
   });
-  console.log(`>> Recorded in ${STATE_PATH}. Run the wire step next.`);
+  console.log(`>> Recorded in ${RATE_STATE_PATH}. Run the wire step next.`);
 }
 
 // --------------------------------------------------------------------------
@@ -319,7 +354,7 @@ async function deployNewStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
 // address enough to wire it into a live reserve. A wrong or tampered address
 // could point a reserve at a contract that reverts on every interaction.
 // --------------------------------------------------------------------------
-async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
+async function validateDeployedStrategy(symbol: RateSymbol) {
   const state = loadState();
   const entry = state.reserves?.[symbol]?.deploy;
   if (!entry?.address) {
@@ -333,7 +368,7 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   if (entry.network && entry.network !== chain_type) {
     throw new Error(`${symbol}: state entry network ${entry.network} != ${chain_type}.`);
   }
-  const liveProvider = LendingPoolAddressesProvider.hedera_mainnet.address;
+  const liveProvider = PROTOCOL_ADDRESSES.provider;
   if (
     entry.addressesProvider &&
     entry.addressesProvider.toLowerCase() !== liveProvider.toLowerCase()
@@ -348,9 +383,11 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
   if (!code || code === '0x') {
     throw new Error(`${symbol}: deployed address ${deployed} has no bytecode.`);
   }
-  if (entry.runtimeBytecodeHash) {
-    const liveHash = ethers.utils.keccak256(code);
-    if (liveHash.toLowerCase() !== entry.runtimeBytecodeHash.toLowerCase()) {
+  const runtimeBytecodeHash = ethers.utils.keccak256(code);
+  const needsRuntimeHashReconciliation =
+    !entry.runtimeBytecodeHash || entry.runtimeBytecodeHash === EMPTY_RUNTIME_HASH;
+  if (!needsRuntimeHashReconciliation) {
+    if (runtimeBytecodeHash.toLowerCase() !== entry.runtimeBytecodeHash.toLowerCase()) {
       throw new Error(`${symbol}: runtime bytecode hash mismatch (tampered address?).`);
     }
   }
@@ -384,13 +421,22 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
     }
   }
 
+  await assertApprovedVariableCurve(symbol, strat);
+
+  if (needsRuntimeHashReconciliation) {
+    saveReconciledRuntimeHash(symbol, deployed, runtimeBytecodeHash);
+    console.log(
+      `✅ ${symbol} replaced an empty/pending runtime hash with confirmed on-chain hash ${runtimeBytecodeHash}.`
+    );
+  }
+
   // (d) it must actually differ from the reserve's current strategy.
   const live = await readLiveStrategy(symbol);
   if (live.strategyAddress.toLowerCase() === deployed.toLowerCase()) {
     throw new Error(`${symbol}: deployed strategy equals current live strategy (nothing to wire).`);
   }
   console.log(`✅ ${symbol} deployed strategy ${deployed} validated (params, provider, bytecode).`);
-  return { deployed, asset: RESERVES[symbol], preSwapStrategy: live.strategyAddress };
+  return { deployed, asset: ASSET_BY_SYMBOL[symbol], preSwapStrategy: live.strategyAddress };
 }
 
 // --------------------------------------------------------------------------
@@ -399,12 +445,12 @@ async function validateDeployedStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
 // still the OLD rate, since swapping the strategy does not refresh it - so the
 // poke preflight can detect any unexpected change during the pause.
 // --------------------------------------------------------------------------
-async function wireStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
+async function wireStrategy(symbol: RateSymbol) {
   const { deployed, asset, preSwapStrategy } = await validateDeployedStrategy(symbol);
 
   const dp = await setupReadOnlyContract(
     'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_mainnet.address
+    PROTOCOL_ADDRESSES.dataProvider
   );
   const before = await dp.getReserveData(asset);
 
@@ -438,31 +484,34 @@ async function wireStrategy(symbol: 'WHBAR' | 'USDC' | 'WETH') {
 async function main() {
   console.log('Chain:', chain_type);
   console.log('Pool admin signer:', owner.address);
-  console.log('LendingPool:', LendingPool.hedera_mainnet.address);
+  console.log('LendingPool:', PROTOCOL_ADDRESSES.pool);
 
-  // Inspect all three reserves before touching anything.
-  await printCurrent('WHBAR');
-  await printCurrent('USDC');
-  await printCurrent('WETH');
+  // Inspect every target reserve before touching anything.
+  for (const symbol of RATE_SYMBOLS) await printCurrent(symbol);
 
-  // Execute one step at a time by uncommenting. Run verifyBorrowRates.ts
-  // after each deploy+wire pair before moving to the next reserve.
-  //
+  // Run one step at a time by uncommenting exactly one call. After deploying,
+  // run this script again with the matching wire call uncommented. Then run
+  // verifyBorrowRates.ts before moving to the next reserve.
+
   // --- WHBAR ---
   // await deployNewStrategy('WHBAR');
   // await wireStrategy('WHBAR');
-  //
+
   // --- USDC ---
   // await deployNewStrategy('USDC');
   // await wireStrategy('USDC');
-  //
+
   // --- WETH ---
   // await deployNewStrategy('WETH');
   // await wireStrategy('WETH');
 
-  // await printCurrent('WHBAR');
-  // await printCurrent('USDC');
-  // await printCurrent('WETH');
+  // --- BONZO ---
+  // await deployNewStrategy('BONZO');
+  await wireStrategy('BONZO');
+
+  // --- HBARX ---
+  // await deployNewStrategy('HBARX');
+  await wireStrategy('HBARX');
 }
 
 main()

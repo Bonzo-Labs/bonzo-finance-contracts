@@ -1,204 +1,147 @@
 /**
- * Verify lowered borrow rates: WHBAR / WETH / USDC (Hedera Mainnet only)
- * -------------------------------------------------------------------------
- * Reads rate-update-state.json to see which reserves have been deployed/wired,
- * then re-reads on-chain state and checks:
- *   - the newly deployed strategy carries the target variable slopes AND the
- *     preserved non-slope params recorded at deploy time; and
- *   - the reserve's live interestRateStrategyAddress points at that new
- *     strategy.
- * Reserves not yet processed are reported as skipped rather than failed.
- *
- *   CHAIN_TYPE=hedera_mainnet npx hardhat run \
- *     scripts/lower-borrow-rates/verifyBorrowRates.ts --network hedera_mainnet
+ * Read-only verification for the five lowered borrow-rate strategies.
  */
+import BigNumber from 'bignumber.js';
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
-import BigNumber from 'bignumber.js';
 
-import {
-  WHBAR,
-  WETH,
-  USDC,
-  LendingPool,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-} from '../outputReserveData.json';
 import { oneRay } from '../../helpers/constants';
-import { withRetry } from './rpcRetry';
 import {
+  ASSET_BY_SYMBOL,
+  PROTOCOL_ADDRESSES,
+  RATE_STATE_PATH,
+  TARGET_ASSETS,
   TARGET_BASE_VARIABLE_RATE_RAY,
   TARGET_MAX_VARIABLE_RATE_RAY,
   TARGET_VARIABLE_RATE_SLOPE_RAY,
-} from './rateTargets';
+  assertMainnet,
+} from './rateConfig';
+import { contractAs, eqAddress, readJson, withRetry } from './scriptUtils';
 
-const chain_type = process.env.CHAIN_TYPE || 'hedera_testnet';
-if (chain_type !== 'hedera_mainnet') {
-  throw new Error(
-    `This is a mainnet-only operation. Set CHAIN_TYPE=hedera_mainnet (got "${chain_type}").`
-  );
-}
+const chainType = process.env.CHAIN_TYPE || 'hedera_testnet';
+assertMainnet(chainType);
 
 const provider = withRetry(
   new ethers.providers.JsonRpcProvider(process.env.PROVIDER_URL_MAINNET || '')
 );
 
-const RESERVES: Record<'WHBAR' | 'USDC' | 'WETH', string> = {
-  WHBAR: WHBAR.hedera_mainnet.token.address,
-  USDC: USDC.hedera_mainnet.token.address,
-  WETH: WETH.hedera_mainnet.token.address,
-};
-
-const STATE_PATH = path.join(__dirname, 'rate-update-state.json');
-function loadState() {
-  return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-}
-
-async function setupContract(artifactName: string, contractAddress: string) {
-  const artifact = await hre.artifacts.readArtifact(artifactName);
-  return new ethers.Contract(contractAddress, artifact.abi, provider);
-}
-
-let allPassed = true;
-function formatRay(value: unknown) {
+const formatRay = (value: unknown) => {
   const pct = new BigNumber(value?.toString() ?? '0').dividedBy(oneRay).multipliedBy(100);
   return `${value} (${pct.toFixed(3)}%)`;
-}
-function reportRay(label: string, actual: unknown, expected: unknown) {
-  const pass = actual?.toString() === expected?.toString();
-  if (!pass) allPassed = false;
-  console.log(
-    `   ${pass ? '✅' : '❌'} ${label}: on-chain=${formatRay(actual)} expected=${formatRay(
-      expected
-    )}`
-  );
-}
-function reportAddress(label: string, actual: unknown, expected: unknown) {
-  const pass = actual?.toString().toLowerCase() === expected?.toString().toLowerCase();
-  if (!pass) allPassed = false;
-  console.log(`   ${pass ? '✅' : '❌'} ${label}: on-chain=${actual} expected=${expected}`);
-}
-function reportValue(label: string, actual: string, expected: string) {
-  const pass = actual.toLowerCase() === expected.toLowerCase();
-  if (!pass) allPassed = false;
-  console.log(`   ${pass ? '✅' : '❌'} ${label}: on-chain=${actual} expected=${expected}`);
-}
-
-// All three reserves are required for this workflow. Missing deploy/wire is a
-// FAILURE, not a skip - otherwise an empty state file "passes".
-const REQUIRED: Array<'WHBAR' | 'USDC' | 'WETH'> = ['WHBAR', 'USDC', 'WETH'];
-
-async function verifyReserve(symbol: 'WHBAR' | 'USDC' | 'WETH', entry: any) {
-  console.log(`\n[${symbol}]`);
-  const required = REQUIRED.includes(symbol);
-  if (!entry?.deploy?.completed) {
-    if (required) {
-      allPassed = false;
-      console.log('   ❌ deploy: NOT RUN (required)');
-    } else {
-      console.log('   ⏭  deploy: not yet run');
-    }
-    return;
-  }
-  const deployed = entry.deploy.address;
-  const runtimeCode = await provider.getCode(deployed);
-  if (runtimeCode === '0x') {
-    allPassed = false;
-    console.log('   ❌ runtime bytecode: contract has no code');
-    return;
-  }
-  if (!entry.deploy.runtimeBytecodeHash) {
-    allPassed = false;
-    console.log('   ❌ runtimeBytecodeHash: missing from deployment state');
-  } else {
-    reportValue(
-      'runtimeBytecodeHash',
-      ethers.utils.keccak256(runtimeCode),
-      entry.deploy.runtimeBytecodeHash
-    );
-  }
-  const strat = await setupContract('DefaultReserveInterestRateStrategy', deployed);
-  const [optimal, base, vSlope1, vSlope2, sSlope1, sSlope2, maxVariableRate] = await Promise.all([
-    strat.OPTIMAL_UTILIZATION_RATE(),
-    strat.baseVariableBorrowRate(),
-    strat.variableRateSlope1(),
-    strat.variableRateSlope2(),
-    strat.stableRateSlope1(),
-    strat.stableRateSlope2(),
-    strat.getMaxVariableBorrowRate(),
-  ]);
-
-  console.log(`   Strategy address: ${deployed} (was ${entry.deploy.previousStrategy})`);
-  // Overridden slopes must match the recorded target.
-  reportRay('variableRateSlope1', vSlope1, entry.deploy.target.variableRateSlope1);
-  reportRay('variableRateSlope2', vSlope2, entry.deploy.target.variableRateSlope2);
-  reportRay('approved target baseVariableBorrowRate', base, TARGET_BASE_VARIABLE_RATE_RAY);
-  reportRay('approved target variableRateSlope1', vSlope1, TARGET_VARIABLE_RATE_SLOPE_RAY);
-  reportRay('approved target variableRateSlope2', vSlope2, TARGET_VARIABLE_RATE_SLOPE_RAY);
-  reportRay('approved target maximum variable rate', maxVariableRate, TARGET_MAX_VARIABLE_RATE_RAY);
-  // Non-slope params must equal what was preserved at deploy time.
-  reportRay('optimalUtilizationRate', optimal, entry.deploy.preserved.optimalUtilizationRate);
-  reportRay('baseVariableBorrowRate', base, entry.deploy.preserved.baseVariableBorrowRate);
-  reportRay('stableRateSlope1', sSlope1, entry.deploy.preserved.stableRateSlope1);
-  reportRay('stableRateSlope2', sSlope2, entry.deploy.preserved.stableRateSlope2);
-
-  // Wiring check.
-  if (!entry?.wire?.completed) {
-    if (required) {
-      allPassed = false;
-      console.log('   ❌ wire: NOT RUN (required - reserve still on previous strategy)');
-    } else {
-      console.log('   ⏭  wire: not yet run (reserve still on previous strategy)');
-    }
-    return;
-  }
-  const pool = await setupContract('LendingPool', LendingPool.hedera_mainnet.address);
-  const reserveData = await pool.getReserveData(RESERVES[symbol]);
-  reportAddress(
-    'reserve.interestRateStrategyAddress',
-    reserveData.interestRateStrategyAddress,
-    deployed
-  );
-
-  // Stable borrowing must stay OFF (we never enable it; this catches drift).
-  const dp = await setupContract(
-    'AaveProtocolDataProvider',
-    AaveProtocolDataProvider.hedera_mainnet.address
-  );
-  const cfg = await dp.getReserveConfigurationData(RESERVES[symbol]);
-  const stableOff = cfg.stableBorrowRateEnabled === false;
-  if (!stableOff) allPassed = false;
-  console.log(
-    `   ${stableOff ? '✅' : '❌'} stableBorrowRateEnabled: on-chain=${
-      cfg.stableBorrowRateEnabled
-    } expected=false`
-  );
-}
+};
 
 async function main() {
-  console.log('Chain:', chain_type);
-  console.log('State file:', STATE_PATH);
-  console.log('Configurator:', LendingPoolConfigurator.hedera_mainnet.address);
+  let allPassed = true;
+  const state = readJson(RATE_STATE_PATH);
+  const pool = await contractAs(hre, 'LendingPool', PROTOCOL_ADDRESSES.pool, provider);
+  const dataProvider = await contractAs(
+    hre,
+    'AaveProtocolDataProvider',
+    PROTOCOL_ADDRESSES.dataProvider,
+    provider
+  );
 
-  const state = loadState();
-  for (const symbol of ['WHBAR', 'USDC', 'WETH'] as const) {
-    await verifyReserve(symbol, state.reserves?.[symbol]);
+  const reportRay = (label: string, actual: unknown, expected: unknown) => {
+    const pass = actual?.toString() === expected?.toString();
+    if (!pass) allPassed = false;
+    console.log(
+      `   ${pass ? 'PASS' : 'FAIL'} ${label}: on-chain=${formatRay(actual)} expected=${formatRay(
+        expected
+      )}`
+    );
+  };
+
+  const reportAddress = (label: string, actual: string, expected: string) => {
+    const pass = eqAddress(actual, expected);
+    if (!pass) allPassed = false;
+    console.log(`   ${pass ? 'PASS' : 'FAIL'} ${label}: on-chain=${actual} expected=${expected}`);
+  };
+
+  console.log('Chain:', chainType);
+  console.log('State file:', RATE_STATE_PATH);
+  console.log('Configurator:', PROTOCOL_ADDRESSES.configurator);
+
+  for (const { symbol } of TARGET_ASSETS) {
+    console.log(`\n[${symbol}]`);
+    const entry = state.reserves?.[symbol];
+    if (!entry?.deploy?.completed) {
+      allPassed = false;
+      console.log('   FAIL deploy: NOT RUN (required)');
+      continue;
+    }
+
+    const deployed = entry.deploy.address;
+    const runtimeCode = await provider.getCode(deployed);
+    if (runtimeCode === '0x') {
+      allPassed = false;
+      console.log('   FAIL runtime bytecode: contract has no code');
+      continue;
+    }
+    if (!entry.deploy.runtimeBytecodeHash) {
+      allPassed = false;
+      console.log('   FAIL runtimeBytecodeHash: missing from deployment state');
+    } else {
+      reportAddress(
+        'runtimeBytecodeHash',
+        ethers.utils.keccak256(runtimeCode),
+        entry.deploy.runtimeBytecodeHash
+      );
+    }
+
+    const strategy = await contractAs(
+      hre,
+      'DefaultReserveInterestRateStrategy',
+      deployed,
+      provider
+    );
+    const [optimal, base, slope1, slope2, stableSlope1, stableSlope2, max] = await Promise.all([
+      strategy.OPTIMAL_UTILIZATION_RATE(),
+      strategy.baseVariableBorrowRate(),
+      strategy.variableRateSlope1(),
+      strategy.variableRateSlope2(),
+      strategy.stableRateSlope1(),
+      strategy.stableRateSlope2(),
+      strategy.getMaxVariableBorrowRate(),
+    ]);
+
+    console.log(`   Strategy address: ${deployed} (was ${entry.deploy.previousStrategy})`);
+    reportRay('recorded target slope1', slope1, entry.deploy.target.variableRateSlope1);
+    reportRay('recorded target slope2', slope2, entry.deploy.target.variableRateSlope2);
+    reportRay('approved base', base, TARGET_BASE_VARIABLE_RATE_RAY);
+    reportRay('approved slope1', slope1, TARGET_VARIABLE_RATE_SLOPE_RAY);
+    reportRay('approved slope2', slope2, TARGET_VARIABLE_RATE_SLOPE_RAY);
+    reportRay('approved maximum', max, TARGET_MAX_VARIABLE_RATE_RAY);
+    reportRay('optimal utilization', optimal, entry.deploy.preserved.optimalUtilizationRate);
+    reportRay('preserved base', base, entry.deploy.preserved.baseVariableBorrowRate);
+    reportRay('stable slope1', stableSlope1, entry.deploy.preserved.stableRateSlope1);
+    reportRay('stable slope2', stableSlope2, entry.deploy.preserved.stableRateSlope2);
+
+    if (!entry?.wire?.completed) {
+      allPassed = false;
+      console.log('   FAIL wire: NOT RUN (required)');
+      continue;
+    }
+    const reserve = await pool.getReserveData(ASSET_BY_SYMBOL[symbol]);
+    reportAddress('live strategy', reserve.interestRateStrategyAddress, deployed);
+
+    const configuration = await dataProvider.getReserveConfigurationData(ASSET_BY_SYMBOL[symbol]);
+    const stableOff = configuration.stableBorrowRateEnabled === false;
+    if (!stableOff) allPassed = false;
+    console.log(
+      `   ${stableOff ? 'PASS' : 'FAIL'} stableBorrowRateEnabled: on-chain=${
+        configuration.stableBorrowRateEnabled
+      } expected=false`
+    );
   }
 
-  console.log(
-    `\n${
-      allPassed
-        ? '✅ All completed steps match target values.'
-        : '❌ Some checks failed - see above.'
-    }`
-  );
-  if (!allPassed) process.exitCode = 1;
+  console.log(`\n${allPassed ? 'All target reserves match.' : 'Some checks failed; see above.'}`);
+  if (!allPassed) throw new Error('Borrow-rate verification failed.');
 }
 
-main().catch((error) => {
-  console.error(error);
-  process.exit(1);
-});
+main()
+  .then(() => process.exit(0))
+  .catch((error) => {
+    console.error(error);
+    process.exit(1);
+  });

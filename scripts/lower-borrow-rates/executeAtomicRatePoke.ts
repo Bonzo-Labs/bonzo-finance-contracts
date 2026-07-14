@@ -7,7 +7,7 @@
  * Transactions:
  *   1. AddressesProvider owner -> setEmergencyAdmin(executor)
  *   2. Controller -> executor.executeAtomicRefresh()
- *      Internally: unpause -> three-asset mode-0 flash loan -> pause
+ *      Internally: unpause -> five-asset mode-0 flash loan -> pause
  *   3. AddressesProvider owner -> setEmergencyAdmin(original EOA)
  *
  * Step 3 is attempted in finally after any submitted handoff, even if step 2 fails. If the pool is ever
@@ -17,26 +17,24 @@
 import { ethers } from 'hardhat';
 const hre = require('hardhat');
 require('dotenv').config();
-const fs = require('fs');
-const path = require('path');
 
-import { withRetry } from './rpcRetry';
 import { assertReviewedExecutorRuntime } from './atomicRatePokeVerification';
-import { assertTargetVariableCurve } from './rateTargets';
 import {
-  WHBAR,
-  USDC,
-  WETH,
-  LendingPool,
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-} from '../outputReserveData.json';
+  ASSET_BY_SYMBOL,
+  EXECUTOR_STATE_PATH,
+  MAINNET_CHAIN_ID,
+  PROTOCOL_ADDRESSES,
+  RATE_SYMBOLS,
+  RATE_STATE_PATH,
+  RateSymbol,
+  StrategyMap,
+  assertApprovedVariableCurve,
+  assertMainnet,
+} from './rateConfig';
+import { contractAs, eqAddress, readJson, sleep, withRetry, writeJson } from './scriptUtils';
 
 const CHAIN = process.env.CHAIN_TYPE || 'hedera_testnet';
-if (CHAIN !== 'hedera_mainnet') {
-  throw new Error(`Mainnet only. Set CHAIN_TYPE=hedera_mainnet (got ${CHAIN}).`);
-}
+assertMainnet(CHAIN);
 
 const rpcUrl = process.env.PROVIDER_URL_MAINNET || '';
 const adminKey = process.env.PRIVATE_KEY_MAINNET_ADMIN || '';
@@ -45,19 +43,15 @@ if (!rpcUrl || !adminKey)
 
 const provider = withRetry(new ethers.providers.JsonRpcProvider(rpcUrl));
 const owner = new ethers.Wallet(adminKey, provider);
-const STATE_PATH = path.join(__dirname, 'atomic-rate-poke-state.json');
-const RATE_STATE_PATH = path.join(__dirname, 'rate-update-state.json');
 const TX_DELAY_MS = Number(process.env.TX_DELAY_MS || 3000);
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const eq = eqAddress;
 const EXPECTED_ADDRESSES = {
-  provider: LendingPoolAddressesProvider.hedera_mainnet.address,
-  pool: LendingPool.hedera_mainnet.address,
-  configurator: LendingPoolConfigurator.hedera_mainnet.address,
-  dataProvider: AaveProtocolDataProvider.hedera_mainnet.address,
-  whbar: WHBAR.hedera_mainnet.token.address,
-  usdc: USDC.hedera_mainnet.token.address,
-  weth: WETH.hedera_mainnet.token.address,
+  ...PROTOCOL_ADDRESSES,
+  whbar: ASSET_BY_SYMBOL.WHBAR,
+  usdc: ASSET_BY_SYMBOL.USDC,
+  weth: ASSET_BY_SYMBOL.WETH,
+  bonzo: ASSET_BY_SYMBOL.BONZO,
+  hbarx: ASSET_BY_SYMBOL.HBARX,
 };
 
 async function waitForAddress(
@@ -85,7 +79,7 @@ type DeploymentState = {
   controller: string;
   originalEmergencyAdmin: string;
   poolAdmin: string;
-  strategies: Record<'WHBAR' | 'USDC' | 'WETH', string>;
+  strategies: StrategyMap;
   addresses: {
     provider: string;
     pool: string;
@@ -94,17 +88,19 @@ type DeploymentState = {
     whbar: string;
     usdc: string;
     weth: string;
+    bonzo: string;
+    hbarx: string;
   };
   execution?: Record<string, unknown>;
 };
 
 function loadState(): DeploymentState {
-  return JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+  return readJson(EXECUTOR_STATE_PATH);
 }
 
 function saveExecution(state: DeploymentState, update: Record<string, unknown>) {
   state.execution = { ...(state.execution || {}), ...update, updatedAt: new Date().toISOString() };
-  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+  writeJson(EXECUTOR_STATE_PATH, state);
 }
 
 function saveExecutionBestEffort(state: DeploymentState, update: Record<string, unknown>) {
@@ -113,11 +109,6 @@ function saveExecutionBestEffort(state: DeploymentState, update: Record<string, 
   } catch (error: any) {
     console.error('Could not persist recovery state:', error?.message || error);
   }
-}
-
-async function contractAs(name: string, address: string, signerOrProvider: any) {
-  const artifact = await hre.artifacts.readArtifact(name);
-  return new ethers.Contract(address, artifact.abi, signerOrProvider);
 }
 
 type ReserveSnapshot = {
@@ -144,7 +135,7 @@ async function readReserveSnapshots(dp: any, assets: Array<[string, string]>) {
 }
 
 async function preflight(state: DeploymentState) {
-  if (state.network !== CHAIN || state.chainId !== 295)
+  if (state.network !== CHAIN || state.chainId !== MAINNET_CHAIN_ID)
     throw new Error('Deployment state network mismatch.');
   if (!eq(state.controller, owner.address))
     throw new Error('Configured controller differs from signer.');
@@ -161,11 +152,11 @@ async function preflight(state: DeploymentState) {
       throw new Error(`Deployment state address mismatch for ${key}: ${a[key]}`);
     }
   }
-  const ap = await contractAs('LendingPoolAddressesProvider', a.provider, owner);
-  const pool = await contractAs('LendingPool', a.pool, provider);
-  const configurator = await contractAs('LendingPoolConfigurator', a.configurator, owner);
-  const dp = await contractAs('AaveProtocolDataProvider', a.dataProvider, provider);
-  const executor = await contractAs('AtomicRatePokeExecutor', state.executor, owner);
+  const ap = await contractAs(hre, 'LendingPoolAddressesProvider', a.provider, owner);
+  const pool = await contractAs(hre, 'LendingPool', a.pool, provider);
+  const configurator = await contractAs(hre, 'LendingPoolConfigurator', a.configurator, owner);
+  const dp = await contractAs(hre, 'AaveProtocolDataProvider', a.dataProvider, provider);
+  const executor = await contractAs(hre, 'AtomicRatePokeExecutor', state.executor, owner);
 
   const [
     network,
@@ -189,7 +180,7 @@ async function preflight(state: DeploymentState) {
     provider.getCode(state.executor),
   ]);
 
-  if (network.chainId !== 295) throw new Error(`Wrong chain id: ${network.chainId}`);
+  if (network.chainId !== MAINNET_CHAIN_ID) throw new Error(`Wrong chain id: ${network.chainId}`);
   if (!eq(providerOwner, owner.address))
     throw new Error(`Signer is not AddressesProvider owner ${providerOwner}`);
   if (!eq(emergencyAdmin, state.originalEmergencyAdmin)) {
@@ -221,9 +212,13 @@ async function preflight(state: DeploymentState) {
     [await executor.WHBAR(), a.whbar],
     [await executor.USDC(), a.usdc],
     [await executor.WETH(), a.weth],
+    [await executor.BONZO(), a.bonzo],
+    [await executor.HBARX(), a.hbarx],
     [await executor.WHBAR_STRATEGY(), state.strategies.WHBAR],
     [await executor.USDC_STRATEGY(), state.strategies.USDC],
     [await executor.WETH_STRATEGY(), state.strategies.WETH],
+    [await executor.BONZO_STRATEGY(), state.strategies.BONZO],
+    [await executor.HBARX_STRATEGY(), state.strategies.HBARX],
   ];
   for (const [actual, expected] of immutableChecks) {
     if (!eq(actual, expected))
@@ -238,12 +233,18 @@ async function preflight(state: DeploymentState) {
   }
   if (notFrozen.length) throw new Error(`Not all reserves are frozen: ${notFrozen.join(', ')}`);
 
-  const rateState = JSON.parse(fs.readFileSync(RATE_STATE_PATH, 'utf8'));
-  const assets: Array<[string, string]> = [
-    ['WHBAR', a.whbar],
-    ['USDC', a.usdc],
-    ['WETH', a.weth],
-  ];
+  const rateState = readJson(RATE_STATE_PATH);
+  const assetBySymbol: Record<RateSymbol, string> = {
+    WHBAR: a.whbar,
+    USDC: a.usdc,
+    WETH: a.weth,
+    BONZO: a.bonzo,
+    HBARX: a.hbarx,
+  };
+  const assets: Array<[RateSymbol, string]> = RATE_SYMBOLS.map((symbol) => [
+    symbol,
+    assetBySymbol[symbol],
+  ]);
   for (const [symbol, asset] of assets) {
     const expectedStrategy = rateState.reserves?.[symbol]?.deploy?.address;
     const wired = rateState.reserves?.[symbol]?.wire?.completed;
@@ -258,22 +259,12 @@ async function preflight(state: DeploymentState) {
       );
     }
     const strategy = await contractAs(
+      hre,
       'DefaultReserveInterestRateStrategy',
       expectedStrategy,
       provider
     );
-    const [base, slope1, slope2, max] = await Promise.all([
-      strategy.baseVariableBorrowRate(),
-      strategy.variableRateSlope1(),
-      strategy.variableRateSlope2(),
-      strategy.getMaxVariableBorrowRate(),
-    ]);
-    assertTargetVariableCurve(symbol, {
-      baseVariableBorrowRate: base,
-      variableRateSlope1: slope1,
-      variableRateSlope2: slope2,
-      maxVariableBorrowRate: max,
-    });
+    await assertApprovedVariableCurve(symbol, strategy);
     const cfg = await dp.getReserveConfigurationData(asset);
     if (!cfg.isActive || !cfg.isFrozen || cfg.stableBorrowRateEnabled) {
       throw new Error(`${symbol}: expected active, frozen, and stable borrowing disabled`);

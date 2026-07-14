@@ -19,26 +19,26 @@ import { BigNumber, providers } from 'ethers';
 const hre = require('hardhat');
 require('dotenv').config();
 const fs = require('fs');
-const path = require('path');
-
 import {
-  WHBAR,
-  USDC,
-  WETH,
-  LendingPool,
-  LendingPoolAddressesProvider,
-  LendingPoolConfigurator,
-  AaveProtocolDataProvider,
-} from '../outputReserveData.json';
-import { withRetry } from './rpcRetry';
-import { assertReviewedExecutorRuntime } from './atomicRatePokeVerification';
-import { assertTargetVariableCurve } from './rateTargets';
-import { reviewedExecutorDeploymentGasEstimate } from './atomicExecutorDeploymentGas';
+  assertReviewedExecutorRuntime,
+  reviewedExecutorDeploymentGasEstimate,
+} from './atomicRatePokeVerification';
+import {
+  ASSET_BY_SYMBOL,
+  EXECUTOR_STATE_PATH,
+  MAINNET_CHAIN_ID,
+  PROTOCOL_ADDRESSES,
+  RATE_SYMBOLS,
+  RATE_STATE_PATH,
+  RateSymbol,
+  StrategyMap,
+  assertApprovedVariableCurve,
+  assertMainnet,
+} from './rateConfig';
+import { contractAs, eqAddress, readJson, withRetry, writeJson } from './scriptUtils';
 
 const CHAIN = process.env.CHAIN_TYPE || 'hedera_testnet';
-if (CHAIN !== 'hedera_mainnet') {
-  throw new Error(`Mainnet only. Set CHAIN_TYPE=hedera_mainnet (got ${CHAIN}).`);
-}
+assertMainnet(CHAIN);
 
 const rpcUrl = process.env.PROVIDER_URL_MAINNET || '';
 // The deploy tx is signed/paid by the proxy wallet so the admin shows no deploy
@@ -54,21 +54,18 @@ const provider = withRetry(new ethers.providers.JsonRpcProvider(rpcUrl));
 // Signs and pays for the deployment only. It is NOT required to hold any
 // protocol role; the executor's CONTROLLER is the real admin (read from chain).
 const deployer = new ethers.Wallet(deployerKey, provider);
-const STATE_PATH = path.join(__dirname, 'atomic-rate-poke-state.json');
-const RATE_STATE_PATH = path.join(__dirname, 'rate-update-state.json');
 const PUBLIC_HASHIO_MAINNET_RPC = 'https://mainnet.hashio.io/api';
 
 const ADDRESSES = {
-  provider: LendingPoolAddressesProvider.hedera_mainnet.address,
-  pool: LendingPool.hedera_mainnet.address,
-  configurator: LendingPoolConfigurator.hedera_mainnet.address,
-  dataProvider: AaveProtocolDataProvider.hedera_mainnet.address,
-  whbar: WHBAR.hedera_mainnet.token.address,
-  usdc: USDC.hedera_mainnet.token.address,
-  weth: WETH.hedera_mainnet.token.address,
+  ...PROTOCOL_ADDRESSES,
+  whbar: ASSET_BY_SYMBOL.WHBAR,
+  usdc: ASSET_BY_SYMBOL.USDC,
+  weth: ASSET_BY_SYMBOL.WETH,
+  bonzo: ASSET_BY_SYMBOL.BONZO,
+  hbarx: ASSET_BY_SYMBOL.HBARX,
 };
 
-const eq = (a: string, b: string) => a.toLowerCase() === b.toLowerCase();
+const eq = eqAddress;
 
 function conciseRpcError(error: any): string {
   const code = error?.error?.code || error?.code || 'unknown';
@@ -104,8 +101,10 @@ async function estimateDeploymentGas(
       estimationProvider.getNetwork(),
       estimationProvider.getFeeData(),
     ]);
-    if (network.chainId !== 295) {
-      throw new Error(`${label} returned chain id ${network.chainId}, expected 295`);
+    if (network.chainId !== MAINNET_CHAIN_ID) {
+      throw new Error(
+        `${label} returned chain id ${network.chainId}, expected ${MAINNET_CHAIN_ID}`
+      );
     }
 
     const baseRequest = {
@@ -144,15 +143,10 @@ async function estimateDeploymentGas(
   return undefined;
 }
 
-async function contractAs(name: string, address: string, signerOrProvider: any) {
-  const artifact = await hre.artifacts.readArtifact(name);
-  return new ethers.Contract(address, artifact.abi, signerOrProvider);
-}
-
 async function preflight() {
-  const ap = await contractAs('LendingPoolAddressesProvider', ADDRESSES.provider, provider);
-  const pool = await contractAs('LendingPool', ADDRESSES.pool, provider);
-  const dp = await contractAs('AaveProtocolDataProvider', ADDRESSES.dataProvider, provider);
+  const ap = await contractAs(hre, 'LendingPoolAddressesProvider', ADDRESSES.provider, provider);
+  const pool = await contractAs(hre, 'LendingPool', ADDRESSES.pool, provider);
+  const dp = await contractAs(hre, 'AaveProtocolDataProvider', ADDRESSES.dataProvider, provider);
   const [chainId, owner, emergencyAdmin, poolAdmin, livePool, liveConfigurator, paused] =
     await Promise.all([
       provider.getNetwork().then((n) => n.chainId),
@@ -164,7 +158,7 @@ async function preflight() {
       pool.paused(),
     ]);
 
-  if (chainId !== 295) throw new Error(`Wrong chain id: ${chainId}`);
+  if (chainId !== MAINNET_CHAIN_ID) throw new Error(`Wrong chain id: ${chainId}`);
   // The deployer does NOT need to hold any role. Instead, verify the real admin
   // holds all three roles (owner == emergency admin == pool admin). The owner is
   // adopted as the executor's CONTROLLER, so the later execute flow (which the
@@ -192,17 +186,16 @@ async function preflight() {
   }
   if (notFrozen.length) throw new Error(`Not all reserves are frozen: ${notFrozen.join(', ')}`);
 
-  const rateState = JSON.parse(fs.readFileSync(RATE_STATE_PATH, 'utf8'));
-  const strategies: Record<'WHBAR' | 'USDC' | 'WETH', string> = {
+  const rateState = readJson(RATE_STATE_PATH);
+  const strategies: StrategyMap = {
     WHBAR: '',
     USDC: '',
     WETH: '',
+    BONZO: '',
+    HBARX: '',
   };
-  for (const [symbol, asset] of [
-    ['WHBAR', ADDRESSES.whbar],
-    ['USDC', ADDRESSES.usdc],
-    ['WETH', ADDRESSES.weth],
-  ] as const) {
+  for (const symbol of RATE_SYMBOLS) {
+    const asset = ASSET_BY_SYMBOL[symbol];
     const expected = rateState.reserves?.[symbol]?.deploy?.address;
     if (!rateState.reserves?.[symbol]?.wire?.completed || !expected) {
       throw new Error(`${symbol}: strategy deployment/wiring state is incomplete`);
@@ -214,19 +207,13 @@ async function preflight() {
         `${symbol}: live strategy ${reserve.interestRateStrategyAddress} != ${expected}`
       );
     }
-    const strategy = await contractAs('DefaultReserveInterestRateStrategy', expected, provider);
-    const [base, slope1, slope2, max] = await Promise.all([
-      strategy.baseVariableBorrowRate(),
-      strategy.variableRateSlope1(),
-      strategy.variableRateSlope2(),
-      strategy.getMaxVariableBorrowRate(),
-    ]);
-    assertTargetVariableCurve(symbol, {
-      baseVariableBorrowRate: base,
-      variableRateSlope1: slope1,
-      variableRateSlope2: slope2,
-      maxVariableBorrowRate: max,
-    });
+    const strategy = await contractAs(
+      hre,
+      'DefaultReserveInterestRateStrategy',
+      expected,
+      provider
+    );
+    await assertApprovedVariableCurve(symbol, strategy);
     const underlying = new ethers.Contract(
       asset,
       ['function balanceOf(address) view returns (uint256)'],
@@ -254,9 +241,9 @@ async function preflight() {
 async function validateDeployment(
   address: string,
   controllerAddress: string,
-  strategies: Record<'WHBAR' | 'USDC' | 'WETH', string>
+  strategies: StrategyMap
 ) {
-  const executor = await contractAs('AtomicRatePokeExecutor', address, provider);
+  const executor = await contractAs(hre, 'AtomicRatePokeExecutor', address, provider);
   const code = await provider.getCode(address);
   if (code === '0x') throw new Error('Executor has no runtime bytecode.');
   const reviewedRuntime = await assertReviewedExecutorRuntime(hre, code);
@@ -269,9 +256,13 @@ async function validateDeployment(
     executor.WHBAR(),
     executor.USDC(),
     executor.WETH(),
+    executor.BONZO(),
+    executor.HBARX(),
     executor.WHBAR_STRATEGY(),
     executor.USDC_STRATEGY(),
     executor.WETH_STRATEGY(),
+    executor.BONZO_STRATEGY(),
+    executor.HBARX_STRATEGY(),
     executor.used(),
   ]);
   const expected = [
@@ -282,15 +273,19 @@ async function validateDeployment(
     ADDRESSES.whbar,
     ADDRESSES.usdc,
     ADDRESSES.weth,
+    ADDRESSES.bonzo,
+    ADDRESSES.hbarx,
     strategies.WHBAR,
     strategies.USDC,
     strategies.WETH,
+    strategies.BONZO,
+    strategies.HBARX,
   ];
   for (let i = 0; i < expected.length; i++) {
     if (!eq(values[i], expected[i]))
       throw new Error(`Immutable ${i} mismatch: ${values[i]} != ${expected[i]}`);
   }
-  if (values[10] !== false) throw new Error('Fresh executor is unexpectedly marked used.');
+  if (values[14] !== false) throw new Error('Fresh executor is unexpectedly marked used.');
 
   // Before the emergency-admin handoff the executor is NOT the emergency admin,
   // so executeAtomicRefresh must revert. Simulate AS the controller (via an
@@ -316,7 +311,7 @@ async function validateDeployment(
     );
   }
 
-  const pool = await contractAs('LendingPool', ADDRESSES.pool, provider);
+  const pool = await contractAs(hre, 'LendingPool', ADDRESSES.pool, provider);
   if (!(await pool.paused()))
     throw new Error('Pool changed from paused during deployment validation.');
   console.log(
@@ -339,41 +334,58 @@ async function main() {
   const constructorArguments = [
     ADDRESSES.provider,
     roles.controllerAddress,
-    ADDRESSES.whbar,
-    ADDRESSES.usdc,
-    ADDRESSES.weth,
-    roles.strategies.WHBAR,
-    roles.strategies.USDC,
-    roles.strategies.WETH,
+    RATE_SYMBOLS.map((symbol) => ASSET_BY_SYMBOL[symbol]),
+    RATE_SYMBOLS.map((symbol) => roles.strategies[symbol]),
   ];
   let executorAddress = '';
   let deploymentTxHash = '';
   let receipt: any;
-  let failedDeployments: Array<Record<string, unknown>> = [];
 
-  if (fs.existsSync(STATE_PATH)) {
-    const existing = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
-    failedDeployments = Array.isArray(existing.failedDeployments)
-      ? [...existing.failedDeployments]
-      : [];
+  if (fs.existsSync(EXECUTOR_STATE_PATH)) {
+    const existing = readJson(EXECUTOR_STATE_PATH);
     if (existing?.executor) {
       const existingCode = await provider.getCode(existing.executor);
       if (existingCode !== '0x') {
-        if (existing.validated !== false || !existing.deploymentTxHash) {
-          throw new Error(
-            `Executor already deployed at ${existing.executor} per ${STATE_PATH}. ` +
-              `Archive or delete that state file to deploy a replacement.`
-          );
+        let matchesCurrentExecutor = true;
+        try {
+          await assertReviewedExecutorRuntime(hre, existingCode);
+        } catch {
+          matchesCurrentExecutor = false;
         }
-        receipt = await provider.getTransactionReceipt(existing.deploymentTxHash);
-        if (!receipt) {
-          throw new Error(
-            `Executor ${existing.executor} has code but deployment receipt ${existing.deploymentTxHash} is unavailable.`
+        if (!matchesCurrentExecutor) {
+          const staleExecutor = await contractAs(
+            hre,
+            'AtomicRatePokeExecutor',
+            existing.executor,
+            provider
           );
+          const ap = await contractAs(
+            hre,
+            'LendingPoolAddressesProvider',
+            ADDRESSES.provider,
+            provider
+          );
+          const [staleUsed, emergencyAdmin] = await Promise.all([
+            staleExecutor.used(),
+            ap.getEmergencyAdmin(),
+          ]);
+          if (staleUsed || eq(emergencyAdmin, existing.executor)) {
+            throw new Error('Obsolete executor is used or still holds emergency admin.');
+          }
+        } else {
+          if (existing.validated !== false || !existing.deploymentTxHash) {
+            throw new Error(`Current executor already deployed at ${existing.executor}.`);
+          }
+          receipt = await provider.getTransactionReceipt(existing.deploymentTxHash);
+          if (!receipt) {
+            throw new Error(
+              `Executor ${existing.executor} has code but deployment receipt ${existing.deploymentTxHash} is unavailable.`
+            );
+          }
+          executorAddress = existing.executor;
+          deploymentTxHash = existing.deploymentTxHash;
+          console.log('Resuming interrupted executor validation:', executorAddress);
         }
-        executorAddress = existing.executor;
-        deploymentTxHash = existing.deploymentTxHash;
-        console.log('Resuming interrupted executor validation:', executorAddress);
       } else if (existing.deploymentTxHash) {
         const [existingReceipt, transaction] = await Promise.all([
           provider.getTransactionReceipt(existing.deploymentTxHash),
@@ -392,17 +404,9 @@ async function main() {
               `visible yet. Do not deploy a replacement; wait for RPC propagation and rerun.`
           );
         }
-        if (existingReceipt?.status === 0) {
-          failedDeployments.push({
-            executor: existing.executor,
-            deploymentTxHash: existing.deploymentTxHash,
-            deployedAt: existing.deployedAt,
-            receiptStatus: 0,
-            gasUsed: existingReceipt.gasUsed.toString(),
-            gasLimit: transaction?.gasLimit?.toString(),
-            reconciledAt: new Date().toISOString(),
-          });
-        }
+        // A confirmed failed deployment is safe to replace. Its receipt stays
+        // available on-chain and in Git history; the state file tracks only
+        // the current executor attempt.
       }
     }
   }
@@ -411,9 +415,12 @@ async function main() {
     const factory = await ethers.getContractFactory('AtomicRatePokeExecutor', deployer);
     const unsignedDeployment = factory.getDeployTransaction(...constructorArguments);
     if (!unsignedDeployment.data) throw new Error('Executor deployment has no creation payload.');
-    // This pre-broadcast lock ensures both the compiled creation bytecode and
-    // every constructor argument are exactly the reviewed mainnet payload.
-    const reviewedGasEstimate = reviewedExecutorDeploymentGasEstimate(unsignedDeployment.data);
+    // Lock the compiled creation bytecode before broadcast. Constructor values
+    // come from the live-checked addresses and approved rate-update state above.
+    const reviewedGasEstimate = reviewedExecutorDeploymentGasEstimate(
+      unsignedDeployment.data,
+      factory.bytecode
+    );
     // The configured relay can read and broadcast successfully but rejects
     // contract-creation eth_estimateGas calls. Use public Hashio solely for this
     // read-only estimate so that relay defect cannot block deployment.
@@ -469,22 +476,14 @@ async function main() {
 
     // Persist as soon as the relay returns the deployment transaction. This
     // breadcrumb can be resumed if confirmation or validation is interrupted.
-    fs.writeFileSync(
-      STATE_PATH,
-      JSON.stringify(
-        {
-          network: CHAIN,
-          chainId: 295,
-          executor: executorAddress,
-          deploymentTxHash,
-          deployedAt: new Date().toISOString(),
-          validated: false,
-          failedDeployments,
-        },
-        null,
-        2
-      ) + '\n'
-    );
+    writeJson(EXECUTOR_STATE_PATH, {
+      network: CHAIN,
+      chainId: MAINNET_CHAIN_ID,
+      executor: executorAddress,
+      deploymentTxHash,
+      deployedAt: new Date().toISOString(),
+      validated: false,
+    });
 
     receipt = await executor.deployTransaction.wait();
   }
@@ -498,7 +497,7 @@ async function main() {
   );
   const state = {
     network: CHAIN,
-    chainId: 295,
+    chainId: MAINNET_CHAIN_ID,
     deployedAt: new Date().toISOString(),
     executor: executorAddress,
     deploymentTxHash,
@@ -508,15 +507,14 @@ async function main() {
     reviewedSourceHash: reviewedRuntime.reviewedSourceHash,
     controller: roles.controllerAddress,
     deployer: deployer.address,
-    failedDeployments,
     originalEmergencyAdmin: roles.emergencyAdmin,
     poolAdmin: roles.poolAdmin,
     strategies: roles.strategies,
     addresses: ADDRESSES,
   };
-  fs.writeFileSync(STATE_PATH, JSON.stringify(state, null, 2) + '\n');
+  writeJson(EXECUTOR_STATE_PATH, state);
   console.log('Executor:', executorAddress);
-  console.log('State file:', STATE_PATH);
+  console.log('State file:', EXECUTOR_STATE_PATH);
   console.log('No protocol role was changed. The pool remains paused.');
 }
 
