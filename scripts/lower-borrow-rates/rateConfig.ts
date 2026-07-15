@@ -6,13 +6,37 @@ import {
   WETH,
   BONZO,
   HBARX,
+  SAUCE,
+  GRELF,
+  XSAUCE,
+  KARATE,
+  KBL,
+  DOVU,
+  HST,
+  PACK,
+  STEAM,
   LendingPool,
   LendingPoolAddressesProvider,
   LendingPoolConfigurator,
   AaveProtocolDataProvider,
 } from '../outputReserveData.json';
 
-export const RATE_SYMBOLS = ['WHBAR', 'USDC', 'WETH', 'BONZO', 'HBARX'] as const;
+export const RATE_SYMBOLS = [
+  'WHBAR',
+  'USDC',
+  'WETH',
+  'BONZO',
+  'HBARX',
+  'SAUCE',
+  'XSAUCE',
+  'KARATE',
+  'GRELF',
+  'DOVU',
+  'HST',
+  'PACK',
+  'STEAM',
+  'KBL',
+] as const;
 export type RateSymbol = (typeof RATE_SYMBOLS)[number];
 
 export const TARGET_BASE_VARIABLE_RATE_DECIMAL = '0';
@@ -44,6 +68,15 @@ export const ASSET_BY_SYMBOL: Record<RateSymbol, string> = {
   WETH: WETH.hedera_mainnet.token.address,
   BONZO: BONZO.hedera_mainnet.token.address,
   HBARX: HBARX.hedera_mainnet.token.address,
+  SAUCE: SAUCE.hedera_mainnet.token.address,
+  XSAUCE: XSAUCE.hedera_mainnet.token.address,
+  KARATE: KARATE.hedera_mainnet.token.address,
+  GRELF: GRELF.hedera_mainnet.token.address,
+  DOVU: DOVU.hedera_mainnet.token.address,
+  HST: HST.hedera_mainnet.token.address,
+  PACK: PACK.hedera_mainnet.token.address,
+  STEAM: STEAM.hedera_mainnet.token.address,
+  KBL: KBL.hedera_mainnet.token.address,
 };
 
 export const TARGET_ASSETS = RATE_SYMBOLS.map((symbol) => ({
@@ -60,6 +93,19 @@ export const FREEZE_STATE_PATH = path.join(__dirname, 'freeze-state.json');
 export function assertMainnet(chain: string) {
   if (chain !== MAINNET_CHAIN_NAME) {
     throw new Error(`Mainnet only. Set CHAIN_TYPE=${MAINNET_CHAIN_NAME} (got ${chain}).`);
+  }
+}
+
+export function assertConfiguredReserveSet(liveReserves: string[]) {
+  const configured = new Set(TARGET_ASSETS.map(({ address }) => address.toLowerCase()));
+  const live = new Set(liveReserves.map((address) => address.toLowerCase()));
+  const missing = [...live].filter((address) => !configured.has(address));
+  const extra = [...configured].filter((address) => !live.has(address));
+  if (missing.length || extra.length) {
+    throw new Error(
+      `Configured reserve set differs from LendingPool: missing=${missing.join(',') || 'none'} ` +
+        `extra=${extra.join(',') || 'none'}`
+    );
   }
 }
 
