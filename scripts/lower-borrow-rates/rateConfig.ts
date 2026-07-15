@@ -37,6 +37,7 @@ export const RATE_SYMBOLS = [
   'STEAM',
   'KBL',
 ] as const;
+export const EXPECTED_RESERVE_COUNT = 14;
 export type RateSymbol = (typeof RATE_SYMBOLS)[number];
 
 export const TARGET_BASE_VARIABLE_RATE_DECIMAL = '0';
@@ -97,6 +98,12 @@ export function assertMainnet(chain: string) {
 }
 
 export function assertConfiguredReserveSet(liveReserves: string[]) {
+  if (RATE_SYMBOLS.length !== EXPECTED_RESERVE_COUNT) {
+    throw new Error(
+      `Expected ${EXPECTED_RESERVE_COUNT} configured reserves, got ${RATE_SYMBOLS.length}`
+    );
+  }
+
   const configured = new Set(TARGET_ASSETS.map(({ address }) => address.toLowerCase()));
   const live = new Set(liveReserves.map((address) => address.toLowerCase()));
   const missing = [...live].filter((address) => !configured.has(address));
