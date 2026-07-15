@@ -25,13 +25,14 @@ interface IAtomicRateStrategy {
 }
 
 /**
- * @notice One-shot executor for refreshing every configured reserve's stored
+ * @notice Batched executor for refreshing every configured reserve's stored
  * interest rates without exposing an inter-transaction unpause window.
  *
  * The AddressesProvider owner temporarily assigns this contract as emergency
- * admin, the controller calls executeAtomicRefresh(), and the owner restores
- * the original emergency admin after the transaction. This contract cannot
- * restore the role itself and never receives pool-admin or provider ownership.
+ * admin, the controller calls executeAtomicRefreshBatch() for each predefined
+ * batch, and the owner restores the original emergency admin after the final
+ * batch or any failure. This contract cannot restore the role itself and never
+ * receives pool-admin or provider ownership.
  */
 contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   using ReserveConfiguration for DataTypes.ReserveConfigurationMap;
@@ -42,6 +43,9 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   uint256 private constant EXPECTED_VARIABLE_RATE_SLOPE = 5e22; // 0.005% in ray
   uint256 private constant EXPECTED_MAX_VARIABLE_RATE = 1e23; // 0.01% in ray
   uint256 private constant RESERVE_COUNT = 14;
+  uint8 private constant BATCH_COUNT = 4;
+  uint8 private constant ALL_BATCHES_BITMAP = 15;
+  uint8 private constant NO_ACTIVE_BATCH = 255;
 
   ILendingPoolAddressesProvider public immutable override ADDRESSES_PROVIDER;
   ILendingPool public immutable override LENDING_POOL;
@@ -50,9 +54,14 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   address[14] public ASSETS;
   address[14] public STRATEGIES;
 
-  bool public used;
+  uint8 public completedBatches;
+  uint8 public activeBatch = NO_ACTIVE_BATCH;
 
-  event AtomicRateRefreshExecuted(address indexed controller);
+  event AtomicRateRefreshBatchExecuted(
+    address indexed controller,
+    uint8 indexed batchId,
+    uint8 completedBatches
+  );
   event PauseOnlyRescueExecuted(address indexed controller);
 
   modifier onlyController() {
@@ -93,12 +102,14 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   }
 
   /**
-   * @notice Atomically unpauses, refreshes all reserves through a
-   * mode-zero flash loan, and pauses again. Any failure reverts the complete
-   * transaction, including the initial unpause.
+   * @notice Atomically unpauses, refreshes one predefined reserve batch through
+   * a mode-zero flash loan, and pauses again. Any failure reverts the complete
+   * batch transaction, including the initial unpause and progress state.
    */
-  function executeAtomicRefresh() external onlyController {
-    require(!used, 'EXECUTOR: already used');
+  function executeAtomicRefreshBatch(uint8 batchId) external onlyController {
+    require(batchId < BATCH_COUNT, 'EXECUTOR: invalid batch');
+    require(!_isBatchCompleted(batchId), 'EXECUTOR: batch already completed');
+    require(activeBatch == NO_ACTIVE_BATCH, 'EXECUTOR: execution active');
     require(
       ADDRESSES_PROVIDER.getEmergencyAdmin() == address(this),
       'EXECUTOR: not emergency admin'
@@ -109,21 +120,23 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
       'EXECUTOR: configurator changed'
     );
     require(LENDING_POOL.paused(), 'EXECUTOR: pool not paused');
-    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
+    (uint256 start, uint256 count) = _batchBounds(batchId);
+    for (uint256 i = start; i < start + count; i++) {
       _validateReserve(ASSETS[i], STRATEGIES[i]);
     }
 
-    // Set before the external calls to prevent controller-driven re-entry. A
-    // failure anywhere below reverts this write together with the unpause.
-    used = true;
+    // Set before the external calls to identify the only callback payload that
+    // may be accepted. A failure anywhere below reverts this write together
+    // with the unpause and all flash-loan effects.
+    activeBatch = batchId;
     CONFIGURATOR.setPoolPause(false);
     require(!LENDING_POOL.paused(), 'EXECUTOR: unpause failed');
 
-    address[] memory assets = new address[](RESERVE_COUNT);
-    uint256[] memory amounts = new uint256[](RESERVE_COUNT);
-    uint256[] memory modes = new uint256[](RESERVE_COUNT); // mode 0: repay, never open debt
-    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
-      assets[i] = ASSETS[i];
+    address[] memory assets = new address[](count);
+    uint256[] memory amounts = new uint256[](count);
+    uint256[] memory modes = new uint256[](count); // mode 0: repay, never open debt
+    for (uint256 i = 0; i < count; i++) {
+      assets[i] = ASSETS[start + i];
       amounts[i] = 1;
     }
 
@@ -131,13 +144,24 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
 
     CONFIGURATOR.setPoolPause(true);
     require(LENDING_POOL.paused(), 'EXECUTOR: final pause failed');
-    emit AtomicRateRefreshExecuted(msg.sender);
+    activeBatch = NO_ACTIVE_BATCH;
+    completedBatches |= uint8(uint256(1) << uint256(batchId));
+    emit AtomicRateRefreshBatchExecuted(msg.sender, batchId, completedBatches);
+  }
+
+  function used() external view returns (bool) {
+    return completedBatches == ALL_BATCHES_BITMAP;
+  }
+
+  function isBatchCompleted(uint8 batchId) external view returns (bool) {
+    require(batchId < BATCH_COUNT, 'EXECUTOR: invalid batch');
+    return _isBatchCompleted(batchId);
   }
 
   /**
    * @notice Pause-only recovery path while this contract holds emergency admin.
-   * It deliberately cannot unpause and remains available after the one-shot
-   * refresh has been used.
+   * It deliberately cannot unpause and remains available after any or all
+   * refresh batches have been used.
    */
   function pauseOnly() external onlyController {
     require(
@@ -160,21 +184,32 @@ contract AtomicRatePokeExecutor is IFlashLoanReceiver {
   ) external override returns (bool) {
     require(msg.sender == address(LENDING_POOL), 'EXECUTOR: callback not pool');
     require(initiator == address(this), 'EXECUTOR: wrong initiator');
-    require(used, 'EXECUTOR: execution not active');
+    require(activeBatch < BATCH_COUNT, 'EXECUTOR: execution not active');
+    (uint256 start, uint256 count) = _batchBounds(activeBatch);
     require(
-      assets.length == RESERVE_COUNT &&
-        amounts.length == RESERVE_COUNT &&
-        premiums.length == RESERVE_COUNT,
+      assets.length == count && amounts.length == count && premiums.length == count,
       'EXECUTOR: wrong arrays'
     );
 
-    for (uint256 i = 0; i < RESERVE_COUNT; i++) {
-      require(assets[i] == ASSETS[i], 'EXECUTOR: wrong assets');
+    for (uint256 i = 0; i < count; i++) {
+      require(assets[i] == ASSETS[start + i], 'EXECUTOR: wrong assets');
       require(amounts[i] == 1, 'EXECUTOR: wrong amount');
       require(premiums[i] == 0, 'EXECUTOR: non-zero premium');
       require(IERC20(assets[i]).approve(address(LENDING_POOL), 1), 'EXECUTOR: approval failed');
     }
     return true;
+  }
+
+  function _batchBounds(uint8 batchId) private pure returns (uint256 start, uint256 count) {
+    if (batchId == 0) return (0, 3);
+    if (batchId == 1) return (3, 4);
+    if (batchId == 2) return (7, 4);
+    if (batchId == 3) return (11, 3);
+    revert('EXECUTOR: invalid batch');
+  }
+
+  function _isBatchCompleted(uint8 batchId) private view returns (bool) {
+    return (completedBatches & uint8(uint256(1) << uint256(batchId))) != 0;
   }
 
   function _associateIfHts(address token) private {

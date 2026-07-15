@@ -32,11 +32,19 @@ import {
   RATE_STATE_PATH,
   RateSymbol,
   StrategyMap,
-  assertApprovedVariableCurve,
   assertConfiguredReserveSet,
   assertMainnet,
+  assertRecordedStrategyIdentity,
 } from './rateConfig';
-import { contractAs, eqAddress, readJson, withRetry, writeJson } from './scriptUtils';
+import {
+  conciseRpcError,
+  contractAs,
+  eqAddress,
+  readJson,
+  smallUintToNumber,
+  withRetry,
+  writeJson,
+} from './scriptUtils';
 
 const CHAIN = process.env.CHAIN_TYPE || 'hedera_testnet';
 assertMainnet(CHAIN);
@@ -61,28 +69,17 @@ const ADDRESSES = PROTOCOL_ADDRESSES;
 
 const eq = eqAddress;
 
-function conciseRpcError(error: any): string {
-  const code = error?.error?.code || error?.code || 'unknown';
-  const rawReason = String(
-    error?.error?.data?.message ||
-      error?.reason ||
-      error?.error?.message ||
-      error?.message ||
-      'unknown RPC error'
-  );
-  const diagnosticText = [
-    rawReason,
-    error?.body,
-    error?.error?.body,
-    error?.error?.data?.message,
-  ].join(' ');
-  const knownReason = diagnosticText.match(
-    /INSUFFICIENT_TX_FEE|insufficient transaction fee|transaction underpriced|max fee per gas less than block base fee/i
-  )?.[0];
-  // Avoid logging provider URLs, request payloads, or access tokens embedded in
-  // verbose ethers SERVER_ERROR messages.
-  const safeReason = knownReason || rawReason.split(' (requestBody=')[0].split(', url=')[0];
-  return `code=${code} reason=${safeReason.slice(0, 240)}`;
+function executorStateForArchive(existing: any) {
+  const { previousExecutors: _previousExecutors, ...current } = existing;
+  if (!current.execution) return current;
+
+  const execution = { ...current.execution };
+  for (const [key, value] of Object.entries(execution)) {
+    if (key.toLowerCase().includes('error') && typeof value === 'string') {
+      execution[key] = conciseRpcError(value);
+    }
+  }
+  return { ...current, execution };
 }
 
 async function estimateDeploymentGas(
@@ -202,7 +199,12 @@ async function preflight() {
       expected,
       provider
     );
-    await assertApprovedVariableCurve(symbol, strategy);
+    await assertRecordedStrategyIdentity(
+      symbol,
+      strategy,
+      provider,
+      rateState.reserves[symbol].deploy
+    );
     const underlying = new ethers.Contract(
       asset,
       ['function balanceOf(address) view returns (uint256)'],
@@ -232,11 +234,17 @@ async function validateDeployment(
   controllerAddress: string,
   strategies: StrategyMap
 ) {
+  console.log(`Validating deployed executor: ${address}`);
   const executor = await contractAs(hre, 'AtomicRatePokeExecutor', address, provider);
+  console.log('[1/5] Reading and matching deployed runtime bytecode.');
   const code = await provider.getCode(address);
   if (code === '0x') throw new Error('Executor has no runtime bytecode.');
-  const reviewedRuntime = await assertReviewedExecutorRuntime(hre, code);
+  const reviewedRuntime = await assertReviewedExecutorRuntime(hre, code, {
+    log: (message) => console.log(`  ${message}`),
+  });
+  console.log('[1/5] Runtime bytecode matches the reviewed artifact.');
 
+  console.log('[2/5] Checking controller and protocol-address immutables.');
   const values = await Promise.all([
     executor.CONTROLLER(),
     executor.ADDRESSES_PROVIDER(),
@@ -248,6 +256,9 @@ async function validateDeployment(
     if (!eq(values[i], expected[i]))
       throw new Error(`Executor configuration ${i} mismatch: ${values[i]} != ${expected[i]}`);
   }
+  console.log('[2/5] Controller, provider, pool, and configurator match.');
+
+  console.log('[3/5] Checking all 14 asset and strategy slots.');
   for (let i = 0; i < RATE_SYMBOLS.length; i++) {
     const symbol = RATE_SYMBOLS[i];
     const [asset, strategy] = await Promise.all([executor.ASSETS(i), executor.STRATEGIES(i)]);
@@ -258,10 +269,20 @@ async function validateDeployment(
       throw new Error(`${symbol}: executor strategy ${strategy} != ${strategies[symbol]}`);
     }
   }
-  if (await executor.used()) throw new Error('Fresh executor is unexpectedly marked used.');
+  console.log('[3/5] All 14 asset and strategy slots match the reviewed configuration.');
+
+  console.log('[4/5] Checking that the executor has no completed batches.');
+  const [completedBatches, used] = await Promise.all([
+    executor.completedBatches(),
+    executor.used(),
+  ]);
+  if (smallUintToNumber(completedBatches, 'completedBatches') !== 0 || used) {
+    throw new Error('Fresh executor unexpectedly reports completed batches.');
+  }
+  console.log('[4/5] completedBatches=0 and used=false.');
 
   // Before the emergency-admin handoff the executor is NOT the emergency admin,
-  // so executeAtomicRefresh must revert. Simulate AS the controller (via an
+  // so executeAtomicRefreshBatch must revert. Simulate AS the controller (via an
   // eth_call from-override, which needs no signature) so the call passes the
   // onlyController gate and reverts on the meaningful `EXECUTOR: not emergency
   // admin` check rather than the caller gate. Assert that it reverts at all; do
@@ -270,25 +291,31 @@ async function validateDeployment(
   // the reason IS present, confirm it is the expected role gate, but only warn.
   let reverted = false;
   let revertMessage = '';
+  console.log('[5/5] Simulating the pre-handoff role gate and confirming the pool remains paused.');
   try {
-    await executor.callStatic.executeAtomicRefresh({ from: controllerAddress });
+    await executor.callStatic.executeAtomicRefreshBatch(0, { from: controllerAddress });
   } catch (error: any) {
     reverted = true;
     revertMessage = `${error?.message || error}`;
   }
   if (!reverted)
-    throw new Error('Executor did not reject executeAtomicRefresh before emergency-admin handoff.');
+    throw new Error(
+      'Executor did not reject executeAtomicRefreshBatch before emergency-admin handoff.'
+    );
   if (revertMessage && !revertMessage.includes('EXECUTOR: not emergency admin')) {
     console.warn(
-      `Pre-handoff execution reverted as expected, but with an unexpected reason: ${revertMessage}`
+      `Pre-handoff execution reverted as expected, but with an unexpected reason: ${conciseRpcError(
+        revertMessage
+      )}`
     );
   }
 
   const pool = await contractAs(hre, 'LendingPool', ADDRESSES.pool, provider);
   if (!(await pool.paused()))
     throw new Error('Pool changed from paused during deployment validation.');
+  console.log('[5/5] Pre-handoff execution reverted and the pool remains paused.');
   console.log(
-    'Deployment validation passed: bytecode, immutables, one-shot state, role gate, and pause state.'
+    'Deployment validation passed: bytecode, immutables, empty batch state, role gate, and pause state.'
   );
   return reviewedRuntime;
 }
@@ -310,150 +337,99 @@ async function main() {
     RATE_SYMBOLS.map((symbol) => ASSET_BY_SYMBOL[symbol]),
     RATE_SYMBOLS.map((symbol) => roles.strategies[symbol]),
   ];
-  let executorAddress = '';
-  let deploymentTxHash = '';
-  let receipt: any;
+  let previousExecutors: any[] = [];
 
   if (fs.existsSync(EXECUTOR_STATE_PATH)) {
     const existing = readJson(EXECUTOR_STATE_PATH);
-    if (existing?.executor) {
-      const existingCode = await provider.getCode(existing.executor);
-      if (existingCode !== '0x') {
-        let matchesCurrentExecutor = true;
-        try {
-          await assertReviewedExecutorRuntime(hre, existingCode);
-        } catch {
-          matchesCurrentExecutor = false;
-        }
-        if (!matchesCurrentExecutor) {
-          const staleExecutor = await contractAs(
-            hre,
-            'AtomicRatePokeExecutor',
-            existing.executor,
-            provider
-          );
-          const ap = await contractAs(
-            hre,
-            'LendingPoolAddressesProvider',
-            ADDRESSES.provider,
-            provider
-          );
-          const [staleUsed, emergencyAdmin] = await Promise.all([
-            staleExecutor.used(),
-            ap.getEmergencyAdmin(),
-          ]);
-          if (staleUsed || eq(emergencyAdmin, existing.executor)) {
-            throw new Error('Obsolete executor is used or still holds emergency admin.');
-          }
-        } else {
-          if (existing.validated !== false || !existing.deploymentTxHash) {
-            throw new Error(`Current executor already deployed at ${existing.executor}.`);
-          }
-          receipt = await provider.getTransactionReceipt(existing.deploymentTxHash);
-          if (!receipt) {
-            throw new Error(
-              `Executor ${existing.executor} has code but deployment receipt ${existing.deploymentTxHash} is unavailable.`
-            );
-          }
-          executorAddress = existing.executor;
-          deploymentTxHash = existing.deploymentTxHash;
-          console.log('Resuming interrupted executor validation:', executorAddress);
-        }
-      } else if (existing.deploymentTxHash) {
-        const [existingReceipt, transaction] = await Promise.all([
-          provider.getTransactionReceipt(existing.deploymentTxHash),
-          provider.getTransaction(existing.deploymentTxHash),
-        ]);
-        if (!existingReceipt) {
-          throw new Error(
-            `Prior executor deployment ${existing.deploymentTxHash} has no receipt ` +
-              `(transaction ${transaction ? 'is still visible' : 'is not currently visible'}). ` +
-              `Do not deploy a replacement until it is reconciled.`
-          );
-        }
-        if (existingReceipt?.status === 1) {
-          throw new Error(
-            `Prior executor deployment ${existing.deploymentTxHash} succeeded but its code is not ` +
-              `visible yet. Do not deploy a replacement; wait for RPC propagation and rerun.`
-          );
-        }
-        // A confirmed failed deployment is safe to replace. Its receipt stays
-        // available on-chain and in Git history; the state file tracks only
-        // the current executor attempt.
-      }
+    previousExecutors = Array.isArray(existing?.previousExecutors)
+      ? [...existing.previousExecutors]
+      : [];
+    const stateToArchive = executorStateForArchive(existing);
+    if (Object.keys(stateToArchive).length > 0) {
+      previousExecutors.push({
+        ...stateToArchive,
+        archivedAt: new Date().toISOString(),
+      });
+      console.log(
+        `Archiving prior executor state${
+          existing.executor ? ` for ${existing.executor}` : ''
+        } in previousExecutors.`
+      );
     }
   }
 
-  if (!executorAddress) {
-    const factory = await ethers.getContractFactory('AtomicRatePokeExecutor', deployer);
-    const unsignedDeployment = factory.getDeployTransaction(...constructorArguments);
-    if (!unsignedDeployment.data) throw new Error('Executor deployment has no creation payload.');
-    // Lock the compiled creation bytecode before broadcast. Constructor values
-    // come from the live-checked addresses and approved rate-update state above.
-    assertReviewedExecutorDeploymentPayload(unsignedDeployment.data, factory.bytecode);
-    // The configured relay can read and broadcast successfully but rejects
-    // contract-creation eth_estimateGas calls. Use public Hashio solely for this
-    // read-only estimate so that relay defect cannot block deployment.
-    const publicHashioProvider = withRetry(
-      new ethers.providers.JsonRpcProvider(PUBLIC_HASHIO_MAINNET_RPC),
-      2
-    );
-    const estimatedGas = await estimateDeploymentGas(
-      publicHashioProvider,
-      unsignedDeployment,
-      'Public Hashio RPC'
-    );
+  console.log('A confirmed run always deploys a fresh executor; prior state will not be resumed.');
+  const factory = await ethers.getContractFactory('AtomicRatePokeExecutor', deployer);
+  const unsignedDeployment = factory.getDeployTransaction(...constructorArguments);
+  if (!unsignedDeployment.data) throw new Error('Executor deployment has no creation payload.');
+  // Lock the compiled creation bytecode before broadcast. Constructor values
+  // come from the live-checked addresses and approved rate-update state above.
+  assertReviewedExecutorDeploymentPayload(unsignedDeployment.data, factory.bytecode);
+  // The configured relay can read and broadcast successfully but rejects
+  // contract-creation eth_estimateGas calls. Use public Hashio solely for this
+  // read-only estimate so that relay defect cannot block deployment.
+  const publicHashioProvider = withRetry(
+    new ethers.providers.JsonRpcProvider(PUBLIC_HASHIO_MAINNET_RPC),
+    2
+  );
+  const estimatedGas = await estimateDeploymentGas(
+    publicHashioProvider,
+    unsignedDeployment,
+    'Public Hashio RPC'
+  );
 
-    const configuredGasLimit = process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT
-      ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT)
-      : undefined;
-    // Hedera charges at least 80% of the supplied gas limit. Keep the automatic
-    // headroom below 25% so the floor remains below the live estimate and does
-    // not turn unused buffer into extra cost.
-    if (!estimatedGas && !configuredGasLimit) {
-      throw new Error(
-        'Cannot estimate executor deployment gas. Retry Hashio or provide ' +
-          'ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT explicitly.'
-      );
-    }
-    if (
-      estimatedGas &&
-      configuredGasLimit &&
-      configuredGasLimit.lt(estimatedGas.mul(105).div(100))
-    ) {
-      throw new Error(
-        `ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT ${configuredGasLimit.toString()} is below the required ` +
-          `5% safety buffer over estimate ${estimatedGas.toString()}.`
-      );
-    }
-    const deploymentGasLimit = configuredGasLimit || estimatedGas!.mul(110).div(100);
-    console.log(
-      `Executor deployment gas: estimate=${estimatedGas?.toString() || 'unavailable'} ` +
-        `source=${estimatedGas ? 'public Hashio RPC' : 'explicit override'} ` +
-        `limit=${deploymentGasLimit.toString()}.`
+  const configuredGasLimit = process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT
+    ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT)
+    : undefined;
+  // Hedera charges at least 80% of the supplied gas limit. Keep the automatic
+  // headroom below 25% so the floor remains below the live estimate and does
+  // not turn unused buffer into extra cost.
+  if (!estimatedGas && !configuredGasLimit) {
+    throw new Error(
+      'Cannot estimate executor deployment gas. Retry Hashio or provide ' +
+        'ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT explicitly.'
     );
-    const executor = await factory.deploy(...constructorArguments, {
-      gasLimit: deploymentGasLimit,
-    });
-    executorAddress = executor.address;
-    deploymentTxHash = executor.deployTransaction.hash;
-    console.log('Deployment transaction:', deploymentTxHash);
-
-    // Persist as soon as the relay returns the deployment transaction. This
-    // breadcrumb can be resumed if confirmation or validation is interrupted.
-    writeJson(EXECUTOR_STATE_PATH, {
-      network: CHAIN,
-      chainId: MAINNET_CHAIN_ID,
-      executor: executorAddress,
-      deploymentTxHash,
-      deployedAt: new Date().toISOString(),
-      validated: false,
-    });
-
-    receipt = await executor.deployTransaction.wait();
   }
+  if (estimatedGas && configuredGasLimit && configuredGasLimit.lt(estimatedGas.mul(105).div(100))) {
+    throw new Error(
+      `ATOMIC_EXECUTOR_DEPLOY_GAS_LIMIT ${configuredGasLimit.toString()} is below the required ` +
+        `5% safety buffer over estimate ${estimatedGas.toString()}.`
+    );
+  }
+  const deploymentGasLimit = configuredGasLimit || estimatedGas!.mul(110).div(100);
+  console.log(
+    `Executor deployment gas: estimate=${estimatedGas?.toString() || 'unavailable'} ` +
+      `source=${estimatedGas ? 'public Hashio RPC' : 'explicit override'} ` +
+      `limit=${deploymentGasLimit.toString()}.`
+  );
+  const executor = await factory.deploy(...constructorArguments, {
+    gasLimit: deploymentGasLimit,
+  });
+  const executorAddress = executor.address;
+  const deploymentTxHash = executor.deployTransaction.hash;
+  console.log('Deployment transaction:', deploymentTxHash);
+
+  // Persist as soon as the relay returns the deployment transaction. A later
+  // invocation archives this attempt and deploys a new executor; it never
+  // resumes or reuses the address.
+  writeJson(EXECUTOR_STATE_PATH, {
+    network: CHAIN,
+    chainId: MAINNET_CHAIN_ID,
+    executor: executorAddress,
+    deploymentTxHash,
+    deployedAt: new Date().toISOString(),
+    validated: false,
+    ...(previousExecutors.length ? { previousExecutors } : {}),
+  });
+
+  const receipt = await executor.deployTransaction.wait();
 
   if (receipt.status !== 1) throw new Error(`Executor deployment failed: ${deploymentTxHash}`);
+  console.log(
+    `Deployment receipt confirmed: block=${receipt.blockNumber} gasUsed=${
+      receipt.gasUsed?.toString?.() || 'unknown'
+    } status=${receipt.status}.`
+  );
 
   const reviewedRuntime = await validateDeployment(
     executorAddress,
@@ -467,6 +443,7 @@ async function main() {
     executor: executorAddress,
     deploymentTxHash,
     deploymentBlock: receipt.blockNumber,
+    validated: true,
     runtimeBytecodeHash: reviewedRuntime.runtimeBytecodeHash,
     reviewedRuntimeTemplateHash: reviewedRuntime.reviewedRuntimeTemplateHash,
     reviewedSourceHash: reviewedRuntime.reviewedSourceHash,
@@ -476,7 +453,9 @@ async function main() {
     poolAdmin: roles.poolAdmin,
     strategies: roles.strategies,
     addresses: { ...ADDRESSES, assets: ASSET_BY_SYMBOL },
+    ...(previousExecutors.length ? { previousExecutors } : {}),
   };
+  console.log('Writing finalized, validated deployment state.');
   writeJson(EXECUTOR_STATE_PATH, state);
   console.log('Executor:', executorAddress);
   console.log('State file:', EXECUTOR_STATE_PATH);
@@ -484,6 +463,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error(error);
+  console.error(`Deployment or validation FAILED: ${conciseRpcError(error)}`);
   process.exit(1);
 });

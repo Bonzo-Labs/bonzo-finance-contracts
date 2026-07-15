@@ -1,9 +1,9 @@
 /**
- * Lower Borrow Rates: WHBAR / WETH / USDC / BONZO / HBARX (Hedera Mainnet only)
+ * Lower Borrow Rates: every configured Hedera Mainnet reserve
  * -------------------------------------------------------------------------
- * Reduces variableRateSlope1 and variableRateSlope2 for the WHBAR, WETH, USDC,
- * BONZO and HBARX reserves by deploying a fresh DefaultReserveInterestRateStrategy per
- * reserve (slopes are immutable, so they cannot be mutated in place) and
+ * Reduces variableRateSlope1 and variableRateSlope2 for every reserve by
+ * deploying a fresh DefaultReserveInterestRateStrategy per reserve (slopes are
+ * immutable, so they cannot be mutated in place) and
  * wiring it to the reserve via setReserveInterestRateStrategyAddress().
  *
  * SAFE WHILE PAUSED: setReserveInterestRateStrategyAddress is a pool-admin
@@ -70,40 +70,6 @@ const owner = new ethers.Wallet(process.env.PRIVATE_KEY_MAINNET_ADMIN || '', pro
 // slope2 1%. This replacement run reduces each reserve to base 0%, slope1
 // 0.005%, and slope2 0.005%, for a maximum variable rate of 0.01%.
 // --------------------------------------------------------------------------
-type Target = {
-  newVariableRateSlope1: string;
-  newVariableRateSlope2: string;
-  newBaseVariableBorrowRate: string;
-};
-
-const TARGETS: Record<RateSymbol, Target> = {
-  WHBAR: {
-    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
-  },
-  USDC: {
-    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
-  },
-  WETH: {
-    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
-  },
-  BONZO: {
-    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
-  },
-  HBARX: {
-    newVariableRateSlope1: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newVariableRateSlope2: TARGET_VARIABLE_RATE_SLOPE_DECIMAL,
-    newBaseVariableBorrowRate: TARGET_BASE_VARIABLE_RATE_DECIMAL,
-  },
-};
-
 // --------------------------------------------------------------------------
 // State file (deployed addresses, preserved params, tx hashes).
 // --------------------------------------------------------------------------
@@ -225,11 +191,9 @@ async function printCurrent(symbol: RateSymbol) {
 // --------------------------------------------------------------------------
 async function deployNewStrategy(symbol: RateSymbol) {
   const live = await readLiveStrategy(symbol);
-  const target = TARGETS[symbol];
-
-  const newV1 = toRay(target.newVariableRateSlope1);
-  const newV2 = toRay(target.newVariableRateSlope2);
-  const newBase = toRay(target.newBaseVariableBorrowRate);
+  const newV1 = toRay(TARGET_VARIABLE_RATE_SLOPE_DECIMAL);
+  const newV2 = toRay(TARGET_VARIABLE_RATE_SLOPE_DECIMAL);
+  const newBase = toRay(TARGET_BASE_VARIABLE_RATE_DECIMAL);
 
   // Guard: reject anything that is not a genuine reduction (never increase).
   const curV1 = ethers.BigNumber.from(live.vSlope1);
@@ -507,11 +471,47 @@ async function main() {
 
   // --- BONZO ---
   // await deployNewStrategy('BONZO');
-  await wireStrategy('BONZO');
+  // await wireStrategy('BONZO');
 
   // --- HBARX ---
   // await deployNewStrategy('HBARX');
-  await wireStrategy('HBARX');
+  // await wireStrategy('HBARX');
+
+  // --- SAUCE ---
+  // await deployNewStrategy('SAUCE');
+  // await wireStrategy('SAUCE');
+
+  // --- XSAUCE ---
+  // await deployNewStrategy('XSAUCE');
+  // await wireStrategy('XSAUCE');
+
+  // --- KARATE ---
+  // await deployNewStrategy('KARATE');
+  // await wireStrategy('KARATE');
+
+  // --- GRELF ---
+  // await deployNewStrategy('GRELF');
+  // await wireStrategy('GRELF');
+
+  // --- DOVU ---
+  // await deployNewStrategy('DOVU');
+  // await wireStrategy('DOVU');
+
+  // --- HST ---
+  // await deployNewStrategy('HST');
+  // await wireStrategy('HST');
+
+  // --- PACK ---
+  // await deployNewStrategy('PACK');
+  // await wireStrategy('PACK');
+
+  // --- STEAM ---
+  // await deployNewStrategy('STEAM');
+  // await wireStrategy('STEAM');
+
+  // --- KBL ---
+  // await deployNewStrategy('KBL');
+  // await wireStrategy('KBL');
 }
 
 main()

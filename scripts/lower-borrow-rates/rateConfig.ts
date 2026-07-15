@@ -1,5 +1,6 @@
 import path from 'path';
 import BigNumber from 'bignumber.js';
+import { utils } from 'ethers';
 import {
   WHBAR,
   USDC,
@@ -165,4 +166,82 @@ export async function assertApprovedVariableCurve(symbol: string, strategy: any)
   };
   assertTargetVariableCurve(symbol, curve);
   return curve;
+}
+
+export async function assertRecordedStrategyIdentity(
+  symbol: string,
+  strategy: any,
+  provider: any,
+  deployment: any
+) {
+  if (!deployment?.address || !deployment?.runtimeBytecodeHash || !deployment?.constructorParams) {
+    throw new Error(`${symbol}: incomplete recorded strategy deployment identity`);
+  }
+  if (strategy.address.toLowerCase() !== deployment.address.toLowerCase()) {
+    throw new Error(`${symbol}: strategy contract differs from recorded deployment address`);
+  }
+
+  const runtimeCode = await provider.getCode(deployment.address);
+  if (runtimeCode === '0x') throw new Error(`${symbol}: recorded strategy has no runtime bytecode`);
+  const runtimeHash = utils.keccak256(runtimeCode);
+  if (runtimeHash.toLowerCase() !== deployment.runtimeBytecodeHash.toLowerCase()) {
+    throw new Error(
+      `${symbol}: runtime bytecode hash ${runtimeHash} != recorded ${deployment.runtimeBytecodeHash}`
+    );
+  }
+
+  const recorded = deployment.constructorParams;
+  const [
+    addressesProvider,
+    optimalUtilizationRate,
+    baseVariableBorrowRate,
+    variableRateSlope1,
+    variableRateSlope2,
+    stableRateSlope1,
+    stableRateSlope2,
+    maxVariableBorrowRate,
+  ] = await Promise.all([
+    strategy.addressesProvider(),
+    strategy.OPTIMAL_UTILIZATION_RATE(),
+    strategy.baseVariableBorrowRate(),
+    strategy.variableRateSlope1(),
+    strategy.variableRateSlope2(),
+    strategy.stableRateSlope1(),
+    strategy.stableRateSlope2(),
+    strategy.getMaxVariableBorrowRate(),
+  ]);
+
+  const expectedProvider = recorded.provider || deployment.addressesProvider;
+  if (!expectedProvider || addressesProvider.toLowerCase() !== expectedProvider.toLowerCase()) {
+    throw new Error(
+      `${symbol}: strategy addressesProvider ${addressesProvider} != recorded ${expectedProvider}`
+    );
+  }
+  if (
+    deployment.addressesProvider &&
+    deployment.addressesProvider.toLowerCase() !== expectedProvider.toLowerCase()
+  ) {
+    throw new Error(`${symbol}: deployment provider fields disagree`);
+  }
+
+  const recordedChecks: Array<[string, string, unknown]> = [
+    ['optimalUtilizationRate', recorded.optimalUtilizationRate, optimalUtilizationRate],
+    ['baseVariableBorrowRate', recorded.baseVariableBorrowRate, baseVariableBorrowRate],
+    ['variableRateSlope1', recorded.variableRateSlope1, variableRateSlope1],
+    ['variableRateSlope2', recorded.variableRateSlope2, variableRateSlope2],
+    ['stableRateSlope1', recorded.stableRateSlope1, stableRateSlope1],
+    ['stableRateSlope2', recorded.stableRateSlope2, stableRateSlope2],
+  ];
+  for (const [label, expected, actual] of recordedChecks) {
+    if (expected === undefined || actual?.toString() !== expected) {
+      throw new Error(`${symbol}: ${label}=${actual}, recorded=${expected}`);
+    }
+  }
+
+  assertTargetVariableCurve(symbol, {
+    baseVariableBorrowRate,
+    variableRateSlope1,
+    variableRateSlope2,
+    maxVariableBorrowRate,
+  });
 }

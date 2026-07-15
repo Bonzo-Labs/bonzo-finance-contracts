@@ -1,5 +1,5 @@
 /**
- * Read-only verification for the five lowered borrow-rate strategies.
+ * Read-only verification for every lowered borrow-rate strategy.
  */
 import BigNumber from 'bignumber.js';
 import { ethers } from 'hardhat';
@@ -15,6 +15,7 @@ import {
   TARGET_BASE_VARIABLE_RATE_RAY,
   TARGET_MAX_VARIABLE_RATE_RAY,
   TARGET_VARIABLE_RATE_SLOPE_RAY,
+  assertConfiguredReserveSet,
   assertMainnet,
 } from './rateConfig';
 import { contractAs, eqAddress, readJson, withRetry } from './scriptUtils';
@@ -41,6 +42,7 @@ async function main() {
     PROTOCOL_ADDRESSES.dataProvider,
     provider
   );
+  assertConfiguredReserveSet(await pool.getReservesList());
 
   const reportRay = (label: string, actual: unknown, expected: unknown) => {
     const pass = actual?.toString() === expected?.toString();

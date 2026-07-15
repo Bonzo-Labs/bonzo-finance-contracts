@@ -15,6 +15,50 @@ export function writeJson(filePath: string, value: unknown) {
   fs.writeFileSync(filePath, JSON.stringify(value, null, 2) + '\n');
 }
 
+export function smallUintToNumber(value: any, label = 'value'): number {
+  const converted =
+    typeof value === 'number'
+      ? value
+      : typeof value?.toNumber === 'function'
+      ? value.toNumber()
+      : Number(value?.toString?.() ?? value);
+
+  if (!Number.isSafeInteger(converted) || converted < 0) {
+    throw new Error(`${label} is not a safe unsigned integer: ${String(value)}`);
+  }
+  return converted;
+}
+
+export function conciseRpcError(error: any): string {
+  const code = error?.error?.code || error?.code || 'unknown';
+  const candidates = [
+    error?.error?.data?.message,
+    error?.reason,
+    error?.error?.message,
+    error?.message,
+    typeof error === 'string' ? error : undefined,
+  ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+  const diagnosticText = [...candidates, error?.body, error?.error?.body]
+    .filter((value) => typeof value === 'string')
+    .join(' ');
+  const knownReason = diagnosticText.match(
+    /MAX_CHILD_RECORDS_EXCEEDED|INSUFFICIENT_TX_FEE|CONTRACT_REVERT_EXECUTED|INSUFFICIENT_GAS|insufficient transaction fee|transaction underpriced|max fee per gas less than block base fee/i
+  )?.[0];
+
+  let safeReason = knownReason || candidates[0] || 'unknown RPC error';
+  // Ethers can embed the entire JSON-RPC request and credential-bearing URL in
+  // an Error.message. Persist only a short diagnostic, never those payloads.
+  safeReason = safeReason
+    .split(' (requestBody=')[0]
+    .split(' requestBody=')[0]
+    .split('"requestBody":')[0]
+    .split(', url=')[0]
+    .replace(/https?:\/\/[^\s"',)\\]+/gi, '[redacted-url]')
+    .replace(/((?:api[_-]?key|access[_-]?token|token)\s*[:=]\s*)[^\s,"'}]+/gi, '$1[redacted]');
+
+  return `code=${code} reason=${safeReason.slice(0, 240)}`;
+}
+
 export function recordRateUpdateStep(
   state: any,
   symbol: string,
