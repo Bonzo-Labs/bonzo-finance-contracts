@@ -1,3 +1,866 @@
 {
-  "reserves": {}
+  "reserves": {
+    "WHBAR": {
+      "history": [
+        {
+          "archivedAt": "2026-07-13T18:07:06.532Z",
+          "deploy": {
+            "network": "hedera_mainnet",
+            "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+            "address": "0x0000000000000000000000000000000000a244d7",
+            "contractId": "0.0.10634455",
+            "evmAddress": "0x0000000000000000000000000000000000a244d7",
+            "hederaTxId": "0.0.7317802@1783790907.209277375",
+            "consensusTimestamp": "1783790920.316542933",
+            "deployerAccountId": "0.0.7317802",
+            "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+            "runtimeBytecodeHash": "0xf06cc84b9b243e0a951d53378ebe2232e8dbdd620a3e014c4bff29e50f7fbb27",
+            "constructorParams": {
+              "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+              "optimalUtilizationRate": "550000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "800000000000000000000000000"
+            },
+            "preserved": {
+              "optimalUtilizationRate": "550000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "800000000000000000000000000"
+            },
+            "target": {
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "baseVariableBorrowRate": "0"
+            },
+            "previousStrategy": "0x82C50aAfe0dc3f92e637EE05076d68180DB06d58",
+            "timestamp": "2026-07-11T17:28:49.342Z",
+            "completed": true
+          },
+          "wire": {
+            "txHash": "0x19e5ec0894d3a7fb42632126d29d75051bcb913332515413898e4826b9575392",
+            "fromStrategy": "0x82C50aAfe0dc3f92e637EE05076d68180DB06d58",
+            "toStrategy": "0x0000000000000000000000000000000000a244d7",
+            "storedRateSnapshot": {
+              "variableBorrowRate": "1559920790712652783121174024",
+              "liquidityRate": "1377689303843073633157467827"
+            },
+            "timestamp": "2026-07-13T10:53:39.692Z",
+            "completed": true
+          }
+        }
+      ],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2551a",
+        "contractId": "0.0.10638618",
+        "evmAddress": "0x0000000000000000000000000000000000a2551a",
+        "hederaTxId": "0.0.7317802@1783966004.922190589",
+        "consensusTimestamp": "1783966017.022893000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0x09cda17bc488d0c67acec1ac574f885c041908289473c0687ae8a39c58876067",
+        "runtimeBytecodeObservedAt": "2026-07-13T18:33:40.000Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "550000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "550000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0000000000000000000000000000000000a244d7",
+        "timestamp": "2026-07-13T18:07:06.527Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x8bb72eb8155ba33acd221ec2461fbfe310881070efc86aa0101fd206b254c092",
+        "fromStrategy": "0x0000000000000000000000000000000000a244d7",
+        "toStrategy": "0x0000000000000000000000000000000000a2551a",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "1559920790712652783121174024",
+          "liquidityRate": "1377689303843073633157467827"
+        },
+        "timestamp": "2026-07-13T18:54:57.652Z",
+        "completed": true
+      }
+    },
+    "USDC": {
+      "history": [
+        {
+          "archivedAt": "2026-07-13T18:07:30.407Z",
+          "deploy": {
+            "network": "hedera_mainnet",
+            "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+            "address": "0x0000000000000000000000000000000000a24a8c",
+            "contractId": "0.0.10635916",
+            "evmAddress": "0x0000000000000000000000000000000000a24a8c",
+            "hederaTxId": "0.0.7317802@1783882819.190664243",
+            "consensusTimestamp": "1783882829.922041000",
+            "deployerAccountId": "0.0.7317802",
+            "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+            "runtimeBytecodeHash": "0xc28a5e11ec0f14e112ec0cc8aab2b1334f9da141a235e74b71559d9e9dc05cfc",
+            "constructorParams": {
+              "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+              "optimalUtilizationRate": "850000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "20000000000000000000000000"
+            },
+            "preserved": {
+              "optimalUtilizationRate": "850000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "20000000000000000000000000"
+            },
+            "target": {
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "baseVariableBorrowRate": "0"
+            },
+            "previousStrategy": "0x0000000000000000000000000000000000928B25",
+            "timestamp": "2026-07-12T19:00:39.255Z",
+            "completed": true
+          },
+          "wire": {
+            "txHash": "0x0b082d70f9cc219ac2b614d6109dd395dbad646cadc7860744a00c8eb9c8620a",
+            "fromStrategy": "0x0000000000000000000000000000000000928B25",
+            "toStrategy": "0x0000000000000000000000000000000000a24a8c",
+            "storedRateSnapshot": {
+              "variableBorrowRate": "649897316077151297808399750",
+              "liquidityRate": "562143860932214256771804804"
+            },
+            "timestamp": "2026-07-13T10:54:49.450Z",
+            "completed": true
+          }
+        }
+      ],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2551e",
+        "contractId": "0.0.10638622",
+        "evmAddress": "0x0000000000000000000000000000000000a2551e",
+        "hederaTxId": "0.0.7317802@1783966029.713724245",
+        "consensusTimestamp": "1783966041.093974000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0x90ed91160e3acc1f8fded0eb4ed97a85c2ad670fb3a2722c8566e450135f2ace",
+        "runtimeBytecodeObservedAt": "2026-07-13T18:33:40.000Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "850000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "20000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "850000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "20000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0000000000000000000000000000000000A24A8C",
+        "timestamp": "2026-07-13T18:07:30.406Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xc36c49f32f7289495e77e8130645e2a819cba5484b6e8955e9e79bb93b232452",
+        "fromStrategy": "0x0000000000000000000000000000000000A24A8C",
+        "toStrategy": "0x0000000000000000000000000000000000a2551e",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "649897316077151297808399750",
+          "liquidityRate": "562143860932214256771804804"
+        },
+        "timestamp": "2026-07-13T18:55:07.199Z",
+        "completed": true
+      }
+    },
+    "WETH": {
+      "history": [
+        {
+          "archivedAt": "2026-07-13T18:25:34.985Z",
+          "deploy": {
+            "network": "hedera_mainnet",
+            "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+            "address": "0x0000000000000000000000000000000000a24a93",
+            "contractId": "0.0.10635923",
+            "evmAddress": "0x0000000000000000000000000000000000a24a93",
+            "hederaTxId": "0.0.7317802@1783882869.081310297",
+            "consensusTimestamp": "1783882881.667994000",
+            "deployerAccountId": "0.0.7317802",
+            "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+            "runtimeBytecodeHash": "0xb88908e8e1a2a9f68dfc677a0662abff221f677dd641678e35c572fc9ee05c24",
+            "constructorParams": {
+              "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+              "optimalUtilizationRate": "800000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "800000000000000000000000000"
+            },
+            "preserved": {
+              "optimalUtilizationRate": "800000000000000000000000000",
+              "baseVariableBorrowRate": "0",
+              "stableRateSlope1": "20000000000000000000000000",
+              "stableRateSlope2": "800000000000000000000000000"
+            },
+            "target": {
+              "variableRateSlope1": "10000000000000000000000000",
+              "variableRateSlope2": "10000000000000000000000000",
+              "baseVariableBorrowRate": "0"
+            },
+            "previousStrategy": "0x000000000000000000000000000000000099ab66",
+            "timestamp": "2026-07-12T19:01:29.342Z",
+            "completed": true
+          },
+          "wire": {
+            "txHash": "0xa1d5ed45556c4780479e528f91130922b348080f81957a224d9f2334549b44a6",
+            "fromStrategy": "0x000000000000000000000000000000000099ab66",
+            "toStrategy": "0x0000000000000000000000000000000000a24a93",
+            "storedRateSnapshot": {
+              "variableBorrowRate": "868823629669985358221619221",
+              "liquidityRate": "692740453754685847189650201"
+            },
+            "timestamp": "2026-07-13T10:55:41.330Z",
+            "completed": true
+          }
+        }
+      ],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2557a",
+        "contractId": "0.0.10638714",
+        "evmAddress": "0x0000000000000000000000000000000000a2557a",
+        "hederaTxId": "0.0.7317802@1783967114.820755839",
+        "consensusTimestamp": "1783967125.350255228",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xec54205c11b14b5e687bc0eaf3b776ff4b1dfdaf1b4f92cbe77c749138eae70f",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "800000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "800000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0000000000000000000000000000000000a24A93",
+        "timestamp": "2026-07-13T18:25:34.985Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xbafe076afc572d4fee0df164521cb3406aff63cd367ec70089676ef2f3e9606e",
+        "fromStrategy": "0x0000000000000000000000000000000000a24A93",
+        "toStrategy": "0x0000000000000000000000000000000000a2557a",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "868823629669985358221619221",
+          "liquidityRate": "692740453754685847189650201"
+        },
+        "timestamp": "2026-07-13T18:55:16.743Z",
+        "completed": true
+      }
+    },
+    "BONZO": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a25f8d",
+        "contractId": "0.0.10641293",
+        "evmAddress": "0x0000000000000000000000000000000000a25f8d",
+        "hederaTxId": "0.0.7317802@1784018373.996995120",
+        "consensusTimestamp": "1784018386.232979000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xfe772abbb4af8f697f600afefd1fbb5665ee55837cd332d39c1279e3c3a78dd7",
+        "runtimeBytecodeObservedAt": "2026-07-14T08:39:56.392Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "timestamp": "2026-07-14T08:39:56.392Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xc76c52c5d545030a91b8fef4b75a9dadc2a49ff5059871249a790bfb6a0a1e5a",
+        "fromStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "toStrategy": "0x0000000000000000000000000000000000a25f8d",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "51207689814792275480736898",
+          "liquidityRate": "10849466265395019520355017"
+        },
+        "timestamp": "2026-07-14T08:45:42.345Z",
+        "completed": true
+      }
+    },
+    "HBARX": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a25f90",
+        "contractId": "0.0.10641296",
+        "evmAddress": "0x0000000000000000000000000000000000a25f90",
+        "hederaTxId": "0.0.7317802@1784018400.625071136",
+        "consensusTimestamp": "1784018413.864486293",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0x00b3dfa599ee985abb6b94a7ad3385ec62b6ca0a03796332ce27bcf082703fca",
+        "runtimeBytecodeObservedAt": "2026-07-14T08:40:25.782Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "530000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "530000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "20000000000000000000000000",
+          "stableRateSlope2": "800000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0xA68FC75Acc8a731a1e5cc4CB717b162566d947A8",
+        "timestamp": "2026-07-14T08:40:25.783Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x4edba6c5e3db350e817d3bdc2508aa9efb230c21dbcc2ffb957756228a0f7648",
+        "fromStrategy": "0xA68FC75Acc8a731a1e5cc4CB717b162566d947A8",
+        "toStrategy": "0x0000000000000000000000000000000000a25f90",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "31997221041435247330769047",
+          "liquidityRate": "8126724859967911374094757"
+        },
+        "timestamp": "2026-07-14T08:45:51.820Z",
+        "completed": true
+      }
+    },
+    "SAUCE": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2645a",
+        "contractId": "0.0.10642522",
+        "evmAddress": "0x0000000000000000000000000000000000a2645a",
+        "hederaTxId": "0.0.7317802@1784044473.247056365",
+        "consensusTimestamp": "1784044482.974716000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xe2f3690cc96273ca917c43d72dc1aa12c17310d57b44d15c4d7db74895d02cc4",
+        "runtimeBytecodeObservedAt": "2026-07-14T15:54:52.203Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0xf38e204b948Db78Ca5D51cCEd7ccEe182Fe4bcA8",
+        "timestamp": "2026-07-14T15:54:52.203Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x903fdfa40c91fe8250599991cf8ab97d345163810936170fdb9a1ce3c65bead2",
+        "fromStrategy": "0xf38e204b948Db78Ca5D51cCEd7ccEe182Fe4bcA8",
+        "toStrategy": "0x0000000000000000000000000000000000a2645a",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "35497874953193990459291680",
+          "liquidityRate": "6456747922610868310735101"
+        },
+        "timestamp": "2026-07-14T16:45:24.791Z",
+        "completed": true
+      }
+    },
+    "XSAUCE": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2645e",
+        "contractId": "0.0.10642526",
+        "evmAddress": "0x0000000000000000000000000000000000a2645e",
+        "hederaTxId": "0.0.7317802@1784044536.478212407",
+        "consensusTimestamp": "1784044548.065280000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xe2f3690cc96273ca917c43d72dc1aa12c17310d57b44d15c4d7db74895d02cc4",
+        "runtimeBytecodeObservedAt": "2026-07-14T15:55:58.872Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x998A60b83617F05c1Dcd4b3f5D37a2265d6a674D",
+        "timestamp": "2026-07-14T15:55:58.872Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x578d5db0df64fddb593f0634b1bd4a7ae075e08ce309e4fb9fb96ec89c1ba2da",
+        "fromStrategy": "0x998A60b83617F05c1Dcd4b3f5D37a2265d6a674D",
+        "toStrategy": "0x0000000000000000000000000000000000a2645e",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "32407674692285131014375861",
+          "liquidityRate": "7215628281706135159856038"
+        },
+        "timestamp": "2026-07-14T16:45:38.325Z",
+        "completed": true
+      }
+    },
+    "KARATE": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26463",
+        "contractId": "0.0.10642531",
+        "evmAddress": "0x0000000000000000000000000000000000a26463",
+        "hederaTxId": "0.0.7317802@1784044564.464168838",
+        "consensusTimestamp": "1784044574.863409964",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0x11285469b9a705f9c38829dc538945b4afe0c7e9efea2e2c887b6ff6e061194d",
+        "runtimeBytecodeObservedAt": "2026-07-14T15:56:25.338Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "700000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "700000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x9bB33f2D511CA3089Fc5696BEe3ABee7174a556a",
+        "timestamp": "2026-07-14T15:56:25.339Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x77b99c84b993d442ef5026215d62425a690ac9fc21ca1a42b25ef5cf36b0d39c",
+        "fromStrategy": "0x9bB33f2D511CA3089Fc5696BEe3ABee7174a556a",
+        "toStrategy": "0x0000000000000000000000000000000000a26463",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "35556688269395225805297993",
+          "liquidityRate": "7905952264562381855219027"
+        },
+        "timestamp": "2026-07-14T16:46:07.834Z",
+        "completed": true
+      }
+    },
+    "GRELF": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26467",
+        "contractId": "0.0.10642535",
+        "evmAddress": "0x0000000000000000000000000000000000a26467",
+        "hederaTxId": "0.0.7317802@1784044587.680110894",
+        "consensusTimestamp": "1784044601.147347000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xfe772abbb4af8f697f600afefd1fbb5665ee55837cd332d39c1279e3c3a78dd7",
+        "runtimeBytecodeObservedAt": "2026-07-14T15:56:53.885Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "timestamp": "2026-07-14T15:56:53.885Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xfae4f3959504d2418c6e4998c58bdeeb34446886cdc8ea0752a2cf1cafcd375a",
+        "fromStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "toStrategy": "0x0000000000000000000000000000000000a26467",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "3256755175515000468008291",
+          "liquidityRate": "43884204555545980469603"
+        },
+        "timestamp": "2026-07-14T16:46:41.498Z",
+        "completed": true
+      }
+    },
+    "DOVU": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26470",
+        "contractId": "0.0.10642544",
+        "evmAddress": "0x0000000000000000000000000000000000a26470",
+        "hederaTxId": "0.0.7317802@1784044847.921621274",
+        "consensusTimestamp": "1784044857.529649228",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xc09abb26cad01d0ceab4ee8f5824aec390c785bd96eba1939d05fe1f80df6288",
+        "runtimeBytecodeObservedAt": "2026-07-14T16:01:10.545Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "470000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "470000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0000000000000000000000000000000000A21A9d",
+        "timestamp": "2026-07-14T16:01:10.545Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xc8792f642594fd420685a0b5f98352cbae847a31073640c5036b58c525a48373",
+        "fromStrategy": "0x0000000000000000000000000000000000A21A9d",
+        "toStrategy": "0x0000000000000000000000000000000000a26470",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "7587222393775735348641172",
+          "liquidityRate": "225466612639396998692354"
+        },
+        "timestamp": "2026-07-14T16:46:50.996Z",
+        "completed": true
+      }
+    },
+    "HST": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26472",
+        "contractId": "0.0.10642546",
+        "evmAddress": "0x0000000000000000000000000000000000a26472",
+        "hederaTxId": "0.0.7317802@1784044872.495876459",
+        "consensusTimestamp": "1784044883.758862000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xe2f3690cc96273ca917c43d72dc1aa12c17310d57b44d15c4d7db74895d02cc4",
+        "runtimeBytecodeObservedAt": "2026-07-14T16:01:34.339Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x6886E0eD3Cb5dcE6f8e50dCb692a142AE8a14775",
+        "timestamp": "2026-07-14T16:01:34.339Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x3817e420f61a5c007fc46402435dbbce9f2cf4c7b2587a4265987312f5ab1d1a",
+        "fromStrategy": "0x6886E0eD3Cb5dcE6f8e50dCb692a142AE8a14775",
+        "toStrategy": "0x0000000000000000000000000000000000a26472",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "2588680860554642844822865",
+          "liquidityRate": "34088013103298838363946"
+        },
+        "timestamp": "2026-07-14T16:47:04.428Z",
+        "completed": true
+      }
+    },
+    "PACK": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26477",
+        "contractId": "0.0.10642551",
+        "evmAddress": "0x0000000000000000000000000000000000a26477",
+        "hederaTxId": "0.0.7317802@1784044900.020353296",
+        "consensusTimestamp": "1784044911.679895000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0x6b9574ffd36b917ac4496fd5e535c93c8752675bec3e1c3cd167eabd3b945977",
+        "runtimeBytecodeObservedAt": "2026-07-14T16:02:03.219Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "520000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "520000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x4DF846F81135d9e63834AD4C7865F1C1983F767a",
+        "timestamp": "2026-07-14T16:02:03.219Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xe0a4ca7ed5779f36c858e7766f483a41f29a9fb776b5a6eee4e37451c01949d2",
+        "fromStrategy": "0x4DF846F81135d9e63834AD4C7865F1C1983F767a",
+        "toStrategy": "0x0000000000000000000000000000000000a26477",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "452118608881564227605565",
+          "liquidityRate": "1027861461601518881993"
+        },
+        "timestamp": "2026-07-14T16:47:18.065Z",
+        "completed": true
+      }
+    },
+    "STEAM": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a2647a",
+        "contractId": "0.0.10642554",
+        "evmAddress": "0x0000000000000000000000000000000000a2647a",
+        "hederaTxId": "0.0.7317802@1784044924.534973782",
+        "consensusTimestamp": "1784044936.393902000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xe2f3690cc96273ca917c43d72dc1aa12c17310d57b44d15c4d7db74895d02cc4",
+        "runtimeBytecodeObservedAt": "2026-07-14T16:02:27.809Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "540000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "90000000000000000000000000",
+          "stableRateSlope2": "90000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0xA3E524FE431011dc6d050c32E92Acc38D2f50cB4",
+        "timestamp": "2026-07-14T16:02:27.810Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0xe48d1dfe5c68cc831955b0cfdc4f495dbed724cdb9f46d0531c248599c52dceb",
+        "fromStrategy": "0xA3E524FE431011dc6d050c32E92Acc38D2f50cB4",
+        "toStrategy": "0x0000000000000000000000000000000000a2647a",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "4212666581883263118198204",
+          "liquidityRate": "91700023437455488835993"
+        },
+        "timestamp": "2026-07-14T16:47:27.490Z",
+        "completed": true
+      }
+    },
+    "KBL": {
+      "history": [],
+      "deploy": {
+        "network": "hedera_mainnet",
+        "addressesProvider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+        "address": "0x0000000000000000000000000000000000a26550",
+        "contractId": "0.0.10642768",
+        "evmAddress": "0x0000000000000000000000000000000000a26550",
+        "hederaTxId": "0.0.7317802@1784047399.480269647",
+        "consensusTimestamp": "1784047412.486999000",
+        "deployerAccountId": "0.0.7317802",
+        "deployerEvm": "0x9763ABB52aa18624E22557be68930534D513a079",
+        "runtimeBytecodeHash": "0xfe772abbb4af8f697f600afefd1fbb5665ee55837cd332d39c1279e3c3a78dd7",
+        "runtimeBytecodeObservedAt": "2026-07-14T16:43:42.010Z",
+        "runtimeBytecodeStatus": "confirmed",
+        "constructorParams": {
+          "provider": "0x76b846DAB3646527bfb75952E1f33AfAA72B56D1",
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "preserved": {
+          "optimalUtilizationRate": "450000000000000000000000000",
+          "baseVariableBorrowRate": "0",
+          "stableRateSlope1": "100000000000000000000000000",
+          "stableRateSlope2": "3000000000000000000000000000"
+        },
+        "target": {
+          "variableRateSlope1": "50000000000000000000000",
+          "variableRateSlope2": "50000000000000000000000",
+          "baseVariableBorrowRate": "0"
+        },
+        "previousStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "timestamp": "2026-07-14T16:43:42.010Z",
+        "completed": true
+      },
+      "wire": {
+        "txHash": "0x537a75ba60e6c2814ca070c678a33dde04bc501b3c92a2280794ff1b0b554280",
+        "fromStrategy": "0x0eaD7dDfC2Bb172D4a899aad8E7b4d882067a001",
+        "toStrategy": "0x0000000000000000000000000000000000a26550",
+        "storedRateSnapshot": {
+          "variableBorrowRate": "3757739256643005624197491",
+          "liquidityRate": "58424000377789654128694"
+        },
+        "timestamp": "2026-07-14T16:48:01.000Z",
+        "completed": true
+      }
+    }
+  }
 }

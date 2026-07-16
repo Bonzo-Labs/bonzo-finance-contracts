@@ -494,338 +494,338 @@ async function main() {
     return;
   }
 
-  // let executionError: unknown;
-  // let handoffSubmitted = false;
-  // let completedBitmap = c.completedBitmap;
-  // try {
-  //   console.log('Assigning emergency admin to executor...');
-  //   // Mark BEFORE broadcasting. If setEmergencyAdmin reaches the relay but the
-  //   // await rejects (e.g. a dropped connection after the relay accepted it), the
-  //   // transaction can still mine and make the executor the emergency admin.
-  //   // Setting this flag first guarantees the finally block always runs the
-  //   // restoration path rather than skipping it and stranding the role.
-  //   handoffSubmitted = true;
-  //   const handoffTx = await c.ap.setEmergencyAdmin(state.executor);
-  //   saveExecution(state, { startedAt: new Date().toISOString(), handoffTxHash: handoffTx.hash });
-  //   await handoffTx.wait();
-  //   saveExecution(state, { handoffMined: true });
-  //   await waitForAddress('Emergency-admin handoff', () => c.ap.getEmergencyAdmin(), state.executor);
-  //   saveExecution(state, { handoffCompleted: true });
-  //   await sleep(TX_DELAY_MS);
+  let executionError: unknown;
+  let handoffSubmitted = false;
+  let completedBitmap = c.completedBitmap;
+  try {
+    console.log('Assigning emergency admin to executor...');
+    // Mark BEFORE broadcasting. If setEmergencyAdmin reaches the relay but the
+    // await rejects (e.g. a dropped connection after the relay accepted it), the
+    // transaction can still mine and make the executor the emergency admin.
+    // Setting this flag first guarantees the finally block always runs the
+    // restoration path rather than skipping it and stranding the role.
+    handoffSubmitted = true;
+    const handoffTx = await c.ap.setEmergencyAdmin(state.executor);
+    saveExecution(state, { startedAt: new Date().toISOString(), handoffTxHash: handoffTx.hash });
+    await handoffTx.wait();
+    saveExecution(state, { handoffMined: true });
+    await waitForAddress('Emergency-admin handoff', () => c.ap.getEmergencyAdmin(), state.executor);
+    saveExecution(state, { handoffCompleted: true });
+    await sleep(TX_DELAY_MS);
 
-  //   // Simulate every remaining batch before broadcasting the first one. This
-  //   // prevents discovering a deterministic child-record or validation failure
-  //   // only after earlier batches have already committed.
-  //   const configuredGasLimit = process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT
-  //     ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT)
-  //     : undefined;
-  //   const gasLimits = new Map<number, any>();
-  //   console.log('Simulating all remaining atomic refresh batches...');
-  //   for (const batch of pendingBatches) {
-  //     try {
-  //       await c.executor.callStatic.executeAtomicRefreshBatch(batch.id);
-  //     } catch (simulationError: any) {
-  //       throw new Error(
-  //         `Batch ${batch.id + 1} simulation failed; refusing execution: ${conciseRpcError(
-  //           simulationError
-  //         )}`
-  //       );
-  //     }
+    // Simulate every remaining batch before broadcasting the first one. This
+    // prevents discovering a deterministic child-record or validation failure
+    // only after earlier batches have already committed.
+    const configuredGasLimit = process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT
+      ? ethers.BigNumber.from(process.env.ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT)
+      : undefined;
+    const gasLimits = new Map<number, any>();
+    console.log('Simulating all remaining atomic refresh batches...');
+    for (const batch of pendingBatches) {
+      try {
+        await c.executor.callStatic.executeAtomicRefreshBatch(batch.id);
+      } catch (simulationError: any) {
+        throw new Error(
+          `Batch ${batch.id + 1} simulation failed; refusing execution: ${conciseRpcError(
+            simulationError
+          )}`
+        );
+      }
 
-  //     let estimatedGas: any;
-  //     try {
-  //       estimatedGas = await c.executor.estimateGas.executeAtomicRefreshBatch(batch.id);
-  //     } catch (estimateError: any) {
-  //       if (!configuredGasLimit) {
-  //         throw new Error(
-  //           `Batch ${batch.id + 1} gas estimation unavailable (${conciseRpcError(
-  //             estimateError
-  //           )}). Set ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT explicitly only after reviewing its simulation.`
-  //         );
-  //       }
-  //     }
-  //     if (
-  //       estimatedGas &&
-  //       configuredGasLimit &&
-  //       configuredGasLimit.lt(estimatedGas.mul(105).div(100))
-  //     ) {
-  //       throw new Error(
-  //         `ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT ${configuredGasLimit.toString()} is below 105% of ` +
-  //           `Batch ${batch.id + 1} estimate ${estimatedGas.toString()}.`
-  //       );
-  //     }
-  //     const gasLimit = configuredGasLimit || estimatedGas.mul(110).div(100);
-  //     gasLimits.set(batch.id, gasLimit);
-  //     console.log(
-  //       `Batch ${batch.id + 1} simulation passed: estimate=${
-  //         estimatedGas?.toString() || 'unavailable'
-  //       } limit=${gasLimit.toString()}.`
-  //     );
-  //   }
+      let estimatedGas: any;
+      try {
+        estimatedGas = await c.executor.estimateGas.executeAtomicRefreshBatch(batch.id);
+      } catch (estimateError: any) {
+        if (!configuredGasLimit) {
+          throw new Error(
+            `Batch ${batch.id + 1} gas estimation unavailable (${conciseRpcError(
+              estimateError
+            )}). Set ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT explicitly only after reviewing its simulation.`
+          );
+        }
+      }
+      if (
+        estimatedGas &&
+        configuredGasLimit &&
+        configuredGasLimit.lt(estimatedGas.mul(105).div(100))
+      ) {
+        throw new Error(
+          `ATOMIC_EXECUTOR_EXECUTE_GAS_LIMIT ${configuredGasLimit.toString()} is below 105% of ` +
+            `Batch ${batch.id + 1} estimate ${estimatedGas.toString()}.`
+        );
+      }
+      const gasLimit = configuredGasLimit || estimatedGas.mul(110).div(100);
+      gasLimits.set(batch.id, gasLimit);
+      console.log(
+        `Batch ${batch.id + 1} simulation passed: estimate=${
+          estimatedGas?.toString() || 'unavailable'
+        } limit=${gasLimit.toString()}.`
+      );
+    }
 
-  //   for (const batch of pendingBatches) {
-  //     const batchAssets: Array<[RateSymbol, string]> = batch.symbols.map((symbol) => [
-  //       symbol,
-  //       state.addresses.assets[symbol],
-  //     ]);
-  //     const [liveAdmin, pausedBefore, beforeRates] = await Promise.all([
-  //       c.ap.getEmergencyAdmin(),
-  //       c.pool.paused(),
-  //       readReserveSnapshots(c.dp, batchAssets),
-  //     ]);
-  //     if (!eq(liveAdmin, state.executor)) {
-  //       throw new Error(`Executor lost emergency-admin role before Batch ${batch.id + 1}.`);
-  //     }
-  //     if (!pausedBefore) throw new Error(`Pool is open before Batch ${batch.id + 1}.`);
+    for (const batch of pendingBatches) {
+      const batchAssets: Array<[RateSymbol, string]> = batch.symbols.map((symbol) => [
+        symbol,
+        state.addresses.assets[symbol],
+      ]);
+      const [liveAdmin, pausedBefore, beforeRates] = await Promise.all([
+        c.ap.getEmergencyAdmin(),
+        c.pool.paused(),
+        readReserveSnapshots(c.dp, batchAssets),
+      ]);
+      if (!eq(liveAdmin, state.executor)) {
+        throw new Error(`Executor lost emergency-admin role before Batch ${batch.id + 1}.`);
+      }
+      if (!pausedBefore) throw new Error(`Pool is open before Batch ${batch.id + 1}.`);
 
-  //     console.log(`Executing Batch ${batch.id + 1}/4 (${batch.symbols.join(', ')})...`);
-  //     const executeTx = await c.executor.executeAtomicRefreshBatch(batch.id, {
-  //       gasLimit: gasLimits.get(batch.id),
-  //     });
-  //     saveExecution(state, {
-  //       activeBatchId: batch.id,
-  //       activeBatchNumber: batch.id + 1,
-  //       activeBatchTxHash: executeTx.hash,
-  //     });
-  //     const receipt = await executeTx.wait();
-  //     if (receipt.status !== 1) {
-  //       throw new Error(`Batch ${batch.id + 1} transaction failed: ${executeTx.hash}`);
-  //     }
+      console.log(`Executing Batch ${batch.id + 1}/4 (${batch.symbols.join(', ')})...`);
+      const executeTx = await c.executor.executeAtomicRefreshBatch(batch.id, {
+        gasLimit: gasLimits.get(batch.id),
+      });
+      saveExecution(state, {
+        activeBatchId: batch.id,
+        activeBatchNumber: batch.id + 1,
+        activeBatchTxHash: executeTx.hash,
+      });
+      const receipt = await executeTx.wait();
+      if (receipt.status !== 1) {
+        throw new Error(`Batch ${batch.id + 1} transaction failed: ${executeTx.hash}`);
+      }
 
-  //     const reserveUpdates = readReserveUpdateEvents(receipt, c.pool, batchAssets);
-  //     const [pausedAfter, chainCompletedBatches, afterRates, block] = await Promise.all([
-  //       c.pool.paused(),
-  //       c.executor.completedBatches(),
-  //       readReserveSnapshots(c.dp, batchAssets),
-  //       provider.getBlock(receipt.blockNumber),
-  //     ]);
-  //     if (!pausedAfter) throw new Error(`Pool is not paused after Batch ${batch.id + 1}.`);
-  //     completedBitmap = smallUintToNumber(chainCompletedBatches, 'completedBatches');
-  //     if ((completedBitmap & (1 << batch.id)) === 0) {
-  //       throw new Error(`Executor did not checkpoint Batch ${batch.id + 1} on chain.`);
-  //     }
+      const reserveUpdates = readReserveUpdateEvents(receipt, c.pool, batchAssets);
+      const [pausedAfter, chainCompletedBatches, afterRates, block] = await Promise.all([
+        c.pool.paused(),
+        c.executor.completedBatches(),
+        readReserveSnapshots(c.dp, batchAssets),
+        provider.getBlock(receipt.blockNumber),
+      ]);
+      if (!pausedAfter) throw new Error(`Pool is not paused after Batch ${batch.id + 1}.`);
+      completedBitmap = smallUintToNumber(chainCompletedBatches, 'completedBatches');
+      if ((completedBitmap & (1 << batch.id)) === 0) {
+        throw new Error(`Executor did not checkpoint Batch ${batch.id + 1} on chain.`);
+      }
 
-  //     for (const [symbol] of batchAssets) {
-  //       const before = beforeRates[symbol];
-  //       const after = afterRates[symbol];
-  //       const eventUpdate = reserveUpdates[symbol];
-  //       if (ethers.BigNumber.from(after.variableBorrowRate).gt(before.variableBorrowRate)) {
-  //         throw new Error(
-  //           `${symbol}: stored variable rate increased in Batch ${batch.id + 1} ` +
-  //             `(before ${before.variableBorrowRate}, after ${after.variableBorrowRate})`
-  //         );
-  //       }
-  //       for (const field of [
-  //         'liquidityRate',
-  //         'stableBorrowRate',
-  //         'variableBorrowRate',
-  //         'liquidityIndex',
-  //         'variableBorrowIndex',
-  //       ] as const) {
-  //         if (after[field] !== eventUpdate[field]) {
-  //           throw new Error(
-  //             `${symbol}: ${field} does not match Batch ${batch.id + 1} event ` +
-  //               `(${after[field]} != ${eventUpdate[field]})`
-  //           );
-  //         }
-  //       }
-  //     }
+      for (const [symbol] of batchAssets) {
+        const before = beforeRates[symbol];
+        const after = afterRates[symbol];
+        const eventUpdate = reserveUpdates[symbol];
+        if (ethers.BigNumber.from(after.variableBorrowRate).gt(before.variableBorrowRate)) {
+          throw new Error(
+            `${symbol}: stored variable rate increased in Batch ${batch.id + 1} ` +
+              `(before ${before.variableBorrowRate}, after ${after.variableBorrowRate})`
+          );
+        }
+        for (const field of [
+          'liquidityRate',
+          'stableBorrowRate',
+          'variableBorrowRate',
+          'liquidityIndex',
+          'variableBorrowIndex',
+        ] as const) {
+          if (after[field] !== eventUpdate[field]) {
+            throw new Error(
+              `${symbol}: ${field} does not match Batch ${batch.id + 1} event ` +
+                `(${after[field]} != ${eventUpdate[field]})`
+            );
+          }
+        }
+      }
 
-  //     saveCompletedBatch(state, batch.id, completedBitmap, {
-  //       status: 'completed',
-  //       contractBatchId: batch.id,
-  //       batchNumber: batch.id + 1,
-  //       symbols: batch.symbols,
-  //       txHash: executeTx.hash,
-  //       blockNumber: receipt.blockNumber,
-  //       completedAt: block
-  //         ? new Date(block.timestamp * 1000).toISOString()
-  //         : new Date().toISOString(),
-  //       poolPausedAfter: pausedAfter,
-  //       beforeRates,
-  //       afterRates,
-  //       reserveDataUpdatedEvents: reserveUpdates,
-  //     });
-  //     saveExecution(state, {
-  //       activeBatchId: null,
-  //       activeBatchNumber: null,
-  //       activeBatchTxHash: null,
-  //     });
-  //     console.log(`Batch ${batch.id + 1} completed. Bitmap is now ${completedBitmap}.`);
-  //     await sleep(TX_DELAY_MS);
-  //   }
-  // } catch (error) {
-  //   executionError = error;
-  //   saveExecutionBestEffort(state, {
-  //     completedBitmap,
-  //     lastRunError: conciseRpcError(error),
-  //   });
-  // } finally {
-  //   if (handoffSubmitted) {
-  //     // Reads and rescue are best effort. Neither may prevent the unconditional
-  //     // owner-driven restoration transaction below.
-  //     let liveEmergencyAdmin: string | undefined;
-  //     let poolPaused: boolean | undefined;
-  //     try {
-  //       liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
-  //     } catch (adminReadError: any) {
-  //       console.error(
-  //         'Could not read the emergency admin; proceeding with unconditional restoration:',
-  //         conciseRpcError(adminReadError)
-  //       );
-  //       saveExecutionBestEffort(state, {
-  //         recoveryAdminReadError: conciseRpcError(adminReadError),
-  //       });
-  //     }
-  //     try {
-  //       poolPaused = await c.pool.paused();
-  //     } catch (pauseReadError: any) {
-  //       console.error(
-  //         'Could not read the pool pause state before restoration:',
-  //         conciseRpcError(pauseReadError)
-  //       );
-  //       saveExecutionBestEffort(state, {
-  //         recoveryPauseReadError: conciseRpcError(pauseReadError),
-  //       });
-  //     }
+      saveCompletedBatch(state, batch.id, completedBitmap, {
+        status: 'completed',
+        contractBatchId: batch.id,
+        batchNumber: batch.id + 1,
+        symbols: batch.symbols,
+        txHash: executeTx.hash,
+        blockNumber: receipt.blockNumber,
+        completedAt: block
+          ? new Date(block.timestamp * 1000).toISOString()
+          : new Date().toISOString(),
+        poolPausedAfter: pausedAfter,
+        beforeRates,
+        afterRates,
+        reserveDataUpdatedEvents: reserveUpdates,
+      });
+      saveExecution(state, {
+        activeBatchId: null,
+        activeBatchNumber: null,
+        activeBatchTxHash: null,
+      });
+      console.log(`Batch ${batch.id + 1} completed. Bitmap is now ${completedBitmap}.`);
+      await sleep(TX_DELAY_MS);
+    }
+  } catch (error) {
+    executionError = error;
+    saveExecutionBestEffort(state, {
+      completedBitmap,
+      lastRunError: conciseRpcError(error),
+    });
+  } finally {
+    if (handoffSubmitted) {
+      // Reads and rescue are best effort. Neither may prevent the unconditional
+      // owner-driven restoration transaction below.
+      let liveEmergencyAdmin: string | undefined;
+      let poolPaused: boolean | undefined;
+      try {
+        liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
+      } catch (adminReadError: any) {
+        console.error(
+          'Could not read the emergency admin; proceeding with unconditional restoration:',
+          conciseRpcError(adminReadError)
+        );
+        saveExecutionBestEffort(state, {
+          recoveryAdminReadError: conciseRpcError(adminReadError),
+        });
+      }
+      try {
+        poolPaused = await c.pool.paused();
+      } catch (pauseReadError: any) {
+        console.error(
+          'Could not read the pool pause state before restoration:',
+          conciseRpcError(pauseReadError)
+        );
+        saveExecutionBestEffort(state, {
+          recoveryPauseReadError: conciseRpcError(pauseReadError),
+        });
+      }
 
-  //     try {
-  //       if (
-  //         poolPaused === false &&
-  //         (!liveEmergencyAdmin || eq(liveEmergencyAdmin, state.executor))
-  //       ) {
-  //         console.error(
-  //           'Pool observed open. Attempting executor pause-only rescue before role restoration.'
-  //         );
-  //         const rescueTx = await c.executor.pauseOnly();
-  //         saveExecutionBestEffort(state, { pauseOnlyRescueTxHash: rescueTx.hash });
-  //         await rescueTx.wait();
-  //         await sleep(TX_DELAY_MS);
-  //       } else {
-  //         // Hedera relays can lag a mined transaction when deriving the next
-  //         // nonce. Wait before the restoration transaction when no urgent
-  //         // pause-only rescue is needed.
-  //         await sleep(TX_DELAY_MS);
-  //       }
-  //     } catch (rescueError: any) {
-  //       console.error('CRITICAL: executor pause-only rescue failed:', conciseRpcError(rescueError));
-  //       saveExecutionBestEffort(state, {
-  //         pauseOnlyRescueError: conciseRpcError(rescueError),
-  //       });
-  //     }
+      try {
+        if (
+          poolPaused === false &&
+          (!liveEmergencyAdmin || eq(liveEmergencyAdmin, state.executor))
+        ) {
+          console.error(
+            'Pool observed open. Attempting executor pause-only rescue before role restoration.'
+          );
+          const rescueTx = await c.executor.pauseOnly();
+          saveExecutionBestEffort(state, { pauseOnlyRescueTxHash: rescueTx.hash });
+          await rescueTx.wait();
+          await sleep(TX_DELAY_MS);
+        } else {
+          // Hedera relays can lag a mined transaction when deriving the next
+          // nonce. Wait before the restoration transaction when no urgent
+          // pause-only rescue is needed.
+          await sleep(TX_DELAY_MS);
+        }
+      } catch (rescueError: any) {
+        console.error('CRITICAL: executor pause-only rescue failed:', conciseRpcError(rescueError));
+        saveExecutionBestEffort(state, {
+          pauseOnlyRescueError: conciseRpcError(rescueError),
+        });
+      }
 
-  //     console.log('Restoring original emergency admin...');
-  //     try {
-  //       const restoreTx = await c.ap.setEmergencyAdmin(state.originalEmergencyAdmin);
-  //       saveExecutionBestEffort(state, { restoreTxHash: restoreTx.hash });
-  //       await restoreTx.wait();
-  //       await waitForAddress(
-  //         'Emergency-admin restoration',
-  //         () => c.ap.getEmergencyAdmin(),
-  //         state.originalEmergencyAdmin
-  //       );
-  //       saveExecutionBestEffort(state, { restoreCompleted: true });
-  //       await sleep(TX_DELAY_MS);
-  //     } catch (restoreError: any) {
-  //       // A relay may reject after accepting the signed transaction. Reconcile
-  //       // the live role before declaring restoration failed.
-  //       try {
-  //         await waitForAddress(
-  //           'Emergency-admin restoration reconciliation',
-  //           () => c.ap.getEmergencyAdmin(),
-  //           state.originalEmergencyAdmin
-  //         );
-  //         saveExecutionBestEffort(state, {
-  //           restoreCompleted: true,
-  //           restoreReconciledAfterError: conciseRpcError(restoreError),
-  //         });
-  //       } catch (reconciliationError: any) {
-  //         saveExecutionBestEffort(state, {
-  //           restoreCompleted: false,
-  //           restoreError: conciseRpcError(restoreError),
-  //           restoreReconciliationError: conciseRpcError(reconciliationError),
-  //         });
-  //         console.error(
-  //           'CRITICAL: emergency-admin restoration failed. Manual owner action is required.'
-  //         );
-  //         throw restoreError;
-  //       }
-  //     }
+      console.log('Restoring original emergency admin...');
+      try {
+        const restoreTx = await c.ap.setEmergencyAdmin(state.originalEmergencyAdmin);
+        saveExecutionBestEffort(state, { restoreTxHash: restoreTx.hash });
+        await restoreTx.wait();
+        await waitForAddress(
+          'Emergency-admin restoration',
+          () => c.ap.getEmergencyAdmin(),
+          state.originalEmergencyAdmin
+        );
+        saveExecutionBestEffort(state, { restoreCompleted: true });
+        await sleep(TX_DELAY_MS);
+      } catch (restoreError: any) {
+        // A relay may reject after accepting the signed transaction. Reconcile
+        // the live role before declaring restoration failed.
+        try {
+          await waitForAddress(
+            'Emergency-admin restoration reconciliation',
+            () => c.ap.getEmergencyAdmin(),
+            state.originalEmergencyAdmin
+          );
+          saveExecutionBestEffort(state, {
+            restoreCompleted: true,
+            restoreReconciledAfterError: conciseRpcError(restoreError),
+          });
+        } catch (reconciliationError: any) {
+          saveExecutionBestEffort(state, {
+            restoreCompleted: false,
+            restoreError: conciseRpcError(restoreError),
+            restoreReconciliationError: conciseRpcError(reconciliationError),
+          });
+          console.error(
+            'CRITICAL: emergency-admin restoration failed. Manual owner action is required.'
+          );
+          throw restoreError;
+        }
+      }
 
-  //     if (!(await c.pool.paused())) {
-  //       console.error(
-  //         'Pool still open after role restoration. Sending direct emergency-admin pause.'
-  //       );
-  //       const pauseTx = await c.configurator.setPoolPause(true);
-  //       saveExecutionBestEffort(state, { fallbackPauseTxHash: pauseTx.hash });
-  //       await pauseTx.wait();
-  //     }
-  //   } else {
-  //     const liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
-  //     if (!eq(liveEmergencyAdmin, state.originalEmergencyAdmin)) {
-  //       throw new Error(
-  //         `CRITICAL: unexpected emergency admin ${liveEmergencyAdmin}; expected original EOA`
-  //       );
-  //     }
-  //   }
-  // }
+      if (!(await c.pool.paused())) {
+        console.error(
+          'Pool still open after role restoration. Sending direct emergency-admin pause.'
+        );
+        const pauseTx = await c.configurator.setPoolPause(true);
+        saveExecutionBestEffort(state, { fallbackPauseTxHash: pauseTx.hash });
+        await pauseTx.wait();
+      }
+    } else {
+      const liveEmergencyAdmin = await c.ap.getEmergencyAdmin();
+      if (!eq(liveEmergencyAdmin, state.originalEmergencyAdmin)) {
+        throw new Error(
+          `CRITICAL: unexpected emergency admin ${liveEmergencyAdmin}; expected original EOA`
+        );
+      }
+    }
+  }
 
-  // const [finalProviderOwner, finalEmergencyAdmin, finalPoolAdmin, finalPaused] = await Promise.all([
-  //   c.ap.owner(),
-  //   c.ap.getEmergencyAdmin(),
-  //   c.ap.getPoolAdmin(),
-  //   c.pool.paused(),
-  // ]);
-  // if (!eq(finalProviderOwner, state.controller))
-  //   throw new Error('AddressesProvider owner changed unexpectedly.');
-  // if (!eq(finalEmergencyAdmin, state.originalEmergencyAdmin))
-  //   throw new Error('Final emergency admin is incorrect.');
-  // if (!eq(finalPoolAdmin, state.poolAdmin)) throw new Error('Pool admin changed unexpectedly.');
-  // if (!finalPaused) throw new Error('Pool is not paused at final verification.');
+  const [finalProviderOwner, finalEmergencyAdmin, finalPoolAdmin, finalPaused] = await Promise.all([
+    c.ap.owner(),
+    c.ap.getEmergencyAdmin(),
+    c.ap.getPoolAdmin(),
+    c.pool.paused(),
+  ]);
+  if (!eq(finalProviderOwner, state.controller))
+    throw new Error('AddressesProvider owner changed unexpectedly.');
+  if (!eq(finalEmergencyAdmin, state.originalEmergencyAdmin))
+    throw new Error('Final emergency admin is incorrect.');
+  if (!eq(finalPoolAdmin, state.poolAdmin)) throw new Error('Pool admin changed unexpectedly.');
+  if (!finalPaused) throw new Error('Pool is not paused at final verification.');
 
-  // if (executionError) throw executionError;
-  // const finalCompletedBitmap = smallUintToNumber(
-  //   await c.executor.completedBatches(),
-  //   'completedBatches'
-  // );
-  // if (finalCompletedBitmap !== ALL_BATCHES_BITMAP) {
-  //   throw new Error(
-  //     `Execution ended without all batches complete: ${finalCompletedBitmap} != ${ALL_BATCHES_BITMAP}.`
-  //   );
-  // }
-  // if (!(await c.executor.used())) throw new Error('Executor does not report complete use.');
+  if (executionError) throw executionError;
+  const finalCompletedBitmap = smallUintToNumber(
+    await c.executor.completedBatches(),
+    'completedBatches'
+  );
+  if (finalCompletedBitmap !== ALL_BATCHES_BITMAP) {
+    throw new Error(
+      `Execution ended without all batches complete: ${finalCompletedBitmap} != ${ALL_BATCHES_BITMAP}.`
+    );
+  }
+  if (!(await c.executor.used())) throw new Error('Executor does not report complete use.');
 
-  // const afterRates = await readReserveSnapshots(c.dp, c.assets);
-  // for (const [symbol] of c.assets) {
-  //   const before = c.beforeRates[symbol];
-  //   const after = afterRates[symbol];
+  const afterRates = await readReserveSnapshots(c.dp, c.assets);
+  for (const [symbol] of c.assets) {
+    const before = c.beforeRates[symbol];
+    const after = afterRates[symbol];
 
-  //   if (ethers.BigNumber.from(after.variableBorrowRate).gt(before.variableBorrowRate)) {
-  //     throw new Error(
-  //       `${symbol}: stored variable rate increased (before ${before.variableBorrowRate}, after ${after.variableBorrowRate})`
-  //     );
-  //   }
-  // }
+    if (ethers.BigNumber.from(after.variableBorrowRate).gt(before.variableBorrowRate)) {
+      throw new Error(
+        `${symbol}: stored variable rate increased (before ${before.variableBorrowRate}, after ${after.variableBorrowRate})`
+      );
+    }
+  }
 
-  // const allReserves: string[] = await c.pool.getReservesList();
-  // for (const asset of allReserves) {
-  //   const cfg = await c.dp.getReserveConfigurationData(asset);
-  //   if (!cfg.isFrozen) throw new Error(`Reserve ${asset} is no longer frozen.`);
-  // }
-  // saveExecution(state, {
-  //   completed: true,
-  //   completedBitmap: finalCompletedBitmap,
-  //   completedAt: new Date().toISOString(),
-  //   beforeRates: c.beforeRates,
-  //   afterRates,
-  //   lastRunError: null,
-  // });
-  // console.log('All atomic refresh batches completed and verified.');
-  // console.log('Stored reserve rates after:', afterRates);
-  // console.log('Pool paused:', finalPaused);
-  // console.log('AddressesProvider owner unchanged:', finalProviderOwner);
-  // console.log('Emergency admin restored:', finalEmergencyAdmin);
-  // console.log('Pool admin unchanged:', finalPoolAdmin);
+  const allReserves: string[] = await c.pool.getReservesList();
+  for (const asset of allReserves) {
+    const cfg = await c.dp.getReserveConfigurationData(asset);
+    if (!cfg.isFrozen) throw new Error(`Reserve ${asset} is no longer frozen.`);
+  }
+  saveExecution(state, {
+    completed: true,
+    completedBitmap: finalCompletedBitmap,
+    completedAt: new Date().toISOString(),
+    beforeRates: c.beforeRates,
+    afterRates,
+    lastRunError: null,
+  });
+  console.log('All atomic refresh batches completed and verified.');
+  console.log('Stored reserve rates after:', afterRates);
+  console.log('Pool paused:', finalPaused);
+  console.log('AddressesProvider owner unchanged:', finalProviderOwner);
+  console.log('Emergency admin restored:', finalEmergencyAdmin);
+  console.log('Pool admin unchanged:', finalPoolAdmin);
 }
 
 main().catch((error) => {
