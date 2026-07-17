@@ -9,10 +9,11 @@ export const FQN = `${SOURCE_NAME}:${CONTRACT_NAME}`;
 // Updated only after compiling and reviewing the exact source. Deployment
 // refuses any creation bytecode that differs from this value.
 export const REVIEWED_CREATION_BYTECODE_HASH =
-  '0xc171571477d4f61ff1a218d59b317fe95d13e949e0a1cd2504333765d4200e85';
+  '0x2c43cf3de365508e034c2af3bfb588e5f89edeb3d425a55365b8bbff4d1cb092';
 
 type ImmutableReference = { start: number; length: number };
 type ImmutableReferences = Record<string, ImmutableReference[]>;
+export type AtomicRepayConstructorArguments = readonly [string, string, string, readonly string[]];
 
 function normalize(bytecode: string) {
   if (!/^0x[0-9a-fA-F]*$/.test(bytecode) || bytecode.length % 2 !== 0) {
@@ -21,7 +22,11 @@ function normalize(bytecode: string) {
   return bytecode.toLowerCase();
 }
 
-export function assertReviewedDeploymentPayload(initCode: BytesLike, creationBytecode: BytesLike) {
+export function assertReviewedDeploymentPayload(
+  initCode: BytesLike,
+  creationBytecode: BytesLike,
+  constructorArguments: AtomicRepayConstructorArguments
+) {
   const init = utils.hexlify(initCode).toLowerCase();
   const creation = utils.hexlify(creationBytecode).toLowerCase();
   const hash = utils.keccak256(creation);
@@ -30,8 +35,13 @@ export function assertReviewedDeploymentPayload(initCode: BytesLike, creationByt
       `Atomic repay helper creation bytecode changed (${hash} != ${REVIEWED_CREATION_BYTECODE_HASH}).`
     );
   }
-  if (!init.startsWith(creation)) {
-    throw new Error('Atomic repay helper deployment payload has an unexpected creation prefix.');
+  const encodedArguments = utils.defaultAbiCoder.encode(
+    ['address', 'address', 'address', 'address[]'],
+    constructorArguments
+  );
+  const expectedInit = utils.hexConcat([creation, encodedArguments]).toLowerCase();
+  if (init !== expectedInit) {
+    throw new Error('Atomic repay helper deployment payload or constructor arguments changed.');
   }
 }
 

@@ -5,11 +5,14 @@
  * ATOMIC_REPAY_ACTION=handoff             controller assigns emergency admin
  * ATOMIC_REPAY_ACTION=repay               authorised caller funds one repayment
  * ATOMIC_REPAY_ACTION=repay-from          controller submits after payer allowance
+ * ATOMIC_REPAY_ACTION=repay-hbar          authorised caller repays WHBAR debt with native HBAR
+ * ATOMIC_REPAY_ACTION=add-caller          controller adds another authorised payer
  * ATOMIC_REPAY_ACTION=pause-repayments    controller pauses helper repayments
  * ATOMIC_REPAY_ACTION=resume-repayments   controller resumes helper repayments
  * ATOMIC_REPAY_ACTION=pool-pause-only     controller restores LendingPool pause
  * ATOMIC_REPAY_ACTION=close-and-restore   controller closes and restores role
  * ATOMIC_REPAY_ACTION=sweep-after-close   controller recovers an accidental token
+ * ATOMIC_REPAY_ACTION=sweep-hbar-after-close controller recovers accidental native HBAR
  *
  * Every write also requires CONFIRM_ATOMIC_REPAY_ACTION to equal the
  * uppercase action name. REPAY additionally requires REPAYMENT_SYMBOL and
@@ -34,22 +37,28 @@ type Action =
   | 'handoff'
   | 'repay'
   | 'repay-from'
+  | 'repay-hbar'
+  | 'add-caller'
   | 'pause-repayments'
   | 'resume-repayments'
   | 'pool-pause-only'
   | 'close-and-restore'
-  | 'sweep-after-close';
+  | 'sweep-after-close'
+  | 'sweep-hbar-after-close';
 const ACTION = (process.env.ATOMIC_REPAY_ACTION || 'status') as Action;
 const VALID_ACTIONS: Action[] = [
   'status',
   'handoff',
   'repay',
   'repay-from',
+  'repay-hbar',
+  'add-caller',
   'pause-repayments',
   'resume-repayments',
   'pool-pause-only',
   'close-and-restore',
   'sweep-after-close',
+  'sweep-hbar-after-close',
 ];
 
 function saveOperation(state: any, entry: Record<string, unknown>) {
@@ -107,6 +116,13 @@ async function loadAndVerify() {
   }
   if (!Array.isArray(state.authorizedCallers) || state.authorizedCallers.length === 0) {
     throw new Error('Deployment state has no authorised caller list.');
+  }
+  const callerCount = await helper.callerCount();
+  if (!callerCount.eq(state.authorizedCallers.length)) {
+    throw new Error(
+      `Authorised caller state length ${state.authorizedCallers.length} differs from ` +
+        `on-chain caller count ${callerCount.toString()}.`
+    );
   }
   for (let i = 0; i < state.authorizedCallers.length; i++) {
     const [caller, allowed] = await Promise.all([
@@ -233,25 +249,28 @@ async function repay(c: Awaited<ReturnType<typeof loadAndVerify>>, controllerSub
     throw new Error('Repayment requires a paused pool and active helper.');
   }
   if (amount.isZero()) throw new Error('Repayment amount must be positive.');
-  const expectedPull = amount.lt(debt) ? amount : debt;
-  if (expectedPull.isZero()) throw new Error(`${symbol}: borrower has no live debt.`);
-  if (balance.lt(expectedPull)) throw new Error(`${symbol}: payer token balance is insufficient.`);
+  const preflightPull = amount.lt(debt) ? amount : debt;
+  if (preflightPull.isZero()) throw new Error(`${symbol}: borrower has no live debt.`);
+  if (balance.lt(preflightPull)) throw new Error(`${symbol}: payer token balance is insufficient.`);
 
   const allowance = await token.allowance(payer, c.state.helper);
-  if (allowance.lt(expectedPull)) {
+  // Approve the caller's requested ceiling, not a debt balance that can accrue
+  // between this read and execution. The helper still pulls only
+  // min(requested amount, live debt) inside the repayment transaction.
+  if (allowance.lt(amount)) {
     if (controllerSubmitted) {
       throw new Error(
         `${symbol}: payer allowance is ${allowance.toString()}, but ` +
-          `${expectedPull.toString()} is required. The payer must approve the helper first.`
+          `${amount.toString()} is required. The payer must approve the helper first.`
       );
     }
-    const approveTx = await token.approve(c.state.helper, expectedPull);
+    const approveTx = await token.approve(c.state.helper, amount);
     const approveReceipt = await approveTx.wait();
     if (approveReceipt.status !== 1) throw new Error(`${symbol}: approval failed.`);
     saveOperation(c.state, {
       action: 'approve',
       symbol,
-      amountAtomic: expectedPull.toString(),
+      amountAtomic: amount.toString(),
       txHash: approveTx.hash,
       blockNumber: approveReceipt.blockNumber,
     });
@@ -273,34 +292,157 @@ async function repay(c: Awaited<ReturnType<typeof loadAndVerify>>, controllerSub
     throw new Error('Configured repayment gas limit is below 105% of the estimate.');
   }
   const gasLimit = configuredLimit || estimate.mul(110).div(100);
-  const debtBefore = debt;
   const tx = controllerSubmitted
     ? await helper.repayTokenFrom(payer, item.asset, amount, { gasLimit })
     : await helper.repayToken(item.asset, amount, { gasLimit });
+  saveOperation(c.state, {
+    action: `${action}-submitted`,
+    symbol,
+    requestedTokens: amountTokens,
+    payer,
+    submittedBy: signer.address,
+    txHash: tx.hash,
+  });
+  c.state = readJson<any>(STATE_PATH);
   const receipt = await tx.wait();
   if (receipt.status !== 1) throw new Error(`${symbol}: repayment failed.`);
-  const [debtAfter, pausedAfter] = await Promise.all([
-    c.helper.currentDebt(item.asset),
-    c.pool.paused(),
-  ]);
-  if (!pausedAfter) throw new Error('Pool is not paused after repayment.');
-  if (!debtBefore.sub(debtAfter).eq(expectedPull)) {
-    throw new Error(`${symbol}: debt reduction differs from expected repayment.`);
+  const repaymentEvents =
+    receipt.events?.filter((event: any) => event.event === 'AtomicRepaymentExecuted') || [];
+  if (repaymentEvents.length !== 1 || !repaymentEvents[0].args) {
+    throw new Error(`${symbol}: expected exactly one decoded repayment event.`);
   }
+  const repayment = repaymentEvents[0].args;
+  if (
+    !eqAddress(repayment.asset, item.asset) ||
+    !eqAddress(repayment.payer, payer) ||
+    !eqAddress(repayment.borrower, BORROWER)
+  ) {
+    throw new Error(`${symbol}: repayment event identities do not match the request.`);
+  }
+  if (repayment.amount.isZero() || repayment.amount.gt(amount)) {
+    throw new Error(`${symbol}: repayment event amount is outside the requested ceiling.`);
+  }
+  const pausedAfter = await c.pool.paused();
+  if (!pausedAfter) throw new Error('Pool is not paused after repayment.');
   saveOperation(c.state, {
     action,
     symbol,
     requestedTokens: amountTokens,
     payer,
     submittedBy: signer.address,
-    repaidAtomic: expectedPull.toString(),
-    debtBefore: debtBefore.toString(),
-    debtAfter: debtAfter.toString(),
+    preflightDebt: debt.toString(),
+    repaidAtomic: repayment.amount.toString(),
+    debtBefore: repayment.debtBefore.toString(),
+    debtAfter: repayment.debtAfter.toString(),
+    totalRepaidForAsset: repayment.totalRepaidForAsset.toString(),
     txHash: tx.hash,
     blockNumber: receipt.blockNumber,
     poolPausedAfter: pausedAfter,
   });
   console.log(`${symbol} repayment completed. Pool is paused.`);
+}
+
+async function repayHbar(c: Awaited<ReturnType<typeof loadAndVerify>>) {
+  requireConfirmation('repay-hbar');
+  const amountHbar = process.env.REPAYMENT_AMOUNT || '';
+  if (!/^\d+(\.\d+)?$/.test(amountHbar)) throw new Error('Invalid REPAYMENT_AMOUNT.');
+  const tinybars = ethers.utils.parseUnits(amountHbar, 8);
+  const weibars = ethers.utils.parseEther(amountHbar);
+  if (tinybars.isZero()) throw new Error('Native HBAR repayment must be positive.');
+
+  const signer = await authorizedSigner(c.helper);
+  const [admin, poolPaused, repaymentsPaused, closed, debt, hbarBalance] = await Promise.all([
+    c.ap.getEmergencyAdmin(),
+    c.pool.paused(),
+    c.helper.repaymentsPaused(),
+    c.helper.closed(),
+    c.helper.currentDebt(c.state.settlements.WHBAR.asset),
+    signer.getBalance(),
+  ]);
+  if (!eqAddress(admin, c.state.helper)) throw new Error('Helper is not emergency admin.');
+  if (!poolPaused || repaymentsPaused || closed) {
+    throw new Error('Native HBAR repayment requires a paused pool and active helper.');
+  }
+  if (debt.isZero()) throw new Error('Wallet B has no live WHBAR debt.');
+  if (hbarBalance.lt(weibars)) {
+    throw new Error('Authorised caller has insufficient HBAR for the requested repayment value.');
+  }
+
+  const helper = c.helper.connect(signer);
+  await helper.callStatic.repayHbar({ value: weibars });
+  const estimate = await helper.estimateGas.repayHbar({ value: weibars });
+  const gasLimit = estimate.mul(110).div(100);
+  const feeData = await ethers.provider.getFeeData();
+  const feePerGas = feeData.maxFeePerGas || feeData.gasPrice;
+  if (feePerGas && hbarBalance.lt(weibars.add(gasLimit.mul(feePerGas)))) {
+    throw new Error('Authorised caller has insufficient HBAR for repayment value plus gas.');
+  }
+  const tx = await helper.repayHbar({ value: weibars, gasLimit });
+  saveOperation(c.state, {
+    action: 'repay-hbar-submitted',
+    requestedHbar: amountHbar,
+    requestedTinybars: tinybars.toString(),
+    payer: signer.address,
+    txHash: tx.hash,
+  });
+  c.state = readJson<any>(STATE_PATH);
+  const receipt = await tx.wait();
+  if (receipt.status !== 1) throw new Error('Native HBAR repayment failed.');
+  const repaymentEvent = receipt.events?.find(
+    (event: any) => event.event === 'AtomicRepaymentExecuted'
+  );
+  const nativeEvent = receipt.events?.find(
+    (event: any) => event.event === 'NativeHbarRepaymentExecuted'
+  );
+  if (!repaymentEvent?.args || !nativeEvent?.args) {
+    throw new Error('Native HBAR repayment events were not decoded.');
+  }
+  if (!(await c.pool.paused())) throw new Error('Pool is not paused after native repayment.');
+
+  saveOperation(c.state, {
+    action: 'repay-hbar',
+    requestedHbar: amountHbar,
+    requestedTinybars: tinybars.toString(),
+    repaidTinybars: repaymentEvent.args.amount.toString(),
+    refundedTinybars: nativeEvent.args.hbarRefunded.toString(),
+    payer: signer.address,
+    txHash: tx.hash,
+    blockNumber: receipt.blockNumber,
+    poolPausedAfter: true,
+  });
+  console.log('Native HBAR repayment completed. Pool is paused.');
+}
+
+async function addCaller(c: Awaited<ReturnType<typeof loadAndVerify>>) {
+  requireConfirmation('add-caller');
+  const caller = process.env.AUTHORIZED_CALLER || '';
+  if (!ethers.utils.isAddress(caller) || eqAddress(caller, ethers.constants.AddressZero)) {
+    throw new Error('AUTHORIZED_CALLER is not a valid non-zero address.');
+  }
+  const signer = await controllerSigner(c.state.controller);
+  if (await c.helper.authorizedCaller(caller)) throw new Error('Caller is already authorised.');
+  if (await c.helper.closed()) throw new Error('Cannot add a caller after helper closure.');
+  const callerCount = await c.helper.callerCount();
+  const tx = await c.helper.connect(signer).addAuthorizedCaller(caller);
+  const receipt = await tx.wait();
+  if (
+    !(await c.helper.authorizedCaller(caller)) ||
+    !eqAddress(await c.helper.AUTHORIZED_CALLERS(callerCount), caller)
+  ) {
+    throw new Error('Authorised caller addition did not persist.');
+  }
+  saveOperation(c.state, {
+    action: 'add-caller',
+    caller,
+    txHash: tx.hash,
+    blockNumber: receipt.blockNumber,
+  });
+  const updatedState = readJson<any>(STATE_PATH);
+  writeJson(STATE_PATH, {
+    ...updatedState,
+    authorizedCallers: [...updatedState.authorizedCallers, caller],
+  });
+  console.log('Authorised caller added:', caller);
 }
 
 async function setRepaymentsPause(c: Awaited<ReturnType<typeof loadAndVerify>>, paused: boolean) {
@@ -426,16 +568,40 @@ async function sweepAfterClose(c: Awaited<ReturnType<typeof loadAndVerify>>) {
   console.log('Closed helper token balance swept to controller.');
 }
 
+async function sweepHbarAfterClose(c: Awaited<ReturnType<typeof loadAndVerify>>) {
+  requireConfirmation('sweep-hbar-after-close');
+  const signer = await controllerSigner(c.state.controller);
+  if (!(await c.helper.closed())) throw new Error('Helper must be closed before sweeping.');
+  if (!(await c.pool.paused())) throw new Error('LendingPool must be paused before sweeping.');
+  const balance = await ethers.provider.getBalance(c.state.helper);
+  if (balance.isZero()) throw new Error('Helper has no native HBAR balance.');
+  const tx = await c.helper.connect(signer).sweepHbarAfterClose();
+  const receipt = await tx.wait();
+  if (!(await ethers.provider.getBalance(c.state.helper)).isZero()) {
+    throw new Error('Native HBAR balance remains after sweep.');
+  }
+  saveOperation(c.state, {
+    action: 'sweep-hbar-after-close',
+    amountTinybars: balance.toString(),
+    txHash: tx.hash,
+    blockNumber: receipt.blockNumber,
+  });
+  console.log('Closed helper native HBAR balance swept to controller.');
+}
+
 async function main() {
   const c = await loadAndVerify();
   if (ACTION === 'status') return printStatus(c);
   if (ACTION === 'handoff') return handoff(c);
   if (ACTION === 'repay') return repay(c, false);
   if (ACTION === 'repay-from') return repay(c, true);
+  if (ACTION === 'repay-hbar') return repayHbar(c);
+  if (ACTION === 'add-caller') return addCaller(c);
   if (ACTION === 'pause-repayments') return setRepaymentsPause(c, true);
   if (ACTION === 'resume-repayments') return setRepaymentsPause(c, false);
   if (ACTION === 'pool-pause-only') return pausePoolOnly(c);
   if (ACTION === 'sweep-after-close') return sweepAfterClose(c);
+  if (ACTION === 'sweep-hbar-after-close') return sweepHbarAfterClose(c);
   return closeAndRestore(c);
 }
 

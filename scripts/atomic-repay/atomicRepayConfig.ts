@@ -15,14 +15,29 @@ export const PROTOCOL_ADDRESSES = {
   dataProvider: deployment.AaveProtocolDataProvider.hedera_mainnet.address,
 };
 
-export type SettlementSymbol = 'BONZO' | 'HBARX' | 'WETH' | 'WHBAR' | 'XSAUCE';
+export const WHBAR_HELPER = '0x000000000000000000000000000000000058A2BA';
 
-export const SETTLEMENT_SYMBOLS: SettlementSymbol[] = ['BONZO', 'HBARX', 'WETH', 'WHBAR', 'XSAUCE'];
+export type SettlementSymbol = 'BONZO' | 'HBARX' | 'WETH' | 'WHBAR' | 'XSAUCE' | 'STEAM';
 
-// These are the four HTS constants explicitly associated by the contract.
+export const SETTLEMENT_SYMBOLS: SettlementSymbol[] = [
+  'BONZO',
+  'HBARX',
+  'WETH',
+  'WHBAR',
+  'XSAUCE',
+  'STEAM',
+];
+
+// These are the five HTS constants explicitly associated by the contract.
 // The deploy script uses this list only to verify the hardcoded on-chain order.
 // WETH is an ERC-20 contract and is deliberately omitted.
-export const HTS_SETTLEMENT_SYMBOLS: SettlementSymbol[] = ['BONZO', 'HBARX', 'WHBAR', 'XSAUCE'];
+export const HTS_SETTLEMENT_SYMBOLS: SettlementSymbol[] = [
+  'BONZO',
+  'HBARX',
+  'WHBAR',
+  'XSAUCE',
+  'STEAM',
+];
 
 export const ASSET_BY_SYMBOL: Record<SettlementSymbol, string> = Object.fromEntries(
   SETTLEMENT_SYMBOLS.map((symbol) => [symbol, deployment[symbol].hedera_mainnet.token.address])
@@ -36,8 +51,8 @@ export const VARIABLE_DEBT_BY_SYMBOL: Record<SettlementSymbol, string> = Object.
 ) as Record<SettlementSymbol, string>;
 
 // The deploy script always whitelists BORROWER and the live AddressesProvider
-// owner/controller. Add any separately approved company test wallet here before
-// deployment. The resulting on-chain array cannot be changed after deployment.
+// owner/controller. The controller may add more callers on-chain after
+// deployment through addAuthorizedCaller().
 export const ADDITIONAL_AUTHORIZED_CALLERS: string[] = [
   '0x12Ab96bEBf0bc4fe1A8f62049c7d840ac949CaB6',
 ];

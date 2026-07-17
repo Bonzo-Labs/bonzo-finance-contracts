@@ -36,6 +36,7 @@ import {
   SETTLEMENT_SYMBOLS,
   STATE_PATH,
   VARIABLE_DEBT_BY_SYMBOL,
+  WHBAR_HELPER,
 } from './atomicRepayConfig';
 import {
   assertReviewedDeploymentPayload,
@@ -140,6 +141,16 @@ async function preflight() {
   }
   if (!paused) throw new Error('LendingPool is not paused.');
 
+  const whbarHelper = new ethers.Contract(
+    WHBAR_HELPER,
+    ['function whbarToken() view returns (address)'],
+    provider
+  );
+  const liveWhbarToken = await whbarHelper.whbarToken();
+  if (!eqAddress(liveWhbarToken, ASSET_BY_SYMBOL.WHBAR)) {
+    throw new Error(`WHBAR helper token changed: ${liveWhbarToken}.`);
+  }
+
   const settlements: Array<{
     symbol: string;
     asset: string;
@@ -231,7 +242,7 @@ async function main() {
   const factory = await ethers.getContractFactory('AtomicRepayHelper', deployer);
   const assets = roles.settlements.map((item) => item.asset);
   const htsAssets = HTS_SETTLEMENT_SYMBOLS.map((symbol) => ASSET_BY_SYMBOL[symbol]);
-  const constructorArguments = [
+  const constructorArguments: [string, string, string, string[]] = [
     PROTOCOL_ADDRESSES.provider,
     roles.controllerAddress,
     BORROWER,
@@ -239,7 +250,7 @@ async function main() {
   ];
   const unsigned = factory.getDeployTransaction(...constructorArguments);
   if (!unsigned.data) throw new Error('Helper deployment has no creation payload.');
-  assertReviewedDeploymentPayload(unsigned.data, factory.bytecode);
+  assertReviewedDeploymentPayload(unsigned.data, factory.bytecode, constructorArguments);
 
   // The configured relay may read and broadcast successfully while rejecting
   // contract-creation estimates. Public Hashio is used only for this read-only
@@ -283,6 +294,7 @@ async function main() {
     configuratorAddress,
     controller,
     borrower,
+    whbarHelper,
     callerCount,
     assetCount,
     htsAssetCount,
@@ -295,6 +307,7 @@ async function main() {
     helper.CONFIGURATOR(),
     helper.CONTROLLER(),
     helper.BORROWER(),
+    helper.WHBAR_HELPER(),
     helper.callerCount(),
     helper.assetCount(),
     helper.htsAssetCount(),
@@ -308,6 +321,7 @@ async function main() {
     [configuratorAddress, PROTOCOL_ADDRESSES.configurator],
     [controller, roles.controllerAddress],
     [borrower, BORROWER],
+    [whbarHelper, WHBAR_HELPER],
   ];
   for (const [actual, expected] of immutableChecks) {
     if (!eqAddress(actual, expected)) {
@@ -362,6 +376,7 @@ async function main() {
     borrower: BORROWER,
     authorizedCallers,
     htsAssets,
+    whbarHelper: WHBAR_HELPER,
     protocol: PROTOCOL_ADDRESSES,
     settlements: Object.fromEntries(
       roles.settlements.map((item) => [
